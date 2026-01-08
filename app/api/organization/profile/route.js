@@ -1,0 +1,265 @@
+import { NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  organizationProfileSchema,
+  organizationProfileDraftSchema
+} from '@/lib/validation'
+import {
+  AuthenticationError,
+  AuthorizationError,
+  ValidationError,
+  DatabaseError,
+  handleApiError,
+  logError
+} from '@/lib/errors'
+
+function handleCORS(response) {
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  return response
+}
+
+/* =========================
+   GET organization profile
+========================= */
+export async function GET() {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      throw new AuthenticationError()
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) {
+      throw new DatabaseError('Failed to fetch user profile', profileError)
+    }
+
+    if (!profile?.organization_id) {
+      throw new AuthorizationError('User not linked to an organization')
+    }
+
+    const { data: orgProfile, error: orgProfileError } = await supabase
+      .from('organization_profiles')
+      .select('*')
+      .eq('organization_id', profile.organization_id)
+      .single()
+
+    // It's OK if no profile exists yet (user hasn't completed onboarding)
+    if (orgProfileError && orgProfileError.code !== 'PGRST116') {
+      console.error('Error fetching org profile:', orgProfileError)
+    }
+
+    return handleCORS(
+      NextResponse.json({
+        profile: orgProfile || {},
+        organization_id: profile.organization_id
+      })
+    )
+  } catch (error) {
+    logError(error, { endpoint: 'GET /api/organization/profile' })
+    const { status, body } = handleApiError(error)
+    return handleCORS(NextResponse.json(body, { status }))
+  }
+}
+
+/* =========================
+   UPDATE organization profile (ONBOARDING)
+========================= */
+export async function PUT(request) {
+  try {
+    const supabase = await createServerSupabaseClient()
+    const admin = createAdminClient()
+
+    // Get authenticated user
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new AuthenticationError()
+    }
+
+    // Parse and validate request body
+    const body = await request.json()
+
+    // Use appropriate schema based on whether this is a complete submission
+    const schema = body.isComplete
+      ? organizationProfileSchema
+      : organizationProfileDraftSchema
+
+    const validatedData = schema.safeParse(body)
+
+    if (!validatedData.success) {
+      const errors = validatedData.error.errors.map(err => ({
+        field: err.path.join('.'),
+        message: err.message
+      }))
+      throw new ValidationError('Validation failed', errors)
+    }
+
+    // Get user's organization
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) {
+      throw new DatabaseError('Failed to fetch user profile', profileError)
+    }
+
+    // If no organization_id in profile, try to find or create the organization
+    let organizationId = profile?.organization_id
+
+    if (!organizationId) {
+      // Try to find any existing organization (since created_by doesn't exist in schema)
+      let { data: userOrg } = await admin
+        .from('organizations')
+        .select('id, name')
+        .limit(1)
+        .maybeSingle()
+
+      // If no organization exists, create one
+      if (!userOrg) {
+        const { data: newOrg, error: createOrgError } = await admin
+          .from('organizations')
+          .insert({
+            name: validatedData.data.companyName || 'My Organization',
+            onboarding_status: 'PENDING'
+            // Note: created_by field doesn't exist in organizations table
+          })
+          .select('id, name')
+          .single()
+
+        if (createOrgError) {
+          console.error('Organization creation error details:', createOrgError)
+          throw new DatabaseError('Failed to create organization', createOrgError)
+        }
+
+        userOrg = newOrg
+      }
+
+      if (userOrg?.id) {
+        organizationId = userOrg.id
+
+        // Update profile with organization_id and optionally set default role
+        try {
+          const { data: defaultRole } = await admin
+            .from('roles')
+            .select('id')
+            .eq('name', 'Client Super Admin')
+            .maybeSingle()
+
+          await admin
+            .from('profiles')
+            .update({
+              organization_id: organizationId,
+              role_id: defaultRole?.id || null,
+              full_name: validatedData.data.companyName || user.email.split('@')[0]
+            })
+            .eq('id', user.id)
+        } catch (roleError) {
+          // If role assignment fails, just update organization_id
+          console.error('Role assignment failed, continuing without role:', roleError)
+          await admin
+            .from('profiles')
+            .update({
+              organization_id: organizationId,
+              full_name: validatedData.data.companyName || user.email.split('@')[0]
+            })
+            .eq('id', user.id)
+        }
+      } else {
+        throw new AuthorizationError('Failed to setup organization. Please contact support.')
+      }
+    }
+
+    // Prepare data for upsert (convert camelCase to snake_case)
+    const profileData = {
+      organization_id: organizationId,
+      sector: validatedData.data.sector,
+      business_type: validatedData.data.businessType,
+      company_name: validatedData.data.companyName,
+      gstin: validatedData.data.gstin || null,
+      contact_number: validatedData.data.contactNumber,
+      address_line_1: validatedData.data.addressLine1,
+      address_line_2: validatedData.data.addressLine2 || null,
+      city: validatedData.data.city,
+      state: validatedData.data.state,
+      country: validatedData.data.country || 'India',
+      pincode: validatedData.data.pincode,
+      updated_at: new Date().toISOString()
+    }
+
+    // Upsert organization profile
+    const { error: upsertError } = await admin
+      .from('organization_profiles')
+      .upsert(profileData, { onConflict: 'organization_id' })
+
+    if (upsertError) {
+      throw new DatabaseError('Failed to save organization profile', upsertError)
+    }
+
+    // If this is the final submission, mark onboarding as complete
+    if (body.isComplete) {
+      const { error: orgUpdateError } = await admin
+        .from('organizations')
+        .update({
+          onboarding_status: 'COMPLETED',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', organizationId)
+
+      if (orgUpdateError) {
+        throw new DatabaseError('Failed to update organization status', orgUpdateError)
+      }
+
+      // Create audit log
+      const { error: auditError } = await admin
+        .from('audit_logs')
+        .insert({
+          user_id: user.id,
+          user_name: user.email,
+          action: 'ONBOARDING_COMPLETED',
+          entity_type: 'organization',
+          entity_id: profile.organization_id,
+          organization_id: profile.organization_id,
+          metadata: { company_name: validatedData.data.companyName }
+        })
+
+      if (auditError) {
+        console.error('Failed to create audit log:', auditError)
+        // Don't throw - audit log failure shouldn't block onboarding
+      }
+    }
+
+    return handleCORS(
+      NextResponse.json({
+        message: body.isComplete
+          ? 'Onboarding completed successfully'
+          : 'Profile saved as draft',
+        completed: !!body.isComplete
+      })
+    )
+  } catch (error) {
+    logError(error, {
+      endpoint: 'PUT /api/organization/profile',
+      body: request.body
+    })
+    const { status, body } = handleApiError(error)
+    return handleCORS(NextResponse.json(body, { status }))
+  }
+}
+
+/* =========================
+   OPTIONS for CORS
+========================= */
+export async function OPTIONS() {
+  return handleCORS(new NextResponse(null, { status: 200 }))
+}

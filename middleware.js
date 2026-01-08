@@ -1,0 +1,130 @@
+import { NextResponse } from 'next/server'
+
+/**
+ * Next.js Middleware for Security and Request Handling
+ * 
+ * This middleware runs on every request and adds:
+ * - Security headers
+ * - Request logging
+ * - Basic rate limiting (in-memory)
+ */
+
+// Simple in-memory rate limiter
+const rateLimitMap = new Map()
+const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
+const MAX_REQUESTS = 100 // 100 requests per minute per IP
+
+function rateLimit(ip) {
+    const now = Date.now()
+    const userRequests = rateLimitMap.get(ip) || []
+
+    // Remove old requests outside the window
+    const recentRequests = userRequests.filter(
+        timestamp => now - timestamp < RATE_LIMIT_WINDOW
+    )
+
+    if (recentRequests.length >= MAX_REQUESTS) {
+        return false // Rate limit exceeded
+    }
+
+    recentRequests.push(now)
+    rateLimitMap.set(ip, recentRequests)
+
+    // Cleanup old entries periodically
+    if (Math.random() < 0.01) { // 1% chance
+        const cutoff = now - RATE_LIMIT_WINDOW
+        for (const [key, timestamps] of rateLimitMap.entries()) {
+            const filtered = timestamps.filter(t => t > cutoff)
+            if (filtered.length === 0) {
+                rateLimitMap.delete(key)
+            } else {
+                rateLimitMap.set(key, filtered)
+            }
+        }
+    }
+
+    return true
+}
+
+export function middleware(request) {
+    const { pathname } = request.nextUrl
+
+    // Get client IP
+    const ip = request.ip ||
+        request.headers.get('x-forwarded-for')?.split(',')[0] ||
+        request.headers.get('x-real-ip') ||
+        'unknown'
+
+    // Apply rate limiting to API routes
+    if (pathname.startsWith('/api/')) {
+        if (!rateLimit(ip)) {
+            return new NextResponse(
+                JSON.stringify({
+                    error: {
+                        message: 'Too many requests. Please try again later.',
+                        code: 'RATE_LIMIT_ERROR',
+                        statusCode: 429
+                    }
+                }),
+                {
+                    status: 429,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Retry-After': '60'
+                    }
+                }
+            )
+        }
+    }
+
+    // Create response
+    const response = NextResponse.next()
+
+    // Add security headers
+    response.headers.set('X-DNS-Prefetch-Control', 'on')
+    response.headers.set('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('Referrer-Policy', 'origin-when-cross-origin')
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+
+    // Add HSTS in production
+    if (process.env.NODE_ENV === 'production') {
+        response.headers.set(
+            'Strict-Transport-Security',
+            'max-age=63072000; includeSubDomains; preload'
+        )
+    }
+
+    // Add CSP header (adjust as needed for your app)
+    const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://dlbxhbukzyygbabrujuv.supabase.co;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' blob: data: https://dlbxhbukzyygbabrujuv.supabase.co;
+    font-src 'self';
+    connect-src 'self' https://dlbxhbukzyygbabrujuv.supabase.co wss://dlbxhbukzyygbabrujuv.supabase.co;
+    frame-ancestors 'self';
+  `.replace(/\s{2,}/g, ' ').trim()
+
+    response.headers.set('Content-Security-Policy', cspHeader)
+
+    // Log request in development
+    if (process.env.NODE_ENV === 'development') {
+        console.log(`[${new Date().toISOString()}] ${request.method} ${pathname} - ${ip}`)
+    }
+
+    return response
+}
+
+// Configure which routes the middleware runs on
+export const config = {
+    matcher: [
+        /*
+         * Match all request paths except for the ones starting with:
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico (favicon file)
+         */
+        '/((?!_next/static|_next/image|favicon.ico).*)',
+    ],
+}

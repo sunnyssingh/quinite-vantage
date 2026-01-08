@@ -1,0 +1,17 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /onboarding/
+
+# Allow public pages
+Allow: /$
+Allow: /about
+Allow: /pricing
+Allow: /contact
+
+# Sitemap
+Sitemap: ${process.env.NEXT_PUBLIC_SITE_URL}/sitemap.xml
