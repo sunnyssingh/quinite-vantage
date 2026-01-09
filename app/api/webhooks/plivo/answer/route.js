@@ -44,10 +44,10 @@ export async function POST(request) {
     if (!lead || !campaign) {
       return new NextResponse(
         `<?xml version="1.0" encoding="UTF-8"?>
-        <Response>
-          <Speak>Sorry, there was an error. Goodbye.</Speak>
-          <Hangup/>
-        </Response>`,
+<Response>
+  <Speak>Sorry, there was an error. Goodbye.</Speak>
+  <Hangup/>
+</Response>`,
         { headers: { 'Content-Type': 'text/xml' } }
       )
     }
@@ -76,6 +76,7 @@ export async function POST(request) {
       }
 
       const wsFullUrl = `${wsBaseUrl}/voice/stream?leadId=${leadId}&campaignId=${campaignId}&callSid=${callUUID}`
+      const wsFullXmlUrl = wsFullUrl.replace(/&/g, '&amp;')
       const statusCallbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/plivo/stream-status`
 
       // Return Plivo Stream XML for WebSocket connection
@@ -88,7 +89,7 @@ export async function POST(request) {
     contentType="audio/x-mulaw;rate=8000"
     statusCallbackUrl="${statusCallbackUrl}"
     statusCallbackMethod="POST"
-  >${wsFullUrl}</Stream>
+  >${wsFullXmlUrl}</Stream>
 </Response>`
 
       console.log('Returning WebSocket stream XML:', wsFullUrl)
@@ -120,10 +121,10 @@ export async function POST(request) {
 
     return new NextResponse(
       `<?xml version="1.0" encoding="UTF-8"?>
-      <Response>
-        <Speak>Sorry, there was an error. Goodbye.</Speak>
-        <Hangup/>
-      </Response>`,
+<Response>
+  <Speak>Sorry, there was an error. Goodbye.</Speak>
+  <Hangup/>
+</Response>`,
       { headers: { 'Content-Type': 'text/xml' } }
     )
   }

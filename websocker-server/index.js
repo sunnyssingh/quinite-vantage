@@ -62,13 +62,15 @@ app.all('/answer', (req, res) => {
 
     const wsUrl = `${protocol}://${host}/voice/stream?leadId=${leadId}&campaignId=${campaignId}&callSid=${callUuid}`;
 
+    // XML requires & to be escaped as &amp;
+    const xmlWsUrl = wsUrl.replace(/&/g, '&amp;');
+
     console.log(`🔗 [${callUuid}] Generated Stream URL: ${wsUrl}`);
 
-    // Plivo XML Response
-    const xml = `
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Stream bidirectional="true" keepCallAlive="true">
-        ${wsUrl}
+    <Stream bidirectional="true" keepCallAlive="true" contentType="audio/x-mulaw;rate=8000">
+        ${xmlWsUrl}
     </Stream>
 </Response>`;
 
