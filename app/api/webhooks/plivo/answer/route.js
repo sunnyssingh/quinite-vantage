@@ -59,6 +59,7 @@ export async function POST(request) {
       // REAL-TIME CONVERSATIONAL AI
       const wsBaseUrl = process.env.WS_URL || 'ws://localhost:3001'
       const wsFullUrl = `${wsBaseUrl}/voice/stream?leadId=${leadId}&campaignId=${campaignId}&callSid=${callUUID}`
+      const statusCallbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/plivo/stream-status`
 
       // Return Plivo Stream XML for WebSocket connection
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -68,12 +69,13 @@ export async function POST(request) {
     keepCallAlive="true"
     streamTimeout="86400"
     contentType="audio/x-mulaw;rate=8000"
-  >
-    ${wsFullUrl}
-  </Stream>
+    statusCallbackUrl="${statusCallbackUrl}"
+    statusCallbackMethod="POST"
+  >${wsFullUrl}</Stream>
 </Response>`
 
       console.log('Returning WebSocket stream XML:', wsFullUrl)
+      console.log('Status callback URL:', statusCallbackUrl)
       return new NextResponse(xml, {
         headers: { 'Content-Type': 'text/xml' }
       })
