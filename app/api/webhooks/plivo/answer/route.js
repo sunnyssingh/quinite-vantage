@@ -57,7 +57,24 @@ export async function POST(request) {
 
     if (enableRealtime && process.env.OPENAI_API_KEY) {
       // REAL-TIME CONVERSATIONAL AI
-      const wsBaseUrl = process.env.WS_URL || 'ws://localhost:3001'
+
+      // 1. Prefer explicitly configured external WebSocket URL (e.g. ngrok for local dev)
+      // 2. Fallback to WS_URL env var
+      // 3. Last resort: internal localhost default (port 10000 matches your separate server)
+      let wsBaseUrl = process.env.WEBSOCKET_SERVER_URL || process.env.WS_URL;
+
+      // Ensure we have a valid base URL. If running locally without env, assume separate server port 10000
+      if (!wsBaseUrl) {
+        wsBaseUrl = 'wss://' + (request.headers.get('host') || 'localhost:3000').split(':')[0] + ':10000';
+      }
+
+      // Ensure protocol is wss:// (Plivo requires secure websockets)
+      if (wsBaseUrl.startsWith('https://')) {
+        wsBaseUrl = wsBaseUrl.replace('https://', 'wss://');
+      } else if (wsBaseUrl.startsWith('http://')) {
+        wsBaseUrl = wsBaseUrl.replace('http://', 'wss://');
+      }
+
       const wsFullUrl = `${wsBaseUrl}/voice/stream?leadId=${leadId}&campaignId=${campaignId}&callSid=${callUUID}`
       const statusCallbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/plivo/stream-status`
 
