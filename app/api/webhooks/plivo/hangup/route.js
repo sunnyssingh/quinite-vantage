@@ -33,7 +33,7 @@ export async function POST(request) {
                     .from('call_logs')
                     .update({
                         duration: billDuration,
-                        call_status: hangupCause === 'NORMAL_CLEARING' ? 'completed' : 'failed',
+                        call_status: hangupCause === 'NORMAL_CLEARING' ? 'called' : 'no_answer', // 'completed'/'failed' not allowed by DB constraint
                         notes: `Call ended: ${hangupCause}`,
                         metadata: {
                             hangup_cause: hangupCause,

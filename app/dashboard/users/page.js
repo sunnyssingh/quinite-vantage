@@ -44,7 +44,8 @@ import {
   Edit,
   Trash2
 } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/hooks/use-toast'
 
 export default function UsersPage() {
   const [users, setUsers] = useState([])
@@ -53,8 +54,7 @@ export default function UsersPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const { toast } = useToast()
 
   // ✅ REQUIRED: controlled role select
   const [selectedRoleId, setSelectedRoleId] = useState('')
@@ -98,16 +98,13 @@ export default function UsersPage() {
 
   const handleCreateUser = async (e) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
 
     if (!selectedRoleId) {
-      setError('Please select a role')
+      toast({ variant: "destructive", title: "Validation Error", description: "Please select a role" })
       return
     }
 
     setSubmitting(true)
-
     const formData = new FormData(e.target)
 
     const payload = {
@@ -115,7 +112,7 @@ export default function UsersPage() {
       password: formData.get('password'),
       fullName: formData.get('fullName'),
       phone: formData.get('phone'),
-      roleId: selectedRoleId // ✅ FIX
+      roleId: selectedRoleId
     }
 
     try {
@@ -131,7 +128,7 @@ export default function UsersPage() {
         throw new Error(result.error || 'Failed to create user')
       }
 
-      setSuccess('User created successfully')
+      toast({ title: "Success", description: "User created successfully" })
 
       // reset form
       e.target.reset()
@@ -139,11 +136,10 @@ export default function UsersPage() {
 
       setTimeout(() => {
         setDialogOpen(false)
-        setSuccess('')
         fetchData()
       }, 1200)
     } catch (err) {
-      setError(err.message)
+      toast({ variant: "destructive", title: "Error", description: err.message })
     } finally {
       setSubmitting(false)
     }
@@ -157,8 +153,6 @@ export default function UsersPage() {
 
   const handleUpdateUser = async (e) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
     setSubmitting(true)
 
     const formData = new FormData(e.target)
@@ -181,16 +175,15 @@ export default function UsersPage() {
         throw new Error(result.error || 'Failed to update user')
       }
 
-      setSuccess('User updated successfully')
+      toast({ title: "Success", description: "User updated successfully" })
 
       setTimeout(() => {
         setEditDialogOpen(false)
-        setSuccess('')
         setEditingUser(null)
         fetchData()
       }, 1200)
     } catch (err) {
-      setError(err.message)
+      toast({ variant: "destructive", title: "Error", description: err.message })
     } finally {
       setSubmitting(false)
     }
@@ -202,7 +195,6 @@ export default function UsersPage() {
     }
 
     setDeleting(true)
-    setError('')
 
     try {
       const response = await fetch(`/api/users/${user.id}`, {
@@ -215,11 +207,10 @@ export default function UsersPage() {
         throw new Error(result.error || 'Failed to delete user')
       }
 
-      setSuccess('User deleted successfully')
+      toast({ title: "Success", description: "User deleted successfully" })
       fetchData()
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
-      setError(err.message)
+      toast({ variant: "destructive", title: "Error", description: err.message })
     } finally {
       setDeleting(false)
     }
@@ -262,18 +253,7 @@ export default function UsersPage() {
               </DialogDescription>
             </DialogHeader>
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
 
-            {success && (
-              <Alert className="bg-green-50 text-green-800 border-green-200">
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
 
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="space-y-2">
@@ -366,7 +346,19 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-4 w-[150px]" />
+                  </div>
+                  <Skeleton className="h-8 w-[100px]" />
+                  <Skeleton className="h-8 w-[80px]" />
+                </div>
+              ))}
+            </div>
           ) : users.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <UserCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -501,18 +493,7 @@ export default function UsersPage() {
                 </Select>
               </div>
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
 
-              {success && (
-                <Alert className="bg-green-50 border-green-200">
-                  <AlertDescription className="text-green-800">{success}</AlertDescription>
-                </Alert>
-              )}
 
               <div className="flex justify-end gap-2">
                 <Button

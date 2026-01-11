@@ -104,3 +104,84 @@ export async function PUT(request, { params }) {
         return corsJSON({ error: e.message }, { status: 500 })
     }
 }
+
+/**
+ * DELETE /api/leads/[id]
+ * Delete a lead
+ */
+export async function DELETE(request, { params }) {
+    try {
+        const supabase = await createServerSupabaseClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check permission
+        const canDelete = await hasPermission(supabase, user.id, 'leads.delete')
+        if (!canDelete) {
+            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
+        }
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('organization_id, full_name')
+            .eq('id', user.id)
+            .single()
+
+        if (!profile?.organization_id) {
+            return corsJSON({ error: 'Organization not found' }, { status: 400 })
+        }
+
+        const { id } = await params
+        const adminClient = createAdminClient()
+
+        // Verify ownership
+        const { data: existingLead } = await adminClient
+            .from('leads')
+            .select('id, organization_id, name')
+            .eq('id', id)
+            .single()
+
+        if (!existingLead) {
+            return corsJSON({ error: 'Lead not found' }, { status: 404 })
+        }
+
+        if (existingLead.organization_id !== profile.organization_id) {
+            return corsJSON({ error: 'Unauthorized' }, { status: 403 })
+        }
+
+        // Delete
+        const { error } = await adminClient
+            .from('leads')
+            .delete()
+            .eq('id', id)
+
+        if (error) {
+            console.error('Lead delete error:', error)
+            return corsJSON({ error: 'Failed to delete lead' }, { status: 500 })
+        }
+
+        // Audit log
+        try {
+            await logAudit(
+                supabase,
+                user.id,
+                profile.full_name || user.email,
+                'lead.delete',
+                'lead',
+                id,
+                { lead_name: existingLead.name },
+                profile.organization_id
+            )
+        } catch (auditError) {
+            console.error('Audit log error:', auditError)
+        }
+
+        return corsJSON({ success: true })
+    } catch (e) {
+        console.error('leads DELETE error:', e)
+        return corsJSON({ error: e.message }, { status: 500 })
+    }
+}

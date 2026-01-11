@@ -19,6 +19,8 @@ import {
   X,
   Shield
 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Toaster } from '@/components/ui/toaster'
 
 export default function DashboardLayout({ children }) {
   const router = useRouter()
@@ -111,8 +113,21 @@ export default function DashboardLayout({ children }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-pulse">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="space-y-4 w-64">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-lg" />
+            <div className="space-y-2 flex-1">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -228,6 +243,7 @@ export default function DashboardLayout({ children }) {
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

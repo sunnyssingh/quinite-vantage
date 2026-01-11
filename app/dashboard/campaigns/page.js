@@ -30,7 +30,6 @@ import {
   XCircle,
   Phone
 } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 
 const StatusBadge = ({ status }) => {
   const statusConfig = {
@@ -66,8 +65,11 @@ const StatusBadge = ({ status }) => {
   )
 }
 
+import { useToast } from '@/hooks/use-toast'
+
 export default function CampaignsPage() {
   const supabase = createClient()
+  const { toast } = useToast()
 
   const [campaigns, setCampaigns] = useState([])
   const [projects, setProjects] = useState([])
@@ -120,7 +122,11 @@ export default function CampaignsPage() {
       setProjects(pData.projects || [])
     } catch (e) {
       console.error(e)
-      setError('Failed to load campaigns or projects')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load campaigns or projects"
+      })
     } finally {
       setLoading(false)
     }
@@ -131,19 +137,31 @@ export default function CampaignsPage() {
     setSuccess(null)
 
     if (!projectId || !name || !startDate || !endDate || !timeStart || !timeEnd) {
-      setError('Please fill in all required fields')
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please fill in all required fields"
+      })
       return
     }
 
     // Validate end date is not before start date
     if (new Date(endDate) < new Date(startDate)) {
-      setError('End date cannot be before start date')
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "End date cannot be before start date"
+      })
       return
     }
 
     // Validate time range
     if (timeEnd <= timeStart) {
-      setError('End time must be after start time')
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "End time must be after start time"
+      })
       return
     }
 
@@ -169,7 +187,10 @@ export default function CampaignsPage() {
 
       const payload = await res.json()
       setCampaigns(prev => [payload.campaign, ...prev])
-      setSuccess('Campaign created successfully!')
+      toast({
+        title: "Success",
+        description: "Campaign created successfully!"
+      })
 
       // Reset form
       setName('')
@@ -181,10 +202,13 @@ export default function CampaignsPage() {
       setTimeEnd('')
       setShowCreateForm(false)
 
-      setTimeout(() => setSuccess(null), 3000)
     } catch (e) {
       console.error(e)
-      setError(e.message || 'Failed to create campaign')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: e.message || 'Failed to create campaign'
+      })
     }
   }
 
@@ -202,11 +226,17 @@ export default function CampaignsPage() {
       }
 
       setCampaigns(prev => prev.filter(c => c.id !== campaign.id))
-      setSuccess('Campaign deleted successfully!')
-      setTimeout(() => setSuccess(null), 3000)
+      toast({
+        title: "Success",
+        description: "Campaign deleted successfully!"
+      })
     } catch (err) {
       console.error(err)
-      setError(err.message || 'Delete failed')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Delete failed'
+      })
     } finally {
       setDeleting(false)
     }
@@ -255,11 +285,17 @@ export default function CampaignsPage() {
       const data = await res.json()
       setCampaigns(prev => prev.map(c => c.id === data.campaign.id ? data.campaign : c))
       setEditModalOpen(false)
-      setSuccess('Campaign updated successfully!')
-      setTimeout(() => setSuccess(null), 3000)
+      toast({
+        title: "Success",
+        description: "Campaign updated successfully!"
+      })
     } catch (err) {
       console.error(err)
-      setError(err.message || 'Update failed')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Update failed'
+      })
     }
   }
 
@@ -290,11 +326,17 @@ export default function CampaignsPage() {
       // Show results
       setCampaignResults(data.summary)
       setResultsDialogOpen(true)
-      setSuccess('Campaign completed successfully!')
-      setTimeout(() => setSuccess(null), 3000)
+      toast({
+        title: "Success",
+        description: "Campaign completed successfully!"
+      })
     } catch (err) {
       console.error(err)
-      setError(err.message || 'Failed to start campaign')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || 'Failed to start campaign'
+      })
     } finally {
       setStarting(false)
       setStartingCampaignId(null)
@@ -324,19 +366,6 @@ export default function CampaignsPage() {
           New Campaign
         </Button>
       </div>
-
-      {/* Alerts */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-      {success && (
-        <Alert className="bg-green-50 text-green-900 border-green-200">
-          <CheckCircle2 className="h-4 w-4" />
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
 
       {/* Create Form */}
       {showCreateForm && (

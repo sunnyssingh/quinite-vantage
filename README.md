@@ -14,9 +14,10 @@ A comprehensive solution for CRM, Project Management, HR, and **AI-Powered Telep
 
 - 📖 [**Complete Walkthrough**](./docs/WALKTHROUGH.md) - **Start Here!**
 - 🛠️ [Setup Guide](./docs/SETUP.md)
-- 📞 [AI Calling & Configuration](./docs/CONFIGURE_ENV.md)
-- 🧪 [Testing Guide](./docs/TESTING_GUIDE.md)
-- 📄 [API Documentation](./docs/DOCUMENTATION.md)
+- 🗄️ [Database Schema](./docs/DATABASE_SCHEMA.md)
+- 📄 [API Documentation](./docs/API_DOCUMENTATION.md)
+- 🔌 [WebSocket Flow](./docs/WEBSOCKET_FLOW.md)
+- 🔧 [Troubleshooting](./docs/TROUBLESHOOTING.md)
 
 ---
 

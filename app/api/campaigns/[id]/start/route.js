@@ -83,12 +83,22 @@ export async function POST(request, { params }) {
             }
         }
 
-        // Get all leads for this campaign's project
+        // Parse batch size from query params (Default: 5 calls at a time to prevent overload)
+        const { searchParams } = new URL(request.url)
+        const batchSize = parseInt(searchParams.get('batchSize') || '5')
+
+        console.log(`🚀 Starting campaign batch: ${batchSize} leads`)
+
+        // Get leads for this campaign's project (Batch Processing)
+        // Only fetch leads that haven't been called successfully yet
         const { data: leads } = await adminClient
             .from('leads')
             .select('*')
             .eq('organization_id', profile.organization_id)
             .eq('project_id', campaign.project_id)
+            // Fix: Include 'not_called' which seems to be the default for some imports
+            .in('call_status', ['new', 'pending', 'failed', 'not_called', null])
+            .limit(batchSize)
 
         if (!leads || leads.length === 0) {
             return corsJSON({ error: 'No leads found for this campaign' }, { status: 400 })

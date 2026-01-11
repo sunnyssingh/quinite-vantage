@@ -69,17 +69,22 @@ export async function GET() {
             .select('*', { count: 'exact', head: true })
             .match(orgFilter)
 
-        // Get campaign stats
-        const { data: campaigns } = await adminClient
-            .from('campaigns')
-            .select('total_calls, transferred_calls, conversion_rate')
+        // Get total calls from call_logs
+        const { count: totalCalls } = await adminClient
+            .from('call_logs')
+            .select('*', { count: 'exact', head: true })
             .match(orgFilter)
 
-        const totalCalls = campaigns?.reduce((sum, c) => sum + (c.total_calls || 0), 0) || 0
-        const totalTransferred = campaigns?.reduce((sum, c) => sum + (c.transferred_calls || 0), 0) || 0
+        // Get total transferred from call_logs
+        const { count: totalTransferred } = await adminClient
+            .from('call_logs')
+            .select('*', { count: 'exact', head: true })
+            .match({ ...orgFilter, transferred: true })
+
         const overallConversionRate = totalCalls > 0 ? (totalTransferred / totalCalls * 100).toFixed(2) : 0
 
         // Get leads by call status
+
         const { data: leadsByCallStatus } = await adminClient
             .from('leads')
             .select('call_status, transferred_to_human')

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -19,19 +20,26 @@ import {
   BarChart3,
   Activity
 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/hooks/use-toast'
 
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState(null)
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchAnalytics()
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchAnalytics, 30000)
+    return () => clearInterval(interval)
   }, [])
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = async (isManual = false) => {
     try {
-      setLoading(true)
+      // Don't set loading to true on background refreshes if data exists
+      if (!overview) setLoading(true)
 
       // Fetch overview
       const overviewRes = await fetch('/api/analytics/overview')
@@ -46,11 +54,30 @@ export default function AnalyticsPage() {
         const data = await campaignsRes.json()
         setCampaigns(data.campaigns || [])
       }
+
+      if (isManual) {
+        toast({
+          title: "Dashboard Refreshed",
+          description: "Latest analytics data has been loaded.",
+        })
+      }
     } catch (err) {
       console.error('Error fetching analytics:', err)
+      if (isManual) {
+        toast({
+          variant: "destructive",
+          title: "Refresh Failed",
+          description: "Could not load latest data. Please try again.",
+        })
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRefresh = () => {
+    setLoading(true)
+    fetchAnalytics(true)
   }
 
   const getStatusBadgeColor = (status) => {
@@ -67,10 +94,46 @@ export default function AnalyticsPage() {
     return colors[status] || 'bg-gray-100 text-gray-800'
   }
 
-  if (loading) {
+  if (loading && !overview) {
     return (
-      <div className="p-6">
-        <div className="text-center py-12">Loading analytics...</div>
+      <div className="p-6 space-y-6">
+        <div>
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-4 w-80 mt-2" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="border rounded-lg p-6">
+              <div className="flex justify-between items-start mb-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </div>
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="border rounded-lg p-6">
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-64 mb-4" />
+              <div className="space-y-3">
+                {[...Array(4)].map((_, j) => (
+                  <div key={j} className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-20" />
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-4 w-8" />
+                      <Skeleton className="h-2 w-32" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -78,9 +141,19 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-        <p className="text-gray-500 mt-1">Track your performance and conversion metrics</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
+          <p className="text-gray-500 mt-1">Track your performance and conversion metrics</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleRefresh}
+          className="gap-2"
+        >
+          <Activity className="h-4 w-4" />
+          Refresh Data
+        </Button>
       </div>
 
       {/* Overview Cards */}

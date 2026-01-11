@@ -53,6 +53,8 @@ export async function GET(request) {
         phone,
         source,
         status,
+        call_status,
+        call_log_id,
         notes,
         project_id,
         created_by,
