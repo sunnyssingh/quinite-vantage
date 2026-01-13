@@ -43,8 +43,15 @@ export async function GET() {
       throw new DatabaseError('Failed to fetch user profile', profileError)
     }
 
+    // If user doesn't have an organization yet (during onboarding), return empty profile
     if (!profile?.organization_id) {
-      throw new AuthorizationError('User not linked to an organization')
+      return handleCORS(
+        NextResponse.json({
+          profile: {},
+          organization_id: null,
+          needsOnboarding: true
+        })
+      )
     }
 
     const { data: orgProfile, error: orgProfileError } = await supabase
