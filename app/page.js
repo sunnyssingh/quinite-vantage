@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building2, Mail, Lock, User, AlertCircle } from 'lucide-react'
+import { Building2, Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function AuthPage() {
@@ -18,6 +18,8 @@ export default function AuthPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showSigninPassword, setShowSigninPassword] = useState(false)
+  const [showSignupPassword, setShowSignupPassword] = useState(false)
 
   // Check if user is already logged in
   useEffect(() => {
@@ -203,11 +205,18 @@ export default function AuthPage() {
                     <Input
                       id="signin-password"
                       name="password"
-                      type="password"
+                      type={showSigninPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      className="pl-10"
+                      className="pl-10 pr-10"
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowSigninPassword(!showSigninPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    >
+                      {showSigninPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
@@ -258,12 +267,19 @@ export default function AuthPage() {
                     <Input
                       id="signup-password"
                       name="password"
-                      type="password"
+                      type={showSignupPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      className="pl-10"
+                      className="pl-10 pr-10"
                       required
                       minLength={6}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    >
+                      {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
