@@ -33,14 +33,21 @@ export async function GET() {
       throw new AuthenticationError()
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const admin = createAdminClient()
+
+    // Get user's organization using ADMIN client to bypass RLS
+    const { data: profile, error: profileError } = await admin
       .from('profiles')
       .select('organization_id')
       .eq('id', user.id)
       .single()
 
-    if (profileError) {
-      throw new DatabaseError('Failed to fetch user profile', profileError)
+    if (profileError && profileError.code !== 'PGRST116') {
+      // Check for specific error codes
+      if (profileError.code === '42P01') {
+        throw new DatabaseError('Database setup incomplete: "profiles" table is missing.', profileError)
+      }
+      throw new DatabaseError(`Failed to fetch user profile: ${profileError.message}`, profileError)
     }
 
     // If user doesn't have an organization yet (during onboarding), return empty profile
