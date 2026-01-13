@@ -12,19 +12,21 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchDashboardData()
+    fetchDashboardData(true) // Initial load
 
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 30 seconds (without showing skeleton)
     const interval = setInterval(() => {
-      fetchDashboardData()
+      fetchDashboardData(false) // Background refresh
     }, 30000)
 
     return () => clearInterval(interval)
   }, [])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) {
+        setLoading(true)
+      }
 
       // Fetch analytics overview
       const analyticsRes = await fetch('/api/analytics/overview')
@@ -36,7 +38,9 @@ export default function DashboardPage() {
     } catch (err) {
       console.error('Error fetching dashboard data:', err)
     } finally {
-      setLoading(false)
+      if (showLoading) {
+        setLoading(false)
+      }
     }
   }
 

@@ -42,7 +42,6 @@ export default function AuthPage() {
     const email = formData.get('email')
     const password = formData.get('password')
     const fullName = formData.get('fullName')
-    const organizationName = formData.get('organizationName')
 
     try {
       // Step 1: Create auth account
@@ -84,7 +83,7 @@ export default function AuthPage() {
       const onboardResponse = await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, organizationName })
+        body: JSON.stringify({ fullName, organizationName: 'My Organization' })
       })
 
       const onboardData = await onboardResponse.json()
@@ -237,20 +236,7 @@ export default function AuthPage() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-org">Organization Name</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="signup-org"
-                      name="organizationName"
-                      type="text"
-                      placeholder="Acme Corp"
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <div className="relative">

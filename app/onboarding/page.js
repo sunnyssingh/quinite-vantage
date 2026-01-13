@@ -484,11 +484,36 @@ export default function OnboardingPage() {
                   <Input
                     id="gstin"
                     value={formData.gstin}
-                    onChange={(e) => updateFormData('gstin', e.target.value)}
-                    placeholder="Enter your GSTIN"
+                    onChange={(e) => {
+                      const value = e.target.value.toUpperCase()
+                      // Limit to 15 characters
+                      if (value.length <= 15) {
+                        updateFormData('gstin', value)
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = e.target.value
+                      if (value && value.length > 0) {
+                        // Validate if user entered something
+                        if (value.length !== 15) {
+                          setError('GSTIN must be exactly 15 characters')
+                        } else {
+                          const stateCode = parseInt(value.substring(0, 2))
+                          if (isNaN(stateCode) || stateCode < 1 || stateCode > 37) {
+                            setError('Invalid GSTIN: First 2 digits must be a valid state code (01-37)')
+                          } else {
+                            setError('') // Clear error if valid
+                          }
+                        }
+                      }
+                    }}
+                    placeholder="Enter your GSTIN (15 characters)"
                     className="mt-1"
+                    maxLength={15}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Goods and Services Tax Identification Number</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Goods and Services Tax Identification Number (15 characters, first 2 digits = state code)
+                  </p>
                 </div>
 
                 <div>
