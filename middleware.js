@@ -114,7 +114,7 @@ export async function middleware(request) {
             if (error || !user) {
                 // Only redirect dashboard routes, not API routes
                 if (pathname.startsWith('/dashboard')) {
-                    const redirectUrl = new URL('/signin', request.url)
+                    const redirectUrl = new URL('/', request.url)
                     redirectUrl.searchParams.set('redirectedFrom', pathname)
 
                     response = NextResponse.redirect(redirectUrl)
@@ -141,7 +141,7 @@ export async function middleware(request) {
 
             // Redirect to signin for dashboard routes
             if (pathname.startsWith('/dashboard')) {
-                const redirectUrl = new URL('/signin', request.url)
+                const redirectUrl = new URL('/', request.url)
                 response = NextResponse.redirect(redirectUrl)
                 return response
             }

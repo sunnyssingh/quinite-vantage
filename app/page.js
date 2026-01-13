@@ -20,6 +20,10 @@ export default function AuthPage() {
   const [success, setSuccess] = useState('')
   const [showSigninPassword, setShowSigninPassword] = useState(false)
   const [showSignupPassword, setShowSignupPassword] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState('')
 
   // Check if user is already logged in
   useEffect(() => {
@@ -141,6 +145,37 @@ export default function AuthPage() {
     }
   }
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setForgotPasswordLoading(true)
+    setForgotPasswordMessage('')
+
+    try {
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reset email')
+      }
+
+      setForgotPasswordMessage(data.message)
+      setTimeout(() => {
+        setShowForgotPassword(false)
+        setForgotPasswordEmail('')
+        setForgotPasswordMessage('')
+      }, 3000)
+    } catch (err) {
+      setForgotPasswordMessage(err.message)
+    } finally {
+      setForgotPasswordLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -222,6 +257,15 @@ export default function AuthPage() {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? 'Signing in...' : 'Sign In'}
                 </Button>
+                <div className="text-center mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               </form>
               <div className="mt-4 text-center text-sm text-gray-600">
                 <a href="/admin-login" className="text-blue-600 hover:underline">
@@ -292,6 +336,58 @@ export default function AuthPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Reset Password</CardTitle>
+              <CardDescription>
+                Enter your email address and we'll send you a link to reset your password
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                {forgotPasswordMessage && (
+                  <Alert className={forgotPasswordMessage.includes('successfully') ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'}>
+                    <AlertDescription>{forgotPasswordMessage}</AlertDescription>
+                  </Alert>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">Email</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    placeholder="your.email@company.com"
+                    required
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowForgotPassword(false)
+                      setForgotPasswordEmail('')
+                      setForgotPasswordMessage('')
+                    }}
+                    disabled={forgotPasswordLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={forgotPasswordLoading}>
+                    {forgotPasswordLoading ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

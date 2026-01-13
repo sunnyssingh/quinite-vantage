@@ -612,7 +612,13 @@ export default function OnboardingPage() {
                     <Label htmlFor="city">City *</Label>
                     <Select
                       value={formData.city}
-                      onValueChange={(value) => updateFormData('city', value)}
+                      onValueChange={(value) => {
+                        if (value === '__custom__') {
+                          updateFormData('city', '')
+                        } else {
+                          updateFormData('city', value)
+                        }
+                      }}
                       disabled={!formData.state}
                     >
                       <SelectTrigger className="mt-1">
@@ -620,20 +626,31 @@ export default function OnboardingPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {availableCities.length > 0 ? (
-                          availableCities.map((city) => (
-                            <SelectItem key={city} value={city}>
-                              {city}
+                          <>
+                            {availableCities.map((city) => (
+                              <SelectItem key={city} value={city}>
+                                {city}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="__custom__" className="font-semibold text-blue-600">
+                              ✏️ Other (Type below)
                             </SelectItem>
-                          ))
+                          </>
                         ) : (
-                          <SelectItem value="other" disabled>
-                            No cities available
+                          <SelectItem value="__custom__">
+                            Type your city name
                           </SelectItem>
                         )}
                       </SelectContent>
                     </Select>
-                    {formData.state && availableCities.length === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">Or type your city name below</p>
+                    {/* Custom city input - shows when 'Other' is selected or city not in list */}
+                    {formData.state && (!availableCities.includes(formData.city) || formData.city === '') && (
+                      <Input
+                        placeholder="Type your city name"
+                        value={formData.city === '__custom__' ? '' : formData.city}
+                        onChange={(e) => updateFormData('city', e.target.value)}
+                        className="mt-2"
+                      />
                     )}
                   </div>
                 </div>
