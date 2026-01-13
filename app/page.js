@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building2, Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Building2, Mail, Lock, User, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function AuthPage() {
@@ -379,39 +379,95 @@ export default function AuthPage() {
         </CardContent>
       </Card>
 
-      {/* Forgot Password Modal */}
+      {/* Forgot Password Modal - Modern Design */}
       {showForgotPassword && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Reset Password</CardTitle>
-              <CardDescription>
-                Enter your email address and we'll send you a link to reset your password
-              </CardDescription>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => {
+            setShowForgotPassword(false)
+            setForgotPasswordEmail('')
+            setForgotPasswordMessage('')
+          }}
+        >
+          <Card
+            className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-md animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader className="space-y-3 pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                    <Lock className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                      Reset Password
+                    </CardTitle>
+                    <CardDescription className="text-sm mt-0.5">
+                      We'll send you a reset link
+                    </CardDescription>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowForgotPassword(false)
+                    setForgotPasswordEmail('')
+                    setForgotPasswordMessage('')
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  disabled={forgotPasswordLoading}
+                >
+                  <AlertCircle className="w-5 h-5 text-gray-400 rotate-45" />
+                </button>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 {forgotPasswordMessage && (
-                  <Alert className={forgotPasswordMessage.includes('successfully') ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'}>
-                    <AlertDescription>{forgotPasswordMessage}</AlertDescription>
+                  <Alert
+                    className={`${forgotPasswordMessage.includes('successfully')
+                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 border-green-200'
+                      : 'bg-gradient-to-r from-red-50 to-rose-50 text-red-800 border-red-200'
+                      } animate-in slide-in-from-top-2 duration-300`}
+                  >
+                    <AlertDescription className="flex items-center gap-2">
+                      {forgotPasswordMessage.includes('successfully') ? (
+                        <CheckCircle className="w-4 h-4" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4" />
+                      )}
+                      {forgotPasswordMessage}
+                    </AlertDescription>
                   </Alert>
                 )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="forgot-email">Email</Label>
-                  <Input
-                    id="forgot-email"
-                    type="email"
-                    value={forgotPasswordEmail}
-                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                    placeholder="your.email@company.com"
-                    required
-                  />
+                  <Label htmlFor="forgot-email" className="text-sm font-medium text-gray-700">
+                    Email Address
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      value={forgotPasswordEmail}
+                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                      placeholder="your.email@company.com"
+                      className="pl-10 h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                      required
+                      disabled={forgotPasswordLoading}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    Enter the email associated with your account
+                  </p>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex gap-3 pt-2">
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 h-11 border-gray-200 hover:bg-gray-50"
                     onClick={() => {
                       setShowForgotPassword(false)
                       setForgotPasswordEmail('')
@@ -421,8 +477,19 @@ export default function AuthPage() {
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" className="flex-1" disabled={forgotPasswordLoading}>
-                    {forgotPasswordLoading ? 'Sending...' : 'Send Reset Link'}
+                  <Button
+                    type="submit"
+                    className="flex-1 h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30"
+                    disabled={forgotPasswordLoading}
+                  >
+                    {forgotPasswordLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Sending...
+                      </div>
+                    ) : (
+                      'Send Reset Link'
+                    )}
                   </Button>
                 </div>
               </form>
