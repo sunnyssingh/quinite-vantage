@@ -22,7 +22,6 @@ import {
   FileText,
   Check
 } from 'lucide-react'
-import { INDIAN_STATES, CITIES_BY_STATE } from '@/lib/indian-locations'
 import {
   Select,
   SelectContent,
@@ -49,6 +48,7 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const [error, setError] = useState('')
+  const [fetchingPincode, setFetchingPincode] = useState(false)
   const [user, setUser] = useState(null)
   const [org, setOrg] = useState(null)
 
@@ -199,6 +199,40 @@ export default function OnboardingPage() {
     }
 
     setError('')
+  }
+
+  const handlePincodeChange = async (value) => {
+    // Only allow numbers
+    const numericValue = value.replace(/\D/g, '').slice(0, 6)
+    updateFormData('pincode', numericValue)
+
+    // If 6 digits, fetch details
+    if (numericValue.length === 6) {
+      setFetchingPincode(true)
+      try {
+        const response = await fetch(`https://api.postalpincode.in/pincode/${numericValue}`)
+        const data = await response.json()
+
+        if (data && data[0].Status === 'Success') {
+          const details = data[0].PostOffice[0]
+          setFormData(prev => ({
+            ...prev,
+            city: details.District,
+            state: details.State,
+            country: 'India'
+          }))
+          toast.success(`Location found: ${details.District}, ${details.State}`)
+        } else {
+          toast.error('Invalid Pincode or location not found')
+          setFormData(prev => ({ ...prev, city: '', state: '' }))
+        }
+      } catch (err) {
+        console.error('Error fetching pincode:', err)
+        toast.error('Failed to fetch location details')
+      } finally {
+        setFetchingPincode(false)
+      }
+    }
   }
 
   const saveDraft = async () => {
@@ -602,64 +636,26 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="state">State *</Label>
-                    <Select value={formData.state} onValueChange={(value) => updateFormData('state', value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select state" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {INDIAN_STATES.map((state) => (
-                          <SelectItem key={state.code} value={state.name}>
-                            {state.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => updateFormData('state', e.target.value)}
+                      placeholder="State (Auto-filled)"
+                      className="mt-1 bg-gray-50"
+                      readOnly={fetchingPincode}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="city">City *</Label>
-                    <Select
+                    <Input
+                      id="city"
                       value={formData.city}
-                      onValueChange={(value) => {
-                        if (value === '__custom__') {
-                          updateFormData('city', '')
-                        } else {
-                          updateFormData('city', value)
-                        }
-                      }}
-                      disabled={!formData.state}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder={formData.state ? "Select city" : "Select state first"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableCities.length > 0 ? (
-                          <>
-                            {availableCities.map((city) => (
-                              <SelectItem key={city} value={city}>
-                                {city}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="__custom__" className="font-semibold text-blue-600">
-                              ✏️ Other (Type below)
-                            </SelectItem>
-                          </>
-                        ) : (
-                          <SelectItem value="__custom__">
-                            Type your city name
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {/* Custom city input - shows when 'Other' is selected or city not in list */}
-                    {formData.state && (!availableCities.includes(formData.city) || formData.city === '') && (
-                      <Input
-                        placeholder="Type your city name"
-                        value={formData.city === '__custom__' ? '' : formData.city}
-                        onChange={(e) => updateFormData('city', e.target.value)}
-                        className="mt-2"
-                      />
-                    )}
+                      onChange={(e) => updateFormData('city', e.target.value)}
+                      placeholder="City (Auto-filled)"
+                      className="mt-1 bg-gray-50"
+                      readOnly={fetchingPincode}
+                    />
                   </div>
                 </div>
 
@@ -677,13 +673,24 @@ export default function OnboardingPage() {
 
                   <div>
                     <Label htmlFor="pincode">Pincode *</Label>
-                    <Input
-                      id="pincode"
-                      value={formData.pincode}
-                      onChange={(e) => updateFormData('pincode', e.target.value)}
-                      placeholder="Pincode"
-                      className="mt-1"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="pincode"
+                        value={formData.pincode}
+                        onChange={(e) => handlePincodeChange(e.target.value)}
+                        placeholder="Enter 6-digit Pincode"
+                        className="mt-1"
+                        maxLength={6}
+                      />
+                      {fetchingPincode && (
+                        <div className="absolute right-3 top-3">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enter pincode to auto-detect City and State
+                    </p>
                   </div>
                 </div>
               </div>
