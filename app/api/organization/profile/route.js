@@ -235,8 +235,8 @@ export async function PUT(request) {
           user_name: user.email,
           action: 'ONBOARDING_COMPLETED',
           entity_type: 'organization',
-          entity_id: profile.organization_id,
-          organization_id: profile.organization_id,
+          entity_id: organizationId,
+          organization_id: organizationId,
           metadata: { company_name: validatedData.data.companyName }
         })
 
