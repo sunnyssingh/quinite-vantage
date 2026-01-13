@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 /**
  * Next.js Middleware for Security and Request Handling
@@ -7,6 +8,7 @@ import { NextResponse } from 'next/server'
  * - Security headers
  * - Request logging
  * - Basic rate limiting (in-memory)
+ * - Supabase authentication error handling
  */
 
 // Simple in-memory rate limiter
@@ -46,7 +48,7 @@ function rateLimit(ip) {
     return true
 }
 
-export function middleware(request) {
+export async function middleware(request) {
     const { pathname } = request.nextUrl
 
     // Get client IP
@@ -78,7 +80,73 @@ export function middleware(request) {
     }
 
     // Create response
-    const response = NextResponse.next()
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
+    })
+
+    // Handle Supabase authentication for protected routes
+    if (pathname.startsWith('/dashboard') || pathname.startsWith('/api/')) {
+        try {
+            const supabase = createServerClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                {
+                    cookies: {
+                        getAll() {
+                            return request.cookies.getAll()
+                        },
+                        setAll(cookiesToSet) {
+                            cookiesToSet.forEach(({ name, value, options }) => {
+                                request.cookies.set(name, value)
+                                response.cookies.set(name, value, options)
+                            })
+                        },
+                    },
+                }
+            )
+
+            // Attempt to get user - this will throw if token is invalid
+            const { data: { user }, error } = await supabase.auth.getUser()
+
+            // If there's an auth error (invalid/expired token), clear cookies and redirect
+            if (error || !user) {
+                // Only redirect dashboard routes, not API routes
+                if (pathname.startsWith('/dashboard')) {
+                    const redirectUrl = new URL('/signin', request.url)
+                    redirectUrl.searchParams.set('redirectedFrom', pathname)
+
+                    response = NextResponse.redirect(redirectUrl)
+
+                    // Clear all auth cookies
+                    const cookiesToClear = [
+                        'sb-access-token',
+                        'sb-refresh-token',
+                        'sb-auth-token'
+                    ]
+
+                    cookiesToClear.forEach(cookieName => {
+                        response.cookies.delete(cookieName)
+                    })
+
+                    return response
+                }
+            }
+        } catch (error) {
+            // Log auth errors in development
+            if (process.env.NODE_ENV === 'development') {
+                console.error('[Auth Error]', error.message)
+            }
+
+            // Redirect to signin for dashboard routes
+            if (pathname.startsWith('/dashboard')) {
+                const redirectUrl = new URL('/signin', request.url)
+                response = NextResponse.redirect(redirectUrl)
+                return response
+            }
+        }
+    }
 
     // Add security headers
     response.headers.set('X-DNS-Prefetch-Control', 'on')
@@ -124,7 +192,9 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
+         * - auth (authentication pages: /auth/signin, /auth/signup, etc.)
+         * - api/auth (authentication API routes)
          */
-        '/((?!_next/static|_next/image|favicon.ico).*)',
+        '/((?!_next/static|_next/image|favicon.ico|auth|api/auth|$).*)',
     ],
 }
