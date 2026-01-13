@@ -25,10 +25,21 @@ export default function ResetPasswordPage() {
     const [validating, setValidating] = useState(true)
 
     useEffect(() => {
+        // Check for error in URL params (from Supabase redirect)
+        const errorParam = searchParams.get('error')
+        const errorDescription = searchParams.get('error_description')
+
+        if (errorParam === 'access_denied' || errorDescription?.includes('expired') || errorDescription?.includes('invalid')) {
+            setError('This password reset link has expired or is invalid. Please request a new password reset.')
+            setValidating(false)
+            return
+        }
+
         // Check if we have a valid session from the reset link
         const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+            if (sessionError || !session) {
                 setError('Invalid or expired reset link. Please request a new password reset.')
                 setValidating(false)
             } else {
@@ -36,7 +47,7 @@ export default function ResetPasswordPage() {
             }
         }
         checkSession()
-    }, [])
+    }, [searchParams])
 
     const handleResetPassword = async (e) => {
         e.preventDefault()
@@ -129,15 +140,32 @@ export default function ResetPasswordPage() {
                 </CardHeader>
                 <CardContent>
                     {error && (
-                        <Alert className="mb-4 bg-gradient-to-r from-red-50 to-rose-50 text-red-800 border-red-200">
-                            <AlertDescription className="flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4" />
-                                {error}
-                            </AlertDescription>
-                        </Alert>
+                        <>
+                            <Alert className="mb-4 bg-gradient-to-r from-red-50 to-rose-50 text-red-800 border-red-200">
+                                <AlertDescription className="flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4" />
+                                    {error}
+                                </AlertDescription>
+                            </Alert>
+
+                            {/* Show button to request new reset if link is expired */}
+                            {(error.includes('expired') || error.includes('invalid')) && (
+                                <div className="space-y-3 mb-4">
+                                    <Button
+                                        onClick={() => router.push('/')}
+                                        className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30"
+                                    >
+                                        Request New Password Reset
+                                    </Button>
+                                    <p className="text-xs text-center text-gray-500">
+                                        Password reset links expire after 1 hour for security
+                                    </p>
+                                </div>
+                            )}
+                        </>
                     )}
 
-                    <form onSubmit={handleResetPassword} className="space-y-4">
+                    {!error && (
                         <div className="space-y-2">
                             <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                                 New Password
@@ -220,8 +248,9 @@ export default function ResetPasswordPage() {
                             </button>
                         </div>
                     </form>
-                </CardContent>
-            </Card>
-        </div>
+                    )}
+            </CardContent>
+        </Card>
+        </div >
     )
 }
