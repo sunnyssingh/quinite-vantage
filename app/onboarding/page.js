@@ -326,7 +326,7 @@ export default function OnboardingPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to complete onboarding')
+        throw new Error(data.error?.message || JSON.stringify(data.error) || 'Failed to complete onboarding')
       }
 
       // Success! Redirect to dashboard
