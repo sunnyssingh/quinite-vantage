@@ -89,8 +89,10 @@ export async function PUT(request) {
     // Get authenticated user
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      console.error('Authentication failed: No user found')
       throw new AuthenticationError()
     }
+    console.log('User authenticated:', user.id)
 
     // Parse and validate request body
     const body = await request.json()
@@ -118,8 +120,10 @@ export async function PUT(request) {
       .single()
 
     if (profileError) {
+      console.error('Profile fetch failed:', profileError)
       throw new DatabaseError('Failed to fetch user profile', profileError)
     }
+    console.log('User profile fetched, existing org ID:', profile?.organization_id)
 
     // If no organization_id in profile, try to find or create the organization
     let organizationId = profile?.organization_id
@@ -148,6 +152,7 @@ export async function PUT(request) {
           console.error('Organization creation error details:', createOrgError)
           throw new DatabaseError('Failed to create organization', createOrgError)
         }
+        console.log('New organization created:', newOrg)
 
         userOrg = newOrg
       }
@@ -183,6 +188,7 @@ export async function PUT(request) {
             .eq('id', user.id)
         }
       } else {
+        console.error('Failed to setup organization: No ID returned')
         throw new AuthorizationError('Failed to setup organization. Please contact support.')
       }
     }
@@ -210,8 +216,10 @@ export async function PUT(request) {
       .upsert(profileData, { onConflict: 'organization_id' })
 
     if (upsertError) {
+      console.error('Organization profile upsert failed:', upsertError)
       throw new DatabaseError('Failed to save organization profile', upsertError)
     }
+    console.log('Organization profile upserted successfully')
 
     // If this is the final submission, mark onboarding as complete
     if (body.isComplete) {
@@ -243,6 +251,8 @@ export async function PUT(request) {
       if (auditError) {
         console.error('Failed to create audit log:', auditError)
         // Don't throw - audit log failure shouldn't block onboarding
+      } else {
+        console.log('Audit log created successfully')
       }
     }
 
@@ -255,6 +265,12 @@ export async function PUT(request) {
       })
     )
   } catch (error) {
+    console.error('CRITICAL ERROR in PUT /api/organization/profile:', error)
+    // Log detailed error info if available
+    if (error.details) console.error('Error details:', error.details)
+    if (error.hint) console.error('Error hint:', error.hint)
+    if (error.code) console.error('Error code:', error.code)
+
     logError(error, {
       endpoint: 'PUT /api/organization/profile',
       body: request.body
