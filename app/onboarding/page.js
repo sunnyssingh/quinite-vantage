@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { toast } from 'sonner'
 
 const STEPS = [
   { id: 1, title: 'Sector', icon: Briefcase },
@@ -223,6 +224,8 @@ export default function OnboardingPage() {
       })
     } catch (error) {
       console.error('Error saving draft:', error)
+      const message = error instanceof Error ? error.message : 'Failed to save draft'
+      toast.error(message)
     } finally {
       setSaving(false)
     }
@@ -330,7 +333,17 @@ export default function OnboardingPage() {
       router.push('/dashboard')
 
     } catch (error) {
-      setError(error.message)
+      console.error('Onboarding error:', error)
+      // Handle object errors that might bubble up
+      let message = 'An unexpected error occurred'
+      if (typeof error === 'string') message = error
+      else if (error instanceof Error) message = error.message
+      else if (error && typeof error === 'object' && error.message) message = error.message
+      else if (error && typeof error === 'object') message = JSON.stringify(error)
+
+      toast.error(message)
+      // Keep setError empty to avoid alert
+      setError('')
     } finally {
       setSubmitting(false)
     }
@@ -431,12 +444,7 @@ export default function OnboardingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+
 
             {/* Step 1: Sector */}
             {currentStep === 1 && (
