@@ -30,13 +30,31 @@ export default function AuthPage() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.push('/dashboard')
+        // User is logged in - show option to continue or sign out
+        setLoading(false)
+        setSuccess(`You're already logged in as ${session.user.email}. Continue to dashboard or sign out to use a different account.`)
       } else {
         setLoading(false)
       }
     }
     checkAuth()
   }, [])
+
+  const handleSignOut = async () => {
+    setSubmitting(true)
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' })
+      await supabase.auth.signOut()
+      setSuccess('')
+      setError('')
+      // Reload the page to show signin/signup forms
+      window.location.reload()
+    } catch (err) {
+      setError('Failed to sign out')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleSignUp = async (e) => {
     e.preventDefault()
@@ -206,9 +224,30 @@ export default function AuthPage() {
             </Alert>
           )}
           {success && (
-            <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
+            <>
+              <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+              {success.includes('already logged in') && (
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    onClick={() => router.push('/dashboard')}
+                    className="flex-1"
+                    disabled={submitting}
+                  >
+                    Continue to Dashboard
+                  </Button>
+                  <Button
+                    onClick={handleSignOut}
+                    variant="outline"
+                    className="flex-1"
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Signing out...' : 'Sign Out'}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           <Tabs defaultValue="signin" className="w-full">
