@@ -113,17 +113,30 @@ export async function PUT(request) {
     }
 
     // Get user's organization
-    const { data: profile, error: profileError } = await supabase
+    // Get user's organization using ADMIN client to bypass RLS
+    // This fixes "Failed to fetch user profile" if RLS policies are missing/incorrect
+    const { data: profile, error: profileError } = await admin
       .from('profiles')
       .select('organization_id')
       .eq('id', user.id)
       .single()
 
-    if (profileError) {
-      console.error('Profile fetch failed:', profileError)
-      throw new DatabaseError('Failed to fetch user profile', profileError)
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('CRITICAL: Profile fetch failed:', {
+        code: profileError.code,
+        message: profileError.message,
+        details: profileError.details,
+        hint: profileError.hint
+      })
+
+      // Check for specific error codes
+      if (profileError.code === '42P01') {
+        throw new DatabaseError('Database setup incomplete: "profiles" table is missing. Please run migration 004.', profileError)
+      }
+
+      throw new DatabaseError(`Failed to fetch user profile (${profileError.code}): ${profileError.message}`, profileError)
     }
-    console.log('User profile fetched, existing org ID:', profile?.organization_id)
+    console.log('User profile fetched (admin), existing org ID:', profile?.organization_id)
 
     // If no organization_id in profile, try to find or create the organization
     let organizationId = profile?.organization_id
