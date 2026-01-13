@@ -8,22 +8,19 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building2, Mail, Lock, User, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Building2, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function AuthPage() {
   const router = useRouter()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [showSigninPassword, setShowSigninPassword] = useState(false)
   const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
-  const [forgotPasswordMessage, setForgotPasswordMessage] = useState('')
 
   // Check if user is already logged in
   useEffect(() => {
@@ -32,7 +29,7 @@ export default function AuthPage() {
       if (session) {
         // User is logged in - show option to continue or sign out
         setLoading(false)
-        setSuccess(`You're already logged in as ${session.user.email}. Continue to dashboard or sign out to use a different account.`)
+        toast.success(`Welcome back! You're logged in as ${session.user.email}`)
       } else {
         setLoading(false)
       }
@@ -45,12 +42,11 @@ export default function AuthPage() {
     try {
       await fetch('/api/auth/signout', { method: 'POST' })
       await supabase.auth.signOut()
-      setSuccess('')
-      setError('')
+      toast.success('Signed out successfully')
       // Reload the page to show signin/signup forms
       window.location.reload()
     } catch (err) {
-      setError('Failed to sign out')
+      toast.error('Failed to sign out')
     } finally {
       setSubmitting(false)
     }
@@ -58,8 +54,6 @@ export default function AuthPage() {
 
   const handleSignUp = async (e) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
     setSubmitting(true)
 
     const formData = new FormData(e.target)
@@ -83,7 +77,7 @@ export default function AuthPage() {
 
       // Check if email confirmation is needed
       if (signupData.needsConfirmation) {
-        setSuccess('Account created! Please check your email to confirm your account, then sign in.')
+        toast.success('Account created! Please check your email to confirm your account, then sign in.')
         setSubmitting(false)
         return
       }
@@ -115,17 +109,18 @@ export default function AuthPage() {
 
       if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
         console.error('❌ Onboarding failed:', onboardData.error)
-        setError(`Onboarding failed: ${onboardData.error}. Your account was created but setup is incomplete. You can try logging in again to complete the setup.`)
+        toast.error(`Onboarding failed: ${onboardData.error}. Your account was created but setup is incomplete. You can try logging in again to complete the setup.`)
         setSubmitting(false)
         return
       }
 
       // Success! Redirect to dashboard (which will redirect to onboarding wizard)
       console.log('✅ Account creation complete!')
-      setSuccess('Account created successfully! Redirecting to onboarding...')
+      toast.success('Account created successfully! Redirecting to onboarding...')
       setTimeout(() => router.push('/dashboard'), 1500)
     } catch (err) {
-      setError(err.message)
+      console.error('Signup error:', err)
+      toast.error(`Signup failed: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
@@ -133,8 +128,6 @@ export default function AuthPage() {
 
   const handleSignIn = async (e) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
     setSubmitting(true)
 
     const formData = new FormData(e.target)
@@ -154,10 +147,10 @@ export default function AuthPage() {
         throw new Error(data.error || 'Login failed')
       }
 
-      setSuccess('Login successful! Redirecting...')
+      toast.success('Login successful! Redirecting...')
       setTimeout(() => router.push('/dashboard'), 1000)
     } catch (err) {
-      setError(err.message)
+      toast.error(err.message)
     } finally {
       setSubmitting(false)
     }
@@ -166,7 +159,6 @@ export default function AuthPage() {
   const handleForgotPassword = async (e) => {
     e.preventDefault()
     setForgotPasswordLoading(true)
-    setForgotPasswordMessage('')
 
     try {
       const response = await fetch('/api/auth/forgot-password', {
@@ -181,14 +173,13 @@ export default function AuthPage() {
         throw new Error(data.error || 'Failed to send reset email')
       }
 
-      setForgotPasswordMessage(data.message)
+      toast.success(data.message)
       setTimeout(() => {
         setShowForgotPassword(false)
         setForgotPasswordEmail('')
-        setForgotPasswordMessage('')
       }, 3000)
     } catch (err) {
-      setForgotPasswordMessage(err.message)
+      toast.error(err.message)
     } finally {
       setForgotPasswordLoading(false)
     }
@@ -217,165 +208,128 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <>
-              <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-              {success.includes('already logged in') && (
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    onClick={() => router.push('/dashboard')}
-                    className="flex-1"
-                    disabled={submitting}
-                  >
-                    Continue to Dashboard
-                  </Button>
-                  <Button
-                    onClick={handleSignOut}
-                    variant="outline"
-                    className="flex-1"
-                    disabled={submitting}
-                  >
-                    {submitting ? 'Signing out...' : 'Sign Out'}
-                  </Button>
+          <Tabs defaultValue="signin" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="signin">
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signin-email"
+                      name="email"
+                      type="email"
+                      placeholder="your.email@company.com"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
-              )}
-            </>
-          )}
-
-          {/* Only show signin/signup tabs if user is not already logged in */}
-          {!success.includes('already logged in') && (
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="signin-email"
-                        name="email"
-                        type="email"
-                        placeholder="your.email@company.com"
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="signin-password"
-                        name="password"
-                        type={showSigninPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-10 pr-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowSigninPassword(!showSigninPassword)}
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                      >
-                        {showSigninPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? 'Signing in...' : 'Sign In'}
-                  </Button>
-                  <div className="text-center mt-3">
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signin-password"
+                      name="password"
+                      type={showSigninPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10"
+                      required
+                    />
                     <button
                       type="button"
-                      onClick={() => setShowForgotPassword(true)}
-                      className="text-sm text-blue-600 hover:underline"
+                      onClick={() => setShowSigninPassword(!showSigninPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
                     >
-                      Forgot Password?
+                      {showSigninPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                </form>
-                <div className="mt-4 text-center text-sm text-gray-600">
-                  <a href="/admin-login" className="text-blue-600 hover:underline">
-                    Platform Admin Login
-                  </a>
                 </div>
-              </TabsContent>
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? 'Signing in...' : 'Sign In'}
+                </Button>
+                <div className="text-center mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              </form>
+              <div className="mt-4 text-center text-sm text-gray-600">
+                <a href="/admin-login" className="text-blue-600 hover:underline">
+                  Platform Admin Login
+                </a>
+              </div>
+            </TabsContent>
 
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="signup-name"
-                        name="fullName"
-                        type="text"
-                        placeholder="John Doe"
-                        className="pl-10"
-                      />
-                    </div>
+            <TabsContent value="signup">
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Full Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-name"
+                      name="fullName"
+                      type="text"
+                      placeholder="John Doe"
+                      className="pl-10"
+                    />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="signup-email"
-                        name="email"
-                        type="email"
-                        placeholder="your.email@company.com"
-                        className="pl-10"
-                        required
-                        pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
-                        title="Please enter a valid email address"
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-email"
+                      name="email"
+                      type="email"
+                      placeholder="your.email@company.com"
+                      className="pl-10"
+                      required
+                      title="Please enter a valid email address"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="signup-password"
-                        name="password"
-                        type={showSignupPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-10 pr-10"
-                        required
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowSignupPassword(!showSignupPassword)}
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                      >
-                        {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-password"
+                      name="password"
+                      type={showSignupPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                    >
+                      {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? 'Creating account...' : 'Create Account'}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          )}
+                </div>
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? 'Creating account...' : 'Create Account'}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -386,7 +340,6 @@ export default function AuthPage() {
           onClick={() => {
             setShowForgotPassword(false)
             setForgotPasswordEmail('')
-            setForgotPasswordMessage('')
           }}
         >
           <Card
@@ -412,35 +365,19 @@ export default function AuthPage() {
                   onClick={() => {
                     setShowForgotPassword(false)
                     setForgotPasswordEmail('')
-                    setForgotPasswordMessage('')
                   }}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   disabled={forgotPasswordLoading}
                 >
-                  <AlertCircle className="w-5 h-5 text-gray-400 rotate-45" />
+                  {/* Removed AlertCircle, assuming a close icon or similar is intended */}
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <form onSubmit={handleForgotPassword} className="space-y-4">
-                {forgotPasswordMessage && (
-                  <Alert
-                    className={`${forgotPasswordMessage.includes('successfully')
-                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 border-green-200'
-                      : 'bg-gradient-to-r from-red-50 to-rose-50 text-red-800 border-red-200'
-                      } animate-in slide-in-from-top-2 duration-300`}
-                  >
-                    <AlertDescription className="flex items-center gap-2">
-                      {forgotPasswordMessage.includes('successfully') ? (
-                        <CheckCircle className="w-4 h-4" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4" />
-                      )}
-                      {forgotPasswordMessage}
-                    </AlertDescription>
-                  </Alert>
-                )}
-
                 <div className="space-y-2">
                   <Label htmlFor="forgot-email" className="text-sm font-medium text-gray-700">
                     Email Address
@@ -471,7 +408,6 @@ export default function AuthPage() {
                     onClick={() => {
                       setShowForgotPassword(false)
                       setForgotPasswordEmail('')
-                      setForgotPasswordMessage('')
                     }}
                     disabled={forgotPasswordLoading}
                   >
