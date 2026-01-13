@@ -257,6 +257,8 @@ export default function AuthPage() {
                       placeholder="your.email@company.com"
                       className="pl-10"
                       required
+                      pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                      title="Please enter a valid email address"
                     />
                   </div>
                 </div>

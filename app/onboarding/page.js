@@ -22,6 +22,14 @@ import {
   FileText,
   Check
 } from 'lucide-react'
+import { INDIAN_STATES, CITIES_BY_STATE } from '@/lib/indian-locations'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const STEPS = [
   { id: 1, title: 'Sector', icon: Briefcase },
@@ -57,6 +65,7 @@ export default function OnboardingPage() {
     country: 'India',
     pincode: ''
   })
+  const [availableCities, setAvailableCities] = useState([])
 
   useEffect(() => {
     checkStatus()
@@ -177,6 +186,17 @@ export default function OnboardingPage() {
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+
+    // Update available cities when state changes
+    if (field === 'state') {
+      const cities = CITIES_BY_STATE[value] || []
+      setAvailableCities(cities)
+      // Reset city if it's not in the new state's cities
+      if (!cities.includes(formData.city)) {
+        setFormData(prev => ({ ...prev, city: '' }))
+      }
+    }
+
     setError('')
   }
 
@@ -222,6 +242,12 @@ export default function OnboardingPage() {
         }
         if (!formData.contactNumber.trim()) {
           setError('Contact number is required')
+          return false
+        }
+        // Validate phone number (10 digits)
+        const phoneRegex = /^[6-9]\d{9}$/
+        if (!phoneRegex.test(formData.contactNumber.replace(/[^\d]/g, ''))) {
+          setError('Please enter a valid 10-digit Indian mobile number')
           return false
         }
         return true
@@ -522,10 +548,20 @@ export default function OnboardingPage() {
                     id="contactNumber"
                     type="tel"
                     value={formData.contactNumber}
-                    onChange={(e) => updateFormData('contactNumber', e.target.value)}
+                    onChange={(e) => {
+                      // Only allow digits and limit to 10
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      updateFormData('contactNumber', value)
+                    }}
                     placeholder="+91 XXXXXXXXXX"
                     className="mt-1"
+                    maxLength={10}
+                    pattern="[6-9][0-9]{9}"
+                    title="Please enter a valid 10-digit Indian mobile number starting with 6-9"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter 10-digit mobile number (starting with 6, 7, 8, or 9)
+                  </p>
                 </div>
               </div>
             )}
@@ -557,25 +593,48 @@ export default function OnboardingPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="city">City *</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => updateFormData('city', e.target.value)}
-                      placeholder="City"
-                      className="mt-1"
-                    />
+                    <Label htmlFor="state">State *</Label>
+                    <Select value={formData.state} onValueChange={(value) => updateFormData('state', value)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INDIAN_STATES.map((state) => (
+                          <SelectItem key={state.code} value={state.name}>
+                            {state.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
-                    <Label htmlFor="state">State *</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => updateFormData('state', e.target.value)}
-                      placeholder="State"
-                      className="mt-1"
-                    />
+                    <Label htmlFor="city">City *</Label>
+                    <Select
+                      value={formData.city}
+                      onValueChange={(value) => updateFormData('city', value)}
+                      disabled={!formData.state}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder={formData.state ? "Select city" : "Select state first"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCities.length > 0 ? (
+                          availableCities.map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="other" disabled>
+                            No cities available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {formData.state && availableCities.length === 0 && (
+                      <p className="text-xs text-gray-500 mt-1">Or type your city name below</p>
+                    )}
                   </div>
                 </div>
 
