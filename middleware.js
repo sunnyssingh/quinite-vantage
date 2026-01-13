@@ -170,7 +170,7 @@ export async function middleware(request) {
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data: https://dlbxhbukzyygbabrujuv.supabase.co;
     font-src 'self';
-    connect-src 'self' https://dlbxhbukzyygbabrujuv.supabase.co wss://dlbxhbukzyygbabrujuv.supabase.co;
+    connect-src 'self' https://dlbxhbukzyygbabrujuv.supabase.co wss://dlbxhbukzyygbabrujuv.supabase.co https://api.postalpincode.in;
     frame-ancestors 'self';
   `.replace(/\s{2,}/g, ' ').trim()
 
