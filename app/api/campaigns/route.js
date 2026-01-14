@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 
+import { createAdminClient } from '@/lib/supabase/admin'
+
 export async function GET(request) {
   try {
     const supabase = await createServerSupabaseClient()
@@ -12,7 +14,8 @@ export async function GET(request) {
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
+    const admin = createAdminClient()
+    const { data: profile } = await admin
       .from('profiles')
       .select('organization_id')
       .eq('id', user.id)
@@ -26,7 +29,7 @@ export async function GET(request) {
       .from('campaigns')
       .select('*')
       .eq('organization_id', profile.organization_id)
-      .order('scheduled_at', { ascending: false })
+      .order('created_at', { ascending: false })
 
     if (error) throw error
 
@@ -47,7 +50,8 @@ export async function POST(request) {
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
+    const admin = createAdminClient()
+    const { data: profile } = await admin
       .from('profiles')
       .select('organization_id, full_name')
       .eq('id', user.id)

@@ -21,6 +21,7 @@ export default function AuthPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('signin')
 
   // Check if user is already logged in
   useEffect(() => {
@@ -60,29 +61,47 @@ export default function AuthPage() {
     const email = formData.get('email')
     const password = formData.get('password')
     const fullName = formData.get('fullName')
+    const companyName = formData.get('companyName')
 
     try {
       // Step 1: Create auth account
+      console.log('🚀 [Signup] Starting signup process...')
+      console.log('📧 [Signup] Email:', email)
+      console.log('👤 [Signup] Full Name:', fullName)
+      console.log('🏢 [Signup] Company:', companyName)
+
+      toast.loading('Creating your account...', { id: 'signup' })
+
       const signupResponse = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, fullName, companyName })
       })
 
       const signupData = await signupResponse.json()
+      console.log('📋 [Signup] Response:', signupData)
 
       if (!signupResponse.ok) {
+        console.error('❌ [Signup] Failed:', signupData)
+        toast.dismiss('signup')
         throw new Error(signupData.error || 'Signup failed')
       }
 
       // Check if email confirmation is needed
       if (signupData.needsConfirmation) {
-        toast.success('Account created! Please check your email to confirm your account, then sign in.')
+        toast.success(
+          'Account created! Please check your email to confirm before signing in.',
+          { id: 'signup', duration: 6000 }
+        )
+        setActiveTab('signin')
         setSubmitting(false)
         return
       }
 
       // If no confirmation needed, proceed with auto-signin and onboarding
+      console.log('✅ [Signup] Account created, proceeding to signin...')
+      toast.loading('Logging in to complete onboarding...', { id: 'signup' })
+
       // Step 2: Sign in to get session
       const signinResponse = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -91,36 +110,53 @@ export default function AuthPage() {
       })
 
       const signinData = await signinResponse.json()
+      console.log('📋 [Signin] Response:', signinData)
 
       if (!signinResponse.ok) {
+        console.error('❌ [Signin] Failed:', signinData)
+        toast.dismiss('signup')
         throw new Error(signinData.error || 'Login after signup failed')
       }
 
+      console.log('✅ [Signin] Success, proceeding to onboarding...')
+
       // Step 3: Run onboarding to create org and setup profile
-      console.log('📝 Starting onboarding process...')
+      toast.loading('Setting up your organization...', { id: 'signup' })
+      console.log('📝 [Onboard] Starting onboarding process...')
+      console.log('📝 [Onboard] Payload:', { fullName, organizationName: companyName || 'My Organization' })
+
       const onboardResponse = await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, organizationName: 'My Organization' })
+        body: JSON.stringify({ fullName, organizationName: companyName || 'My Organization' })
       })
 
       const onboardData = await onboardResponse.json()
-      console.log('📋 Onboarding response:', onboardData)
+      console.log('📋 [Onboard] Response:', onboardData)
+      console.log('📋 [Onboard] Status:', onboardResponse.status)
 
       if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
-        console.error('❌ Onboarding failed:', onboardData.error)
-        toast.error(`Onboarding failed: ${onboardData.error}. Your account was created but setup is incomplete. You can try logging in again to complete the setup.`)
+        console.error('❌ [Onboard] Failed:', onboardData.error)
+        console.error('❌ [Onboard] Full response:', onboardData)
+        toast.error(`Onboarding failed: ${onboardData.error}. Setup incomplete. Try logging in again.`, { id: 'signup' })
+        setActiveTab('signin')
         setSubmitting(false)
         return
       }
 
-      // Success! Redirect to dashboard (which will redirect to onboarding wizard)
-      console.log('✅ Account creation complete!')
-      toast.success('Account created successfully! Redirecting to onboarding...')
-      setTimeout(() => router.push('/dashboard'), 1500)
+      console.log('✅ [Onboard] Success! Organization created.')
+      console.log('📊 [Onboard] Organization ID:', onboardData.organization?.id)
+      console.log('📊 [Onboard] Onboarding Status:', onboardData.onboarding_status)
+
+      // Success! Redirect to onboarding wizard
+      console.log('✅ [Signup] Account creation complete!')
+      console.log('🔄 [Signup] Redirecting to onboarding form...')
+      toast.success('Account created! Complete your onboarding to get started.', { id: 'signup' })
+      setTimeout(() => router.push('/onboarding'), 1500)
     } catch (err) {
-      console.error('Signup error:', err)
-      toast.error(`Signup failed: ${err.message}`)
+      console.error('❌ [Signup] Error:', err)
+      console.error('❌ [Signup] Error stack:', err.stack)
+      toast.error(`Signup failed: ${err.message}`, { id: 'signup' })
     } finally {
       setSubmitting(false)
     }
@@ -135,6 +171,11 @@ export default function AuthPage() {
     const password = formData.get('password')
 
     try {
+      console.log('🔐 [Signin] Starting login process...')
+      console.log('📧 [Signin] Email:', email)
+
+      toast.loading('Logging in...', { id: 'signin' })
+
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,15 +183,79 @@ export default function AuthPage() {
       })
 
       const data = await response.json()
+      console.log('📋 [Signin] Response:', data)
+      console.log('📋 [Signin] Status:', response.status)
 
       if (!response.ok) {
+        console.error('❌ [Signin] Failed:', data)
+        toast.dismiss('signin')
         throw new Error(data.error || 'Login failed')
       }
 
-      toast.success('Login successful! Redirecting...')
-      setTimeout(() => router.push('/dashboard'), 1000)
+      console.log('✅ [Signin] Success!')
+      console.log('📊 [Signin] Needs Onboarding:', data.needsOnboarding)
+
+      // Check if user needs to complete onboarding
+      if (data.needsOnboarding) {
+        console.log('⚠️ [Signin] User needs onboarding')
+        console.log('📝 [Signin] Triggering onboarding process...')
+
+        toast.loading('Setting up your organization...', { id: 'signin' })
+
+        // Get user data from signin response
+        const fullName = data.user?.user_metadata?.full_name || data.user?.email?.split('@')[0]
+        const companyName = data.user?.user_metadata?.company_name || 'My Organization'
+
+        console.log('📝 [Signin] Onboard Payload:', { fullName, organizationName: companyName })
+
+        // Call onboarding API to create organization
+        const onboardResponse = await fetch('/api/onboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullName, organizationName: companyName })
+        })
+
+        const onboardData = await onboardResponse.json()
+        console.log('📋 [Signin] Onboard Response:', onboardData)
+        console.log('📋 [Signin] Onboard Status:', onboardResponse.status)
+
+        if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
+          console.error('❌ [Signin] Onboarding failed:', onboardData.error)
+          toast.error(`Setup failed: ${onboardData.error}. Please try again.`, { id: 'signin' })
+          setSubmitting(false)
+          return
+        }
+
+        console.log('✅ [Signin] Organization created!')
+        console.log('📊 [Signin] Organization ID:', onboardData.organization?.id)
+        console.log('🔄 [Signin] Redirecting to onboarding form...')
+
+        toast.success('Welcome! Complete your onboarding to get started.', { id: 'signin' })
+        setTimeout(() => router.push('/onboarding'), 1000)
+      } else {
+        console.log('✅ [Signin] User already onboarded')
+        console.log('🎭 [Signin] User role:', data.user?.role || 'unknown')
+        console.log('🔄 [Signin] Redirecting to dashboard...')
+
+        // Role-based redirect
+        const role = data.user?.role || 'employee'
+        const dashboardRoutes = {
+          platform_admin: '/dashboard/platform',
+          super_admin: '/dashboard/admin',
+          manager: '/dashboard/manager',
+          employee: '/dashboard/employee'
+        }
+
+        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
+        console.log('📍 [Signin] Dashboard route:', dashboardRoute)
+
+        toast.success('Welcome back! Redirecting to dashboard...', { id: 'signin' })
+        setTimeout(() => router.push(dashboardRoute), 1000)
+      }
     } catch (err) {
-      toast.error(err.message)
+      console.error('❌ [Signin] Error:', err)
+      console.error('❌ [Signin] Error message:', err.message)
+      toast.error(err.message, { id: 'signin' })
     } finally {
       setSubmitting(false)
     }
@@ -208,7 +313,7 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -283,6 +388,21 @@ export default function AuthPage() {
                       type="text"
                       placeholder="John Doe"
                       className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-company">Company Name</Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-company"
+                      name="companyName"
+                      type="text"
+                      placeholder="Acme Inc."
+                      className="pl-10"
+                      required
                     />
                   </div>
                 </div>

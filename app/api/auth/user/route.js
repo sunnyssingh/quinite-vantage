@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getUserPermissions } from '@/lib/permissions'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
@@ -12,25 +14,11 @@ export async function GET() {
       return corsJSON({ user: null }, { status: 401 })
     }
 
-    const { data: profile, error: profileError } = await supabase
+    // Use admin client to fetch profile with organization
+    const admin = createAdminClient()
+    const { data: profile, error: profileError } = await admin
       .from('profiles')
-      .select(`
-        id,
-        email,
-        full_name,
-        organization_id,
-        is_platform_admin,
-        role_id,
-        organization:organizations (
-          id,
-          name,
-          onboarding_status
-        ),
-        role:roles (
-          id,
-          name
-        )
-      `)
+      .select('*, organization:organizations(*)')
       .eq('id', user.id)
       .single()
 
@@ -38,7 +26,13 @@ export async function GET() {
       console.error('Profile fetch error:', profileError)
     }
 
-    const permissions = await getUserPermissions(supabase, user.id)
+    // DEBUG LOG
+    console.log('[API] /api/auth/user returning:', {
+      email: user.email,
+      orgId: profile?.organization_id,
+      orgStatus: profile?.organization?.onboarding_status,
+      role: profile?.role,
+    })
 
     return corsJSON({
       user: {
@@ -46,7 +40,6 @@ export async function GET() {
         email: user.email,
         profile,
         profileError: profileError ? profileError.message : null,
-        permissions
       }
     })
   } catch (e) {

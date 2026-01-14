@@ -9,9 +9,7 @@ import {
   AuthenticationError,
   AuthorizationError,
   ValidationError,
-  DatabaseError,
-  handleApiError,
-  logError
+  handleApiError
 } from '@/lib/errors'
 
 function handleCORS(response) {
@@ -45,9 +43,9 @@ export async function GET() {
     if (profileError && profileError.code !== 'PGRST116') {
       // Check for specific error codes
       if (profileError.code === '42P01') {
-        throw new DatabaseError('Database setup incomplete: "profiles" table is missing.', profileError)
+        throw new Error('Database setup incomplete: "profiles" table is missing.')
       }
-      throw new DatabaseError(`Failed to fetch user profile: ${profileError.message}`, profileError)
+      throw new Error(`Failed to fetch user profile: ${profileError.message}`)
     }
 
     // If user doesn't have an organization yet (during onboarding), return empty profile
@@ -61,10 +59,11 @@ export async function GET() {
       )
     }
 
-    const { data: orgProfile, error: orgProfileError } = await supabase
-      .from('organization_profiles')
+    // Get organization profile details directly from organizations table
+    const { data: orgProfile, error: orgProfileError } = await admin
+      .from('organizations')
       .select('*')
-      .eq('organization_id', profile.organization_id)
+      .eq('id', profile.organization_id)
       .single()
 
     // It's OK if no profile exists yet (user hasn't completed onboarding)
@@ -79,7 +78,7 @@ export async function GET() {
       })
     )
   } catch (error) {
-    logError(error, { endpoint: 'GET /api/organization/profile' })
+    console.error('[API Error] GET /api/organization/profile:', error)
     const { status, body } = handleApiError(error)
     return handleCORS(NextResponse.json(body, { status }))
   }
@@ -138,10 +137,10 @@ export async function PUT(request) {
 
       // Check for specific error codes
       if (profileError.code === '42P01') {
-        throw new DatabaseError('Database setup incomplete: "profiles" table is missing. Please run migration 004.', profileError)
+        throw new Error('Database setup incomplete: "profiles" table is missing. Please run migration 004.')
       }
 
-      throw new DatabaseError(`Failed to fetch user profile (${profileError.code}): ${profileError.message}`, profileError)
+      throw new Error(`Failed to fetch user profile (${profileError.code}): ${profileError.message}`)
     }
     console.log('User profile fetched (admin), existing org ID:', profile?.organization_id)
 
@@ -162,7 +161,7 @@ export async function PUT(request) {
           .from('organizations')
           .insert({
             name: validatedData.data.companyName || 'My Organization',
-            onboarding_status: 'PENDING'
+            onboarding_status: 'pending'
             // Note: created_by field doesn't exist in organizations table
           })
           .select('id, name')
@@ -170,7 +169,7 @@ export async function PUT(request) {
 
         if (createOrgError) {
           console.error('Organization creation error details:', createOrgError)
-          throw new DatabaseError('Failed to create organization', createOrgError)
+          throw new Error('Failed to create organization')
         }
         console.log('New organization created:', newOrg)
 
@@ -180,32 +179,32 @@ export async function PUT(request) {
       if (userOrg?.id) {
         organizationId = userOrg.id
 
-        // Update profile with organization_id and optionally set default role
+        // Update profile with organization_id and optionally default role (Super Admin)
         try {
-          const { data: defaultRole } = await admin
-            .from('roles')
-            .select('id')
-            .eq('name', 'Client Super Admin')
-            .maybeSingle()
-
           await admin
             .from('profiles')
-            .update({
+            .upsert({
+              id: user.id,
               organization_id: organizationId,
-              role_id: defaultRole?.id || null,
-              full_name: validatedData.data.companyName || user.email.split('@')[0]
+              role: 'super_admin', // Default to Super Admin for new org creator
+              email: user.email,
+              full_name: validatedData.data.companyName || user.email.split('@')[0],
+              updated_at: new Date().toISOString()
             })
-            .eq('id', user.id)
         } catch (roleError) {
           // If role assignment fails, just update organization_id
           console.error('Role assignment failed, continuing without role:', roleError)
+          // Create or update profile
           await admin
             .from('profiles')
-            .update({
+            .upsert({
+              id: user.id,
+              email: user.email,
               organization_id: organizationId,
-              full_name: validatedData.data.companyName || user.email.split('@')[0]
+              // role: null, // Keep null? Or super_admin?
+              full_name: user.user_metadata?.full_name || '',
+              updated_at: new Date().toISOString()
             })
-            .eq('id', user.id)
         }
       } else {
         console.error('Failed to setup organization: No ID returned')
@@ -215,7 +214,7 @@ export async function PUT(request) {
 
     // Prepare data for upsert (convert camelCase to snake_case)
     const profileData = {
-      organization_id: organizationId,
+      // organization_id key removed, updating organizations table directly by ID
       sector: validatedData.data.sector,
       business_type: validatedData.data.businessType,
       company_name: validatedData.data.companyName,
@@ -230,50 +229,45 @@ export async function PUT(request) {
       updated_at: new Date().toISOString()
     }
 
-    // Upsert organization profile
+    if (body.isComplete) {
+      profileData.onboarding_status = 'completed'
+    }
+
+    // Update organizations table directly
     const { error: upsertError } = await admin
-      .from('organization_profiles')
-      .upsert(profileData, { onConflict: 'organization_id' })
+      .from('organizations')
+      .update(profileData)
+      .eq('id', organizationId)
 
     if (upsertError) {
       console.error('Organization profile upsert failed:', upsertError)
-      throw new DatabaseError('Failed to save organization profile', upsertError)
+      throw new Error('Failed to save organization profile')
     }
-    console.log('Organization profile upserted successfully')
+    console.log('✅ Organization profile updated successfully:', {
+      organizationId,
+      onboarding_status: profileData.onboarding_status || 'NOT_SET',
+      isComplete: body.isComplete
+    })
 
-    // If this is the final submission, mark onboarding as complete
-    if (body.isComplete) {
-      const { error: orgUpdateError } = await admin
-        .from('organizations')
-        .update({
-          onboarding_status: 'COMPLETED',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', organizationId)
 
-      if (orgUpdateError) {
-        throw new DatabaseError('Failed to update organization status', orgUpdateError)
-      }
+    // Create audit log
+    const { error: auditError } = await admin
+      .from('audit_logs')
+      .insert({
+        user_id: user.id,
+        user_name: user.email,
+        action: 'ONBOARDING_COMPLETED',
+        entity_type: 'organization',
+        entity_id: organizationId,
+        organization_id: organizationId,
+        metadata: { company_name: validatedData.data.companyName }
+      })
 
-      // Create audit log
-      const { error: auditError } = await admin
-        .from('audit_logs')
-        .insert({
-          user_id: user.id,
-          user_name: user.email,
-          action: 'ONBOARDING_COMPLETED',
-          entity_type: 'organization',
-          entity_id: organizationId,
-          organization_id: organizationId,
-          metadata: { company_name: validatedData.data.companyName }
-        })
-
-      if (auditError) {
-        console.error('Failed to create audit log:', auditError)
-        // Don't throw - audit log failure shouldn't block onboarding
-      } else {
-        console.log('Audit log created successfully')
-      }
+    if (auditError) {
+      console.error('Failed to create audit log:', auditError)
+      // Don't throw - audit log failure shouldn't block onboarding
+    } else {
+      console.log('Audit log created successfully')
     }
 
     return handleCORS(
@@ -291,10 +285,7 @@ export async function PUT(request) {
     if (error.hint) console.error('Error hint:', error.hint)
     if (error.code) console.error('Error code:', error.code)
 
-    logError(error, {
-      endpoint: 'PUT /api/organization/profile',
-      body: request.body
-    })
+    console.error('[API Error] PUT /api/organization/profile:', error)
     const { status, body } = handleApiError(error)
     return handleCORS(NextResponse.json(body, { status }))
   }

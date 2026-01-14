@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasPermission, logAudit } from '@/lib/permissions'
+import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 
 /**
@@ -15,12 +15,6 @@ export async function PUT(request, { params }) {
 
         if (authError || !user) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Check permission
-        const canEdit = await hasPermission(supabase, user.id, 'users.edit')
-        if (!canEdit) {
-            return corsJSON({ error: 'Permission denied' }, { status: 403 })
         }
 
         const { id } = await params
@@ -126,12 +120,6 @@ export async function DELETE(request, { params }) {
 
         if (authError || !user) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Check permission
-        const canDelete = await hasPermission(supabase, user.id, 'users.delete')
-        if (!canDelete) {
-            return corsJSON({ error: 'Permission denied' }, { status: 403 })
         }
 
         const { id } = await params

@@ -6,6 +6,8 @@ import Ajv from 'ajv'
 import fs from 'fs'
 import path from 'path'
 
+import { createAdminClient } from '@/lib/supabase/admin'
+
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient()
@@ -15,7 +17,8 @@ export async function GET() {
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
+    const admin = createAdminClient()
+    const { data: profile } = await admin
       .from('profiles')
       .select('organization_id')
       .eq('id', user.id)
@@ -25,6 +28,9 @@ export async function GET() {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
     }
 
+    // Projects can be fetched with standard client if policies allow
+    // But if RLS is strict for projects, use admin or ensure policies exist
+    // Assuming projects table RLS allows organization access
     const { data, error } = await supabase
       .from('projects')
       .select('*')
@@ -51,7 +57,8 @@ export async function POST(request) {
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
+    const admin = createAdminClient()
+    const { data: profile } = await admin
       .from('profiles')
       .select('organization_id, full_name')
       .eq('id', user.id)

@@ -12,7 +12,7 @@ export async function POST(request) {
   try {
     const supabase = await createServerSupabaseClient()
     const body = await request.json()
-    const { email, password } = body
+    const { email, password, companyName, fullName } = body
 
     if (!email || !password) {
       return handleCORS(NextResponse.json({ error: 'Email and password are required' }, { status: 400 }))
@@ -23,7 +23,11 @@ export async function POST(request) {
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        data: {
+          full_name: fullName,
+          company_name: companyName
+        }
       }
     })
 

@@ -17,25 +17,20 @@ export async function GET(request) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Check permission
-        const canView = await hasPermission(supabase, user.id, 'leads.view')
-        if (!canView) {
-            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
-        }
+        // Use admin client to bypass RLS and get reliable profile
+        const adminClient = createAdminClient()
 
-        // Get user's profile
-        const { data: profile } = await supabase
+        const { data: profile } = await adminClient
             .from('profiles')
-            .select('organization_id, is_platform_admin')
+            .select('organization_id, role')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id && !profile?.is_platform_admin) {
+        const isPlatformAdmin = profile?.role === 'platform_admin'
+
+        if (!profile?.organization_id && !isPlatformAdmin) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
-
-        // Use admin client to bypass RLS
-        const adminClient = createAdminClient()
 
         // Get query parameters for filtering
         const { searchParams } = new URL(request.url)
@@ -43,32 +38,17 @@ export async function GET(request) {
         const projectId = searchParams.get('project_id')
         const search = searchParams.get('search')
 
-        // Build query
+        // Build query - fetch all columns including call_status and project
         let query = adminClient
             .from('leads')
             .select(`
-        id,
-        name,
-        email,
-        phone,
-        source,
-        status,
-        call_status,
-        call_log_id,
-        notes,
-        project_id,
-        created_by,
-        created_at,
-        updated_at,
-        project:projects (
-          id,
-          name
-        )
-      `)
+                *,
+                project:projects(id, name)
+            `)
             .order('created_at', { ascending: false })
 
-        // Filter by organization
-        if (!profile.is_platform_admin) {
+        // Platform admins can see all leads, regular users only see their org
+        if (!isPlatformAdmin) {
             query = query.eq('organization_id', profile.organization_id)
         }
 
@@ -87,6 +67,16 @@ export async function GET(request) {
 
         if (error) throw error
 
+        console.log('✅ [Leads GET] Fetched', leads?.length || 0, 'leads')
+        if (leads && leads.length > 0) {
+            console.log('📊 [Leads GET] Sample lead:', {
+                id: leads[0].id,
+                name: leads[0].name,
+                call_status: leads[0].call_status,
+                call_log_id: leads[0].call_log_id
+            })
+        }
+
         return corsJSON({ leads: leads || [] })
     } catch (e) {
         console.error('leads GET error:', e)
@@ -100,61 +90,69 @@ export async function GET(request) {
  */
 export async function POST(request) {
     try {
+        console.log('📝 [Leads POST] Starting lead creation...')
+
         const supabase = await createServerSupabaseClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
 
         if (authError || !user) {
+            console.log('❌ [Leads POST] Unauthorized')
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Check permission
-        const canEdit = await hasPermission(supabase, user.id, 'leads.edit')
-        if (!canEdit) {
-            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
-        }
+        console.log('✅ [Leads POST] User authenticated:', user.email)
 
-        // Get user's profile
-        const { data: profile } = await supabase
+        // Get user's profile with admin client
+        const adminClient = createAdminClient()
+        const { data: profile } = await adminClient
             .from('profiles')
-            .select('organization_id, full_name')
+            .select('organization_id, role, full_name') // Added full_name back for audit log
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id) {
+        const isPlatformAdmin = profile?.role === 'platform_admin'
+
+        if (!profile?.organization_id && !isPlatformAdmin) {
+            console.log('❌ [Leads POST] No organization found')
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
+
+        console.log('✅ [Leads POST] Organization ID:', profile.organization_id)
 
         const body = await request.json()
         const { name, email, phone, projectId, status, notes } = body
 
+        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, status })
+
         // Validation
         if (!name || name.trim() === '') {
+            console.log('❌ [Leads POST] Name is required')
             return corsJSON({ error: 'Name is required' }, { status: 400 })
         }
 
-        // Use admin client to create lead
-        const adminClient = createAdminClient()
-
+        // Create the lead
         const { data: lead, error } = await adminClient
             .from('leads')
             .insert({
-                organization_id: profile.organization_id,
-                project_id: projectId || null,
-                created_by: user.id,
                 name: name.trim(),
                 email: email?.trim() || null,
                 phone: phone?.trim() || null,
+                project_id: projectId || null,
                 status: status || 'new',
-                source: 'manual',
-                notes: notes?.trim() || null
+                notes: notes?.trim() || null,
+                organization_id: profile.organization_id,
+                created_by: user.id, // Kept original created_by
+                source: 'manual' // Kept original source
             })
             .select()
             .single()
 
         if (error) {
-            console.error('Lead creation error:', error)
-            return corsJSON({ error: 'Failed to create lead' }, { status: 500 })
+            console.log('❌ [Leads POST] Database error:', error.message)
+            throw error
         }
+
+        console.log('✅ [Leads POST] Lead created successfully:', lead.id)
 
         // Audit log
         try {

@@ -66,10 +66,90 @@ export default function OnboardingPage() {
     country: 'India',
     pincode: ''
   })
-  const [availableCities, setAvailableCities] = useState([])
+
 
   useEffect(() => {
-    checkStatus()
+    const checkUser = async () => {
+      try {
+        console.log('🔍 [Onboarding] Starting user check...')
+        // Use getUser() to fetch fresh data from server (not cached session)
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+        if (userError || !user) {
+          console.log('❌ [Onboarding] No user found, redirecting to login')
+          router.push('/')
+          return
+        }
+
+        console.log('✅ [Onboarding] User authenticated:', { id: user.id, email: user.email })
+        console.log('📋 [Onboarding] User metadata:', user.user_metadata)
+
+        // Check if user has explicit 'company_name' metadata from signup
+        if (user.user_metadata?.company_name) {
+          console.log('Setting company name:', user.user_metadata.company_name)
+          setFormData(prev => ({ ...prev, companyName: user.user_metadata.company_name }))
+        }
+
+        // Also set full_name if available
+        if (user.user_metadata?.full_name) {
+          setFormData(prev => ({ ...prev, fullName: user.user_metadata.full_name }))
+        }
+
+        console.log('🔍 [Onboarding] Fetching user profile...')
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*, organizations(*)')
+          .eq('id', user.id)
+          .single()
+
+        if (profileError) {
+          console.error('❌ [Onboarding] Profile fetch error:', profileError)
+        }
+
+        console.log('📊 [Onboarding] Profile data:', {
+          hasProfile: !!profile,
+          organizationId: profile?.organization_id,
+          organizationData: profile?.organizations,
+          onboardingStatus: profile?.organizations?.onboarding_status
+        })
+
+        if (profile?.organization_id) {
+          const status = profile.organizations?.onboarding_status
+          console.log('🏢 [Onboarding] Found existing org:', {
+            id: profile.organization_id,
+            status,
+            orgName: profile.organizations?.name
+          })
+
+          // Check if onboarding is truly complete
+          if (status === 'COMPLETED') {
+            console.log('✅ [Onboarding] Status is COMPLETED - User already onboarded!')
+            console.log('🔄 [Onboarding] Redirecting to dashboard (hard navigation)...')
+            // Use hard navigation to ensure fresh data load
+            window.location.href = '/dashboard'
+            return
+          } else {
+            console.log('⚠️ [Onboarding] Status is NOT completed:', status)
+            console.log('📝 [Onboarding] User needs to complete onboarding form')
+          }
+        } else {
+          console.log('⚠️ [Onboarding] No organization_id found - user needs onboarding')
+        }
+
+        // Load any existing organization profile data (preserves metadata values)
+        console.log('📥 [Onboarding] Loading existing profile data...')
+        await loadProfile()
+        console.log('✅ [Onboarding] Profile data loaded, showing onboarding form')
+
+      } catch (err) {
+        console.error('❌ [Onboarding] Error checking user:', err)
+      } finally {
+        console.log('🏁 [Onboarding] Check complete, setting loading to false')
+        setLoading(false)
+      }
+    }
+
+    checkUser()
   }, [])
 
   const checkStatus = async () => {
@@ -116,7 +196,7 @@ export default function OnboardingPage() {
         }
 
         // If onboarding completed, redirect to dashboard
-        if (userData.user.profile?.organization?.onboarding_status === 'COMPLETED') {
+        if (userData.user.profile?.organization?.onboarding_status === 'completed') {
           router.push('/dashboard')
           return
         }
@@ -161,10 +241,11 @@ export default function OnboardingPage() {
       const data = await response.json()
 
       if (data.profile && Object.keys(data.profile).length > 0) {
-        setFormData({
-          sector: data.profile.sector || 'real_estate',
-          businessType: data.profile.business_type || '',
-          companyName: data.profile.company_name || '',
+        // Preserve companyName from metadata if profile doesn't have one
+        setFormData(prev => ({
+          sector: data.profile.sector || prev.sector || 'real_estate',
+          businessType: data.profile.business_type || prev.businessType || '',
+          companyName: data.profile.company_name || prev.companyName || '',
           gstin: data.profile.gstin || '',
           contactNumber: data.profile.contact_number || '',
           addressLine1: data.profile.address_line_1 || '',
@@ -173,7 +254,7 @@ export default function OnboardingPage() {
           state: data.profile.state || '',
           country: data.profile.country || 'India',
           pincode: data.profile.pincode || ''
-        })
+        }))
       }
     } catch (error) {
       if (error.name === 'AbortError') {
@@ -187,17 +268,6 @@ export default function OnboardingPage() {
 
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-
-    // Update available cities when state changes
-    if (field === 'state') {
-      const cities = CITIES_BY_STATE[value] || []
-      setAvailableCities(cities)
-      // Reset city if it's not in the new state's cities
-      if (!cities.includes(formData.city)) {
-        setFormData(prev => ({ ...prev, city: '' }))
-      }
-    }
-
     setError('')
   }
 
@@ -338,23 +408,25 @@ export default function OnboardingPage() {
     setError('')
 
     try {
+      const payload = {
+        sector: formData.sector,
+        businessType: formData.businessType,
+        companyName: formData.companyName,
+        gstin: formData.gstin,
+        contactNumber: formData.contactNumber,
+        addressLine1: formData.addressLine1,
+        addressLine2: formData.addressLine2,
+        city: formData.city,
+        state: formData.state,
+        country: formData.country,
+        pincode: formData.pincode,
+        isComplete: true
+      }
+
       const response = await fetch('/api/organization/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sector: formData.sector,
-          businessType: formData.businessType,
-          companyName: formData.companyName,
-          gstin: formData.gstin,
-          contactNumber: formData.contactNumber,
-          addressLine1: formData.addressLine1,
-          addressLine2: formData.addressLine2,
-          city: formData.city,
-          state: formData.state,
-          country: formData.country,
-          pincode: formData.pincode,
-          isComplete: true
-        })
+        body: JSON.stringify(payload)
       })
 
       const data = await response.json()
@@ -363,8 +435,15 @@ export default function OnboardingPage() {
         throw new Error(data.error?.message || JSON.stringify(data.error) || 'Failed to complete onboarding')
       }
 
-      // Success! Redirect to dashboard
-      router.push('/dashboard')
+      // Success! Redirect to super admin dashboard
+      toast.success('Onboarding completed successfully!')
+
+      // Wait a moment to ensure database transaction completes
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Force a hard navigation to super admin dashboard
+      window.location.href = '/dashboard/admin'
+
 
     } catch (error) {
       console.error('Onboarding error:', error)

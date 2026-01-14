@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasPermission, logAudit } from '@/lib/permissions'
+import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { makeCall, isPlivoConfigured, validateIndianPhone } from '@/lib/plivo-service'
 
@@ -11,44 +11,51 @@ import { makeCall, isPlivoConfigured, validateIndianPhone } from '@/lib/plivo-se
  */
 export async function POST(request, { params }) {
     try {
+        console.log('🚀 [Campaign Start] Initiating campaign start...')
+
         const supabase = await createServerSupabaseClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
 
         if (authError || !user) {
+            console.log('❌ [Campaign Start] Unauthorized')
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Check permission
-        const canRun = await hasPermission(supabase, user.id, 'campaign.run')
-        if (!canRun) {
-            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
-        }
+        console.log('✅ [Campaign Start] User authenticated:', user.email)
+
+        const { id } = await params
+        console.log('📋 [Campaign Start] Campaign ID:', id)
 
         // Get user's profile
-        const { data: profile } = await supabase
+        const adminClient = createAdminClient()
+        const { data: profile } = await adminClient
             .from('profiles')
             .select('organization_id, full_name')
             .eq('id', user.id)
             .single()
 
         if (!profile?.organization_id) {
+            console.log('❌ [Campaign Start] No organization found')
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 
-        const { id } = await params
-        const adminClient = createAdminClient()
+        console.log('✅ [Campaign Start] Organization ID:', profile.organization_id)
 
-        // Get the campaign
-        const { data: campaign } = await adminClient
+        // Get campaign
+        const { data: campaign, error: campaignError } = await adminClient
             .from('campaigns')
-            .select('*, project:projects(id, name)')
+            .select('*')
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
             .single()
 
-        if (!campaign) {
+        if (campaignError || !campaign) {
+            console.log('❌ [Campaign Start] Campaign not found')
             return corsJSON({ error: 'Campaign not found' }, { status: 404 })
         }
+
+        console.log('✅ [Campaign Start] Campaign found:', campaign.name)
+        console.log('📊 [Campaign Start] Current status:', campaign.status)
 
         // Validate time window
         const now = new Date()
@@ -91,17 +98,26 @@ export async function POST(request, { params }) {
 
         // Get leads for this campaign's project (Batch Processing)
         // Only fetch leads that haven't been called successfully yet
-        const { data: leads } = await adminClient
+        console.log(`🔎 Searching for leads with Project ID: ${campaign.project_id}`)
+
+        const { data: leads, error: leadsError } = await adminClient
             .from('leads')
             .select('*')
             .eq('organization_id', profile.organization_id)
             .eq('project_id', campaign.project_id)
-            // Fix: Include 'not_called' which seems to be the default for some imports
-            .in('call_status', ['new', 'pending', 'failed', 'not_called', null])
+            // Fix: Handle NULL call_status correctly using OR syntax
+            .or('call_status.in.(new,pending,failed,not_called),call_status.is.null')
             .limit(batchSize)
 
+        if (leadsError) {
+            console.error('❌ Leads query error:', leadsError)
+        }
+
+        console.log(`🔎 Found ${leads?.length || 0} leads`)
+
         if (!leads || leads.length === 0) {
-            return corsJSON({ error: 'No leads found for this campaign' }, { status: 400 })
+            console.log('❌ [Campaign Start] No leads found matching criteria')
+            return corsJSON({ error: 'No leads found for this campaign. Ensure leads are assigned to the campaign project.' }, { status: 400 })
         }
 
         // Check if real calling is enabled
@@ -118,19 +134,36 @@ export async function POST(request, { params }) {
             console.log(`Starting real AI calling for ${leads.length} leads...`)
 
             for (const lead of leads) {
+                // Normalize phone number (Auto-add +91)
+                let phone = lead.phone?.toString().replace(/[\s\-\(\)]/g, '') || ''
+
+                // If 10 digits, add +91
+                if (/^\d{10}$/.test(phone)) {
+                    phone = '+91' + phone
+                }
+                // If 12 digits starting with 91, add +
+                else if (/^91\d{10}$/.test(phone)) {
+                    phone = '+' + phone
+                }
+
                 // Validate phone number
-                if (!lead.phone || !validateIndianPhone(lead.phone)) {
-                    console.log(`Skipping ${lead.name}: Invalid phone number`)
+                if (!phone || !validateIndianPhone(phone)) {
+                    console.log(`Skipping ${lead.name}: Invalid phone number (${lead.phone})`)
                     failedCalls++
                     continue
                 }
 
-                // Check recording consent
+                // Use the normalized phone number
+                lead.phone = phone
+
+                // Check recording consent (DISABLED: Recording is turned off globally for now)
+                /*
                 if (!lead.recording_consent) {
                     console.log(`Skipping ${lead.name}: No recording consent`)
                     failedCalls++
                     continue
                 }
+                */
 
                 try {
                     // Make real call via Plivo

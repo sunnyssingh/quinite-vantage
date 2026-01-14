@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasPermission } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/analytics/campaigns
  * Returns campaign performance metrics
  */
-export async function GET() {
+export async function GET(request) {
     try {
         const supabase = await createServerSupabaseClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -17,20 +18,15 @@ export async function GET() {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Check permission
-        const canView = await hasPermission(supabase, user.id, 'analytics.view_basic')
-        if (!canView) {
-            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
-        }
-
-        // Get user's profile
-        const { data: profile } = await supabase
+        // Get user's organization
+        const admin = createAdminClient()
+        const { data: profile } = await admin
             .from('profiles')
-            .select('organization_id, is_platform_admin')
+            .select('organization_id')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id && !profile?.is_platform_admin) {
+        if (!profile?.organization_id) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 

@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.push('/dashboard')
+        router.push('/dashboard/platform')
       } else {
         setLoading(false)
       }
@@ -54,7 +54,7 @@ export default function AdminLoginPage() {
       }
 
       setSuccess('Login successful! Redirecting...')
-      setTimeout(() => router.push('/dashboard'), 1000)
+      setTimeout(() => router.push('/dashboard/platform'), 1000)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -126,9 +126,9 @@ export default function AdminLoginPage() {
                 />
               </div>
             </div>
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" 
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               disabled={submitting}
             >
               {submitting ? 'Signing in...' : 'Admin Sign In'}

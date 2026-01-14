@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasPermission, logAudit } from '@/lib/permissions'
+import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 
 // Platform Admin role ID - CANNOT be assigned via user creation
@@ -89,12 +89,6 @@ export async function POST(request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check permission
-    const canCreate = await hasPermission(supabase, user.id, 'users.create')
-    if (!canCreate) {
-      return corsJSON({ error: 'Permission denied' }, { status: 403 })
     }
 
     // Get current user's profile

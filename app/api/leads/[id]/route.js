@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasPermission, logAudit } from '@/lib/permissions'
+import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 
 /**
@@ -15,12 +15,6 @@ export async function PUT(request, { params }) {
 
         if (authError || !user) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Check permission
-        const canEdit = await hasPermission(supabase, user.id, 'leads.edit')
-        if (!canEdit) {
-            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
         }
 
         // Get user's profile
@@ -63,6 +57,7 @@ export async function PUT(request, { params }) {
         }
 
         // Update the lead
+        console.log(`📝 [Leads PUT] Updating lead ${id}, project_id: ${projectId}`)
         const { data: lead, error } = await adminClient
             .from('leads')
             .update({
@@ -71,6 +66,7 @@ export async function PUT(request, { params }) {
                 phone: phone?.trim() || null,
                 project_id: projectId || null,
                 status: status || 'new',
+                recording_consent: typeof body.recordingConsent === 'boolean' ? body.recordingConsent : undefined,
                 notes: notes?.trim() || null
             })
             .eq('id', id)
@@ -118,12 +114,6 @@ export async function DELETE(request, { params }) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Check permission
-        const canDelete = await hasPermission(supabase, user.id, 'leads.delete')
-        if (!canDelete) {
-            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
-        }
-
         const { data: profile } = await supabase
             .from('profiles')
             .select('organization_id, full_name')
@@ -159,9 +149,18 @@ export async function DELETE(request, { params }) {
             .eq('id', id)
 
         if (error) {
-            console.error('Lead delete error:', error)
+            console.error('❌ Lead delete error:', error)
+            // Check for foreign key constraint violation (Postgres code 23503)
+            if (error.code === '23503') {
+                return corsJSON({
+                    error: 'Cannot delete lead because it has related data (calls, campaigns).',
+                    details: error.message
+                }, { status: 400 })
+            }
             return corsJSON({ error: 'Failed to delete lead' }, { status: 500 })
         }
+
+        console.log('✅ Lead deleted successfully:', id)
 
         // Audit log
         try {

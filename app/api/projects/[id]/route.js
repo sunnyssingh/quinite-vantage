@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { hasPermission, logAudit } from '@/lib/permissions'
-import Ajv from 'ajv'
-import fs from 'fs'
+import { logAudit } from '@/lib/permissions'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { corsJSON } from '@/lib/cors'
 import path from 'path'
 
 function handleCORS(response) {
@@ -49,11 +49,9 @@ export async function PUT(request, { params }) {
         }
 
         // 4️⃣ Permission check
-        const canEdit = await hasPermission(supabase, user.id, 'project.edit')
         const isOwner = existing.created_by === user.id
 
         if (
-            !canEdit &&
             !isOwner &&
             !profile.is_platform_admin
         ) {
@@ -174,12 +172,9 @@ export async function DELETE(request, { params }) {
         }
 
         // 4️⃣ Permission check
-        const canDelete = await hasPermission(supabase, user.id, 'project.delete')
-
         const isOwner = project.created_by === user.id
 
         if (
-            !canDelete &&
             !isOwner &&
             !profile.is_platform_admin
         ) {

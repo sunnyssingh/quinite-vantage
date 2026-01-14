@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
+import { createAdminClient } from '@/lib/supabase/admin'
+
 function handleCORS(response) {
   response.headers.set('Access-Control-Allow-Origin', '*')
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
@@ -34,11 +36,17 @@ export async function POST(request) {
       )
     }
 
-    const { data: profile } = await supabase
+    // Use admin client to reliably get organization details
+    const admin = createAdminClient()
+    const { data: profile, error: profileError } = await admin
       .from('profiles')
       .select('organization_id')
       .eq('id', user.id)
       .single()
+
+    if (profileError) {
+      console.error('Upload URL Profile Fetch Error:', profileError)
+    }
 
     if (!profile?.organization_id) {
       return handleCORS(

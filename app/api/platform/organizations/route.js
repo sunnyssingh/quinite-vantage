@@ -13,11 +13,11 @@ export async function GET(request) {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_platform_admin')
+      .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!profile?.is_platform_admin) {
+    if (profile?.role !== 'platform_admin') {
       return corsJSON({ error: 'Platform Admin access required' }, { status: 403 })
     }
 
@@ -29,8 +29,7 @@ export async function GET(request) {
         .from('organizations')
         .select(`
           *, 
-          profile:organization_profiles(*), 
-          users:profiles(id, email, full_name, role:roles(name), created_at)
+          users:profiles(id, email, full_name, role, created_at)
         `)
         .eq('id', id)
         .single()
@@ -41,7 +40,7 @@ export async function GET(request) {
 
     const { data, error } = await supabase
       .from('organizations')
-      .select(`*, _count:profiles(count), profile:organization_profiles(*)`)
+      .select(`*, _count:profiles(count)`)
       .order('created_at', { ascending: false })
 
     if (error) throw error

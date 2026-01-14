@@ -1,24 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { hasPermission } from '@/lib/permissions'
+import { createAdminClient } from '@/lib/supabase/admin'
 
-export async function GET(request) {
+export async function GET() {
     try {
         const supabase = await createServerSupabaseClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        const { data: profile } = await supabase
+        // Get user's organization
+        const admin = createAdminClient()
+        const { data: profile } = await admin
             .from('profiles')
-            .select('organization_id, is_platform_admin')
+            .select('organization_id')
             .eq('id', user.id)
             .single()
 
-        if (!profile) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
-        if (!profile.is_platform_admin) {
-            const canView = await hasPermission(supabase, user.id, 'audit.view')
-            if (!canView) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        if (!profile?.organization_id) {
+            return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
         }
 
         let query = supabase

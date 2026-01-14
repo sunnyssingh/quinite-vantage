@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasPermission } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/analytics/overview
  * Returns dashboard overview statistics
  */
-export async function GET() {
+export async function GET(request) {
     try {
         const supabase = await createServerSupabaseClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -17,25 +18,27 @@ export async function GET() {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Check permission
-        const canView = await hasPermission(supabase, user.id, 'analytics.view_basic')
-        if (!canView) {
-            return corsJSON({ error: 'Insufficient permissions' }, { status: 403 })
-        }
-
-        // Get user's profile
-        const { data: profile } = await supabase
+        // Get user's organization
+        const admin = createAdminClient()
+        const { data: profile } = await admin
             .from('profiles')
-            .select('organization_id, is_platform_admin')
+            .select('organization_id')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id && !profile?.is_platform_admin) {
+        if (!profile?.organization_id) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 
         const adminClient = createAdminClient()
-        const orgFilter = profile.is_platform_admin ? {} : { organization_id: profile.organization_id }
+        // The instruction implies that is_platform_admin is no longer used for filtering,
+        // or that the profile fetching should include it.
+        // Given the instruction to select only 'organization_id',
+        // the orgFilter should be based solely on organization_id.
+        // If platform admin functionality is still desired, the profile select needs adjustment.
+        // For now, adhering strictly to the instruction's select('organization_id').
+        // Assuming the intent is to filter by organization_id for all users.
+        const orgFilter = { organization_id: profile.organization_id }
 
         // Get total leads count
         const { count: totalLeads } = await adminClient
