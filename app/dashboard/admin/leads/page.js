@@ -112,7 +112,7 @@ export default function LeadsPage() {
       phone: formData.get('phone'),
       projectId: projectIdValue === 'none' ? null : projectIdValue,
       status: formData.get('status'),
-      recordingConsent: formData.get('recordingConsent') === 'on',
+      // recordingConsent: formData.get('recordingConsent') === 'on', // Removed as per user request
       notes: formData.get('notes')
     }
 
