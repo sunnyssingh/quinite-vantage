@@ -346,20 +346,20 @@ export default function CampaignsPage() {
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl">
-              <Megaphone className="w-7 h-7 text-white" />
+              <Megaphone className="w-6 h-6 md:w-7 md:h-7 text-white" />
             </div>
             Campaigns
           </h1>
-          <p className="text-slate-600 mt-1">Create and manage your outbound call campaigns</p>
+          <p className="text-slate-600 mt-1 text-sm md:text-base">Create and manage your outbound call campaigns</p>
         </div>
 
         <Button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/30"
+          className="w-full md:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/30"
           size="lg"
         >
           <Plus className="w-5 h-5 mr-2" />
@@ -480,7 +480,7 @@ export default function CampaignsPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6 pt-6 border-t">
+            <div className="flex flex-col-reverse md:flex-row gap-3 mt-6 pt-6 border-t">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateForm(false)}
@@ -533,24 +533,26 @@ export default function CampaignsPage() {
                     <Phone className="w-6 h-6 text-white" />
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Action Buttons - Always visible on mobile, hover on desktop */}
+                  <div className="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => openEditModal(campaign)}
-                      className="shadow-lg bg-white/90 backdrop-blur-sm hover:bg-white"
+                      className="shadow-lg bg-white/90 backdrop-blur-sm hover:bg-white h-8 w-8 p-0"
                     >
                       <Edit className="w-4 h-4" />
+                      <span className="sr-only">Edit</span>
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => handleDelete(campaign)}
                       disabled={deleting}
-                      className="shadow-lg"
+                      className="shadow-lg h-8 w-8 p-0"
                     >
                       <Trash2 className="w-4 h-4" />
+                      <span className="sr-only">Delete</span>
                     </Button>
                   </div>
                 </div>
@@ -558,12 +560,12 @@ export default function CampaignsPage() {
 
               <CardContent className="p-5 space-y-3">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">
+                  <h3 className="text-lg font-bold text-slate-900 mb-1 truncate">
                     {campaign.name}
                   </h3>
                   <p className="text-sm text-slate-600 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5" />
-                    {getProjectName(campaign.project_id)}
+                    <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{getProjectName(campaign.project_id)}</span>
                   </p>
                 </div>
 
@@ -583,7 +585,7 @@ export default function CampaignsPage() {
                       <Calendar className="w-3.5 h-3.5" />
                       Duration
                     </span>
-                    <span className="text-slate-900 font-medium">
+                    <span className="text-slate-900 font-medium text-right">
                       {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                       {' - '}
                       {campaign.end_date ? new Date(campaign.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
@@ -625,12 +627,12 @@ export default function CampaignsPage() {
                     {starting && startingCampaignId === campaign.id ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Calling Leads...
+                        Calling...
                       </>
                     ) : campaign.status === 'completed' ? (
                       <>
                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Campaign Completed
+                        Completed
                       </>
                     ) : (
                       <>

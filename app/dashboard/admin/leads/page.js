@@ -402,14 +402,14 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Leads</h1>
-          <p className="text-gray-500 mt-1">Manage your leads and contacts</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Leads</h1>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Manage your leads and contacts</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <div className="relative">
             <input
               type="file"
@@ -438,13 +438,13 @@ export default function LeadsPage() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                 <Plus className="w-4 h-4" />
                 Add Lead
               </Button>
             </DialogTrigger>
 
-            <DialogContent>
+            <DialogContent className="max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>{editingLead ? 'Edit Lead' : 'Create New Lead'}</DialogTitle>
                 <DialogDescription>
@@ -544,7 +544,7 @@ export default function LeadsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -557,7 +557,7 @@ export default function LeadsPage() {
           </div>
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full md:w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -606,101 +606,102 @@ export default function LeadsPage() {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Call Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leads.map(lead => (
-                  <React.Fragment key={lead.id}>
-                    <TableRow>
-                      <TableCell className="font-medium">{lead.name}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1 text-sm">
-                          {lead.email && (
-                            <div className="flex items-center gap-1 text-gray-600">
-                              <Mail className="w-3 h-3" />
-                              {lead.email}
-                            </div>
-                          )}
-                          {lead.phone && (
-                            <div className="flex items-center gap-1 text-gray-600">
-                              <Phone className="w-3 h-3" />
-                              {lead.phone}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {lead.project?.name || <span className="text-gray-400">-</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusBadgeColor(lead.status)}>
-                          {lead.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getCallStatusBadgeColor(lead.call_status)}>
-                          {formatCallStatus(lead.call_status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        {new Date(lead.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {lead.call_log_id && (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Call Status</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leads.map(lead => (
+                    <React.Fragment key={lead.id}>
+                      <TableRow>
+                        <TableCell className="font-medium">{lead.name}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1 text-sm">
+                            {lead.email && (
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <Mail className="w-3 h-3" />
+                                {lead.email}
+                              </div>
+                            )}
+                            {lead.phone && (
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <Phone className="w-3 h-3" />
+                                {lead.phone}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {lead.project?.name || <span className="text-gray-400">-</span>}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusBadgeColor(lead.status)}>
+                            {lead.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getCallStatusBadgeColor(lead.call_status)}>
+                            {formatCallStatus(lead.call_status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {new Date(lead.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {lead.call_log_id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleRow(lead.id)}
+                                title="Listen to Recording"
+                              >
+                                <Volume2 className="w-4 h-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => toggleRow(lead.id)}
-                              title="Listen to Recording"
+                              onClick={() => handleEdit(lead)}
                             >
-                              <Volume2 className="w-4 h-4" />
+                              <Edit className="w-4 h-4" />
                             </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(lead)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => {
-                              setLeadToDelete(lead)
-                              setDeleteDialogOpen(true)
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {expandedRows.has(lead.id) && lead.call_log_id && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="bg-gray-50 p-4">
-                          <CallRecordingPlayer callLogId={lead.call_log_id} />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => {
+                                setLeadToDelete(lead)
+                                setDeleteDialogOpen(true)
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    )}
-                  </React.Fragment>
-                ))}
-              </TableBody>
-            </Table>
+                      {expandedRows.has(lead.id) && lead.call_log_id && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-gray-50 p-4">
+                            <CallRecordingPlayer callLogId={lead.call_log_id} />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </TableBody>
+              </Table>
           )}
-        </CardContent>
+            </CardContent>
       </Card>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
