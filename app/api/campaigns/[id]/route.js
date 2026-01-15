@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/permissions'
 
 function handleCORS(response) {
@@ -15,7 +16,13 @@ export async function GET(request, { params }) {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
 
-        const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
+        const admin = createAdminClient()
+        const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', user.id).single()
+
+        if (!profile) {
+            return handleCORS(NextResponse.json({ error: 'Profile not found' }, { status: 404 }))
+        }
+
         const { id } = await params
 
         const { data, error } = await supabase
@@ -42,7 +49,13 @@ export async function PUT(request, { params }) {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
 
-        const { data: profile } = await supabase.from('profiles').select('organization_id, full_name').eq('id', user.id).single()
+        const admin = createAdminClient()
+        const { data: profile } = await admin.from('profiles').select('organization_id, full_name').eq('id', user.id).single()
+
+        if (!profile) {
+            return handleCORS(NextResponse.json({ error: 'Profile not found' }, { status: 404 }))
+        }
+
         const { id } = await params
 
         // Verify campaign belongs to user's org
@@ -101,7 +114,13 @@ export async function DELETE(request, { params }) {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
 
-        const { data: profile } = await supabase.from('profiles').select('organization_id, full_name').eq('id', user.id).single()
+        const admin = createAdminClient()
+        const { data: profile } = await admin.from('profiles').select('organization_id, full_name').eq('id', user.id).single()
+
+        if (!profile) {
+            return handleCORS(NextResponse.json({ error: 'Profile not found' }, { status: 404 }))
+        }
+
         const { id } = await params
 
         // Verify campaign belongs to user's org

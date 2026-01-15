@@ -9,7 +9,7 @@ export async function GET(request, { params }) {
         if (auth instanceof NextResponse) return auth
 
         const { profile } = auth
-        const { id } = params
+        const { id } = await params
         const admin = createAdminClient()
 
         // Get user details
@@ -38,7 +38,7 @@ export async function PUT(request, { params }) {
         if (auth instanceof NextResponse) return auth
 
         const { profile } = auth
-        const { id } = params
+        const { id } = await params
         const body = await request.json()
         const admin = createAdminClient()
 
@@ -99,7 +99,7 @@ export async function DELETE(request, { params }) {
         if (auth instanceof NextResponse) return auth
 
         const { profile } = auth
-        const { id } = params
+        const { id } = await params
         const admin = createAdminClient()
 
         // Verify user belongs to same organization

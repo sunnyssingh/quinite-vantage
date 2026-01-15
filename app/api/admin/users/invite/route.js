@@ -10,12 +10,12 @@ export async function POST(request) {
 
         const { profile } = auth
         const body = await request.json()
-        const { email, fullName, role = 'employee' } = body
+        const { email, phone, fullName, role = 'employee' } = body
 
         // Validate input
-        if (!email || !fullName) {
+        if (!email || !fullName || !phone) {
             return NextResponse.json(
-                { error: 'Email and full name are required' },
+                { error: 'Email, phone, and full name are required' },
                 { status: 400 }
             )
         }
@@ -35,6 +35,8 @@ export async function POST(request) {
         const { data: newUser, error: createError } = await admin.auth.admin.createUser({
             email,
             email_confirm: true, // Auto-confirm email
+            phone: phone || undefined,
+            phone_confirm: !!phone,
             user_metadata: {
                 full_name: fullName
             }
@@ -54,7 +56,8 @@ export async function POST(request) {
             .update({
                 organization_id: profile.organization_id,
                 role: role,
-                full_name: fullName
+                full_name: fullName,
+                phone: phone || null
             })
             .eq('id', newUser.user.id)
 
@@ -73,12 +76,13 @@ export async function POST(request) {
             organization_id: profile.organization_id,
             user_id: profile.id,
             user_name: profile.full_name,
-            action: 'user.invited',
+            action: 'user.created',
             entity_type: 'user',
             entity_id: newUser.user.id,
             metadata: {
-                invited_email: email,
-                invited_role: role
+                email,
+                phone,
+                role
             }
         })
 

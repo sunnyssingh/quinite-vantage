@@ -1,5 +1,5 @@
 import './globals.css'
-import { Toaster } from 'sonner'
+import { Toaster } from '@/components/ui/toaster'
 
 export const metadata = {
   title: {
@@ -52,7 +52,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         {children}
-        <Toaster position="top-center" richColors />
+        <Toaster />
       </body>
     </html>
   )

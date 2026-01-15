@@ -6,7 +6,8 @@ import { toast } from 'sonner'
 export default function UsersPage() {
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
-    const [showInviteModal, setShowInviteModal] = useState(false)
+    const [showModal, setShowModal] = useState(false)
+    const [editingUser, setEditingUser] = useState(null)
 
     useEffect(() => {
         fetchUsers()
@@ -86,6 +87,11 @@ export default function UsersPage() {
         )
     }
 
+    function openEditModal(user) {
+        setEditingUser(user)
+        setShowModal(true)
+    }
+
     return (
         <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
             {/* Header */}
@@ -95,10 +101,13 @@ export default function UsersPage() {
                     <p className="text-gray-600 mt-1 text-sm md:text-base">Manage your team members</p>
                 </div>
                 <button
-                    onClick={() => setShowInviteModal(true)}
+                    onClick={() => {
+                        setEditingUser(null)
+                        setShowModal(true)
+                    }}
                     className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                    + Invite User
+                    + Add New User
                 </button>
             </div>
 
@@ -112,6 +121,9 @@ export default function UsersPage() {
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Email
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Phone
                             </th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Role
@@ -136,6 +148,9 @@ export default function UsersPage() {
                                     <div className="text-sm text-gray-600">{user.email}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
+                                    <div className="text-sm text-gray-600">{user.phone || 'N/A'}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
                                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
                                         {user.role?.replace('_', ' ')}
                                     </span>
@@ -145,8 +160,14 @@ export default function UsersPage() {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <button
+                                        onClick={() => openEditModal(user)}
+                                        className="text-blue-600 hover:text-blue-900 mr-4"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
                                         onClick={() => handleDeleteUser(user.id)}
-                                        className="text-red-600 hover:text-red-900 ml-4"
+                                        className="text-red-600 hover:text-red-900"
                                     >
                                         Delete
                                     </button>
@@ -163,12 +184,17 @@ export default function UsersPage() {
                 )}
             </div>
 
-            {/* Invite Modal */}
-            {showInviteModal && (
-                <InviteUserModal
-                    onClose={() => setShowInviteModal(false)}
+            {/* User Modal */}
+            {showModal && (
+                <UserModal
+                    user={editingUser}
+                    onClose={() => {
+                        setShowModal(false)
+                        setEditingUser(null)
+                    }}
                     onSuccess={() => {
-                        setShowInviteModal(false)
+                        setShowModal(false)
+                        setEditingUser(null)
                         fetchUsers()
                     }}
                 />
@@ -177,12 +203,14 @@ export default function UsersPage() {
     )
 }
 
-function InviteUserModal({ onClose, onSuccess }) {
+function UserModal({ user, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false)
+
     const [formData, setFormData] = useState({
-        email: '',
-        fullName: '',
-        role: 'employee'
+        email: user?.email || '',
+        phone: user?.phone || '',
+        fullName: user?.full_name || '',
+        role: user?.role || 'employee'
     })
 
     async function handleSubmit(e) {
@@ -190,8 +218,11 @@ function InviteUserModal({ onClose, onSuccess }) {
         setLoading(true)
 
         try {
-            const response = await fetch('/api/admin/users/invite', {
-                method: 'POST',
+            const url = user ? `/api/admin/users/${user.id}` : '/api/admin/users/invite'
+            const method = user ? 'PUT' : 'POST'
+
+            const response = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             })
@@ -199,10 +230,10 @@ function InviteUserModal({ onClose, onSuccess }) {
             const data = await response.json()
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to invite user')
+                throw new Error(data.error || 'Operation failed')
             }
 
-            toast.success('User invited successfully!')
+            toast.success(user ? 'User updated successfully!' : 'User added successfully!')
             onSuccess()
         } catch (error) {
             toast.error(error.message)
@@ -215,7 +246,7 @@ function InviteUserModal({ onClose, onSuccess }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Invite New User</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{user ? 'Edit User' : 'Add New User'}</h2>
                     <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-gray-600"
@@ -236,6 +267,20 @@ function InviteUserModal({ onClose, onSuccess }) {
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="user@example.com"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Phone Number *
+                        </label>
+                        <input
+                            type="tel"
+                            required
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="+91 98765 43210"
                         />
                     </div>
 
@@ -281,7 +326,7 @@ function InviteUserModal({ onClose, onSuccess }) {
                             disabled={loading}
                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {loading ? 'Inviting...' : 'Send Invitation'}
+                            {loading ? 'Saving...' : (user ? 'Update User' : 'Add User')}
                         </button>
                     </div>
                 </form>
