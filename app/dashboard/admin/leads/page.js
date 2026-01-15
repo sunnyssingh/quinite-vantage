@@ -402,7 +402,7 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -700,8 +700,9 @@ export default function LeadsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
           )}
-            </CardContent>
+        </CardContent>
       </Card>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

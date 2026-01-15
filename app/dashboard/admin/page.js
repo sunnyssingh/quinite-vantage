@@ -99,12 +99,12 @@ export default function AdminDashboardPage() {
         <div className="p-8 bg-gray-50 min-h-screen">
             {/* Page Header */}
             <div className="mb-8">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-                        <p className="text-gray-600 mt-1">Welcome back, here's what's happening with your organization</p>
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+                        <p className="text-gray-600 mt-1 text-sm md:text-base">Welcome back, here's what's happening with your organization</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                         <Button variant="outline" size="sm">
                             <Download className="w-4 h-4 mr-2" />
                             Export

@@ -87,7 +87,7 @@ export default function UsersPage() {
     }
 
     return (
-        <div className="p-8">
+        <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>

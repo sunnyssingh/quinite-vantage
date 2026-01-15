@@ -197,21 +197,22 @@ export default function AuditPage() {
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 via-purple-50/20 to-slate-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl">
-              <FileText className="w-7 h-7 text-white" />
+              <FileText className="w-6 h-6 md:w-7 md:h-7 text-white" />
             </div>
             Audit Logs
           </h1>
-          <p className="text-gray-500 mt-1">Track all activities and changes in your organization</p>
+          <p className="text-gray-500 mt-1 text-sm md:text-base">Track all activities and changes in your organization</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
-            className="border-2"
+            className="border-2 text-sm"
           >
             <Filter className="w-4 h-4 mr-2" />
             {showFilters ? 'Hide Filters' : 'Show Filters'}

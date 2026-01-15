@@ -344,7 +344,7 @@ export default function CampaignsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50 min-h-screen">
+    <div className="p-4 md:p-6 space-y-6 bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50 min-h-screen">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
