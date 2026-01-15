@@ -47,6 +47,14 @@ const nextConfig = {
       },
     ]
   },
+  async rewrites() {
+    return [
+      {
+        source: '/webhook',
+        destination: '/api/webhooks/plivo/answer',
+      },
+    ]
+  },
 };
 
 export default nextConfig;
