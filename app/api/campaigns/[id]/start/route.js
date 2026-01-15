@@ -92,7 +92,7 @@ export async function POST(request, { params }) {
 
         // Parse batch size from query params (Default: 5 calls at a time to prevent overload)
         const { searchParams } = new URL(request.url)
-        const batchSize = parseInt(searchParams.get('batchSize') || '5')
+        const batchSize = parseInt(searchParams.get('batchSize') || '50')
 
         console.log(`🚀 Starting campaign batch: ${batchSize} leads`)
 
@@ -170,26 +170,34 @@ export async function POST(request, { params }) {
                     const callSid = await makeCall(lead.phone, lead.id, campaign.id)
 
                     // Create call log
-                    const { data: callLog } = await adminClient
+                    const { data: callLog, error: callLogError } = await adminClient
                         .from('call_logs')
                         .insert({
                             campaign_id: campaign.id,
                             lead_id: lead.id,
+                            organization_id: profile.organization_id,
+                            project_id: campaign.project_id,
                             call_sid: callSid,
                             call_status: 'initiated',
-                            call_timestamp: new Date().toISOString(),
                             transferred: false,
                             notes: 'Real AI call initiated'
                         })
                         .select()
                         .single()
 
+                    if (callLogError) {
+                        console.error('❌ [Campaign Start] Failed to insert call_log for lead:', lead.id, callLogError)
+                    } else if (callLog) {
+                        console.log('✅ [Campaign Start] Call log created successfully:', callLog.id)
+                    }
+
                     // Update lead
                     await adminClient
                         .from('leads')
                         .update({
                             call_status: 'calling',
-                            call_date: new Date().toISOString()
+                            call_date: new Date().toISOString(),
+                            call_log_id: callLog?.id // Link the log
                         })
                         .eq('id', lead.id)
 
@@ -202,8 +210,42 @@ export async function POST(request, { params }) {
                         callLogId: callLog?.id
                     })
 
+
                     // Small delay between calls (2 seconds)
                     await new Promise(resolve => setTimeout(resolve, 2000))
+
+                    // CHECK FOR CANCELLATION
+                    // We check status every call to be responsive
+                    const { data: currentStatus } = await adminClient
+                        .from('campaigns')
+                        .select('status')
+                        .eq('id', campaign.id)
+                        .single()
+
+                    if (currentStatus?.status === 'cancelled') {
+                        console.log('🛑 Campaign cancelled by user. Stopping loop.')
+                        // Update what we have done so far
+                        await adminClient
+                            .from('campaigns')
+                            .update({
+                                total_calls: totalCalls,
+                                transferred_calls: transferredCalls, // updated by webhooks usually
+                                // status is already cancelled
+                            })
+                            .eq('id', campaign.id)
+
+                        return corsJSON({
+                            success: true,
+                            status: 'cancelled',
+                            summary: {
+                                totalLeads: leads.length,
+                                callsInitiated: totalCalls,
+                                failedCalls,
+                                message: `Campaign cancelled. Initiated ${totalCalls} calls.`,
+                                callLogs
+                            }
+                        })
+                    }
 
                 } catch (error) {
                     console.error(`Failed to call ${lead.name}:`, error)
@@ -317,7 +359,6 @@ export async function POST(request, { params }) {
                     lead_id: lead.id,
                     call_status: selectedOutcome.status,
                     transferred: selectedOutcome.transferred,
-                    call_timestamp: new Date().toISOString(),
                     duration,
                     notes: selectedOutcome.transferred
                         ? `Simulated: Lead qualified and transferred to ${transferredEmployee?.full_name || 'employee'}`

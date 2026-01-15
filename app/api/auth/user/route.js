@@ -26,13 +26,7 @@ export async function GET() {
       console.error('Profile fetch error:', profileError)
     }
 
-    // DEBUG LOG
-    console.log('[API] /api/auth/user returning:', {
-      email: user.email,
-      orgId: profile?.organization_id,
-      orgStatus: profile?.organization?.onboarding_status,
-      role: profile?.role,
-    })
+
 
     return corsJSON({
       user: {

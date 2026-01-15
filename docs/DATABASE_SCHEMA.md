@@ -110,6 +110,32 @@ Tracks all AI agent calls made during campaigns.
 
 ---
 
+### 4. `websocket_servers`
+
+Manages available WebSocket servers for AI voice streaming.
+
+#### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | UUID | NO | uuid_generate_v4() | Primary key |
+| `name` | TEXT | NO | - | Server identifier |
+| `url` | TEXT | NO | - | wss:// address |
+| `is_active` | BOOLEAN | NO | TRUE | Availability flag |
+| `status` | TEXT | NO | 'pending' | 'verified'/'failed' |
+| `last_verified_at` | TIMESTAMPTZ | YES | NULL | Last check time |
+| `priority` | INTEGER | NO | 0 | Load balancing weight |
+
+#### Constraints
+
+- **Status Check**: `status IN ('pending', 'verified', 'failed')`
+
+#### Indexes
+
+- `idx_websocket_servers_active` - (is_active, priority)
+
+---
+
 ### 3. `campaigns` (Analytics Columns)
 
 Additional columns added to existing campaigns table.

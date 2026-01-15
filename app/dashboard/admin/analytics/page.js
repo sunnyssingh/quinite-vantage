@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
           <p className="text-gray-500 mt-1">Track your performance and conversion metrics</p>
@@ -149,7 +149,7 @@ export default function AnalyticsPage() {
         <Button
           variant="outline"
           onClick={handleRefresh}
-          className="gap-2"
+          className="gap-2 w-full md:w-auto"
         >
           <Activity className="h-4 w-4" />
           Refresh Data
@@ -300,40 +300,42 @@ export default function AnalyticsPage() {
               <p className="text-sm mt-2">Create campaigns to see performance metrics</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total Calls</TableHead>
-                  <TableHead className="text-right">Transferred</TableHead>
-                  <TableHead className="text-right">Conversion Rate</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {campaigns.map(campaign => (
-                  <TableRow key={campaign.id}>
-                    <TableCell className="font-medium">{campaign.name}</TableCell>
-                    <TableCell>
-                      {campaign.project?.name || <span className="text-gray-400">-</span>}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={getStatusBadgeColor(campaign.status)}>
-                        {campaign.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{campaign.total_calls || 0}</TableCell>
-                    <TableCell className="text-right">{campaign.transferred_calls || 0}</TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-semibold text-green-600">
-                        {campaign.conversion_rate || 0}%
-                      </span>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Campaign</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Total Calls</TableHead>
+                    <TableHead className="text-right">Transferred</TableHead>
+                    <TableHead className="text-right">Conversion Rate</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {campaigns.map(campaign => (
+                    <TableRow key={campaign.id}>
+                      <TableCell className="font-medium">{campaign.name}</TableCell>
+                      <TableCell>
+                        {campaign.project?.name || <span className="text-gray-400">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadgeColor(campaign.status)}>
+                          {campaign.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{campaign.total_calls || 0}</TableCell>
+                      <TableCell className="text-right">{campaign.transferred_calls || 0}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-semibold text-green-600">
+                          {campaign.conversion_rate || 0}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

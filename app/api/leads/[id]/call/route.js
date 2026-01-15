@@ -90,7 +90,6 @@ export async function POST(request, { params }) {
                 lead_id: lead.id,
                 call_sid: callSid,
                 call_status: 'initiated',
-                call_timestamp: new Date().toISOString(),
                 transferred: false,
                 notes: 'Real AI call initiated'
             })

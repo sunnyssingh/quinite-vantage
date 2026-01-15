@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building2, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
-import { toast } from 'sonner'
+import { useToast } from '@/hooks/use-toast'
 
 export default function AuthPage() {
   const router = useRouter()
@@ -22,6 +22,7 @@ export default function AuthPage() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('signin')
+  const { toast } = useToast()
 
   // Check if user is already logged in
   useEffect(() => {
@@ -30,7 +31,10 @@ export default function AuthPage() {
       if (session) {
         // User is logged in - show option to continue or sign out
         setLoading(false)
-        toast.success(`Welcome back! You're logged in as ${session.user.email}`)
+        toast({
+          title: 'Welcome back!',
+          description: `You're logged in as ${session.user.email}`
+        })
       } else {
         setLoading(false)
       }
@@ -43,11 +47,19 @@ export default function AuthPage() {
     try {
       await fetch('/api/auth/signout', { method: 'POST' })
       await supabase.auth.signOut()
-      toast.success('Signed out successfully')
+      await supabase.auth.signOut()
+      toast({
+        title: 'Success',
+        description: 'Signed out successfully'
+      })
       // Reload the page to show signin/signup forms
       window.location.reload()
     } catch (err) {
-      toast.error('Failed to sign out')
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to sign out'
+      })
     } finally {
       setSubmitting(false)
     }
@@ -65,12 +77,9 @@ export default function AuthPage() {
 
     try {
       // Step 1: Create auth account
-      console.log('🚀 [Signup] Starting signup process...')
-      console.log('📧 [Signup] Email:', email)
-      console.log('👤 [Signup] Full Name:', fullName)
-      console.log('🏢 [Signup] Company:', companyName)
 
-      toast.loading('Creating your account...', { id: 'signup' })
+
+
 
       const signupResponse = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -79,28 +88,29 @@ export default function AuthPage() {
       })
 
       const signupData = await signupResponse.json()
-      console.log('📋 [Signup] Response:', signupData)
+
 
       if (!signupResponse.ok) {
-        console.error('❌ [Signup] Failed:', signupData)
-        toast.dismiss('signup')
+
+
         throw new Error(signupData.error || 'Signup failed')
       }
 
       // Check if email confirmation is needed
       if (signupData.needsConfirmation) {
-        toast.success(
-          'Account created! Please check your email to confirm before signing in.',
-          { id: 'signup', duration: 6000 }
-        )
+        toast({
+          title: 'Account created!',
+          description: 'Please check your email to confirm before signing in.',
+          duration: 6000
+        })
         setActiveTab('signin')
         setSubmitting(false)
         return
       }
 
       // If no confirmation needed, proceed with auto-signin and onboarding
-      console.log('✅ [Signup] Account created, proceeding to signin...')
-      toast.loading('Logging in to complete onboarding...', { id: 'signup' })
+
+      // toast.loading('Logging in to complete onboarding...', { id: 'signup' }) - removed as Shadcn toast doesn't support persistent loading with ID directly like sonner
 
       // Step 2: Sign in to get session
       const signinResponse = await fetch('/api/auth/signin', {
@@ -110,20 +120,19 @@ export default function AuthPage() {
       })
 
       const signinData = await signinResponse.json()
-      console.log('📋 [Signin] Response:', signinData)
+
 
       if (!signinResponse.ok) {
-        console.error('❌ [Signin] Failed:', signinData)
-        toast.dismiss('signup')
+
+
         throw new Error(signinData.error || 'Login after signup failed')
       }
 
-      console.log('✅ [Signin] Success, proceeding to onboarding...')
+
 
       // Step 3: Run onboarding to create org and setup profile
-      toast.loading('Setting up your organization...', { id: 'signup' })
-      console.log('📝 [Onboard] Starting onboarding process...')
-      console.log('📝 [Onboard] Payload:', { fullName, organizationName: companyName || 'My Organization' })
+
+
 
       const onboardResponse = await fetch('/api/onboard', {
         method: 'POST',
@@ -132,31 +141,36 @@ export default function AuthPage() {
       })
 
       const onboardData = await onboardResponse.json()
-      console.log('📋 [Onboard] Response:', onboardData)
-      console.log('📋 [Onboard] Status:', onboardResponse.status)
+
 
       if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
-        console.error('❌ [Onboard] Failed:', onboardData.error)
-        console.error('❌ [Onboard] Full response:', onboardData)
-        toast.error(`Onboarding failed: ${onboardData.error}. Setup incomplete. Try logging in again.`, { id: 'signup' })
+
+        toast({
+          variant: 'destructive',
+          title: 'Onboarding failed',
+          description: `${onboardData.error}. Setup incomplete. Try logging in again.`
+        })
         setActiveTab('signin')
         setSubmitting(false)
         return
       }
 
-      console.log('✅ [Onboard] Success! Organization created.')
-      console.log('📊 [Onboard] Organization ID:', onboardData.organization?.id)
-      console.log('📊 [Onboard] Onboarding Status:', onboardData.onboarding_status)
+
 
       // Success! Redirect to onboarding wizard
-      console.log('✅ [Signup] Account creation complete!')
-      console.log('🔄 [Signup] Redirecting to onboarding form...')
-      toast.success('Account created! Complete your onboarding to get started.', { id: 'signup' })
+
+      toast({
+        title: 'Success',
+        description: 'Account created! Complete your onboarding to get started.'
+      })
       setTimeout(() => router.push('/onboarding'), 1500)
     } catch (err) {
-      console.error('❌ [Signup] Error:', err)
-      console.error('❌ [Signup] Error stack:', err.stack)
-      toast.error(`Signup failed: ${err.message}`, { id: 'signup' })
+
+      toast({
+        variant: 'destructive',
+        title: 'Signup failed',
+        description: err.message
+      })
     } finally {
       setSubmitting(false)
     }
@@ -171,10 +185,9 @@ export default function AuthPage() {
     const password = formData.get('password')
 
     try {
-      console.log('🔐 [Signin] Starting login process...')
-      console.log('📧 [Signin] Email:', email)
 
-      toast.loading('Logging in...', { id: 'signin' })
+
+
 
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -183,30 +196,27 @@ export default function AuthPage() {
       })
 
       const data = await response.json()
-      console.log('📋 [Signin] Response:', data)
-      console.log('📋 [Signin] Status:', response.status)
+
 
       if (!response.ok) {
-        console.error('❌ [Signin] Failed:', data)
-        toast.dismiss('signin')
+
+
         throw new Error(data.error || 'Login failed')
       }
 
-      console.log('✅ [Signin] Success!')
-      console.log('📊 [Signin] Needs Onboarding:', data.needsOnboarding)
+
 
       // Check if user needs to complete onboarding
       if (data.needsOnboarding) {
-        console.log('⚠️ [Signin] User needs onboarding')
-        console.log('📝 [Signin] Triggering onboarding process...')
 
-        toast.loading('Setting up your organization...', { id: 'signin' })
+
+        // toast.loading('Setting up your organization...', { id: 'signin' }) - Shadcn toast replacement
 
         // Get user data from signin response
         const fullName = data.user?.user_metadata?.full_name || data.user?.email?.split('@')[0]
         const companyName = data.user?.user_metadata?.company_name || 'My Organization'
 
-        console.log('📝 [Signin] Onboard Payload:', { fullName, organizationName: companyName })
+
 
         // Call onboarding API to create organization
         const onboardResponse = await fetch('/api/onboard', {
@@ -216,26 +226,28 @@ export default function AuthPage() {
         })
 
         const onboardData = await onboardResponse.json()
-        console.log('📋 [Signin] Onboard Response:', onboardData)
-        console.log('📋 [Signin] Onboard Status:', onboardResponse.status)
+
 
         if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
-          console.error('❌ [Signin] Onboarding failed:', onboardData.error)
-          toast.error(`Setup failed: ${onboardData.error}. Please try again.`, { id: 'signin' })
+
+          toast({
+            variant: 'destructive',
+            title: 'Setup failed',
+            description: `${onboardData.error}. Please try again.`
+          })
           setSubmitting(false)
           return
         }
 
-        console.log('✅ [Signin] Organization created!')
-        console.log('📊 [Signin] Organization ID:', onboardData.organization?.id)
-        console.log('🔄 [Signin] Redirecting to onboarding form...')
 
-        toast.success('Welcome! Complete your onboarding to get started.', { id: 'signin' })
+
+        toast({
+          title: 'Welcome!',
+          description: 'Complete your onboarding to get started.'
+        })
         setTimeout(() => router.push('/onboarding'), 1000)
       } else {
-        console.log('✅ [Signin] User already onboarded')
-        console.log('🎭 [Signin] User role:', data.user?.role || 'unknown')
-        console.log('🔄 [Signin] Redirecting to dashboard...')
+
 
         // Role-based redirect
         const role = data.user?.role || 'employee'
@@ -247,15 +259,21 @@ export default function AuthPage() {
         }
 
         const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
-        console.log('📍 [Signin] Dashboard route:', dashboardRoute)
 
-        toast.success('Welcome back! Redirecting to dashboard...', { id: 'signin' })
+
+        toast({
+          title: 'Welcome back!',
+          description: 'Redirecting to dashboard...'
+        })
         setTimeout(() => router.push(dashboardRoute), 1000)
       }
     } catch (err) {
-      console.error('❌ [Signin] Error:', err)
-      console.error('❌ [Signin] Error message:', err.message)
-      toast.error(err.message, { id: 'signin' })
+
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: err.message
+      })
     } finally {
       setSubmitting(false)
     }

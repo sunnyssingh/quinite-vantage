@@ -42,11 +42,7 @@ export async function POST(request) {
     const needsOnboarding = !profile?.organization_id ||
       profile?.organization?.onboarding_status === 'pending'
 
-    console.log('[Signin] User:', data.user.email)
-    console.log('[Signin] Org ID:', profile?.organization_id)
-    console.log('[Signin] Onboarding status:', profile?.organization?.onboarding_status)
-    console.log('[Signin] Needs onboarding:', needsOnboarding)
-    console.log('[Signin] User role:', profile?.role)
+
 
     return corsJSON({
       message: 'Login successful',
@@ -58,7 +54,7 @@ export async function POST(request) {
       needsOnboarding
     })
   } catch (e) {
-    console.error('❌ [Signin] Error:', e)
+
     return corsJSON({ error: e.message }, { status: 500 })
   }
 }

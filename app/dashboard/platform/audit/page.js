@@ -38,15 +38,15 @@ export default function PlatformAuditPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Platform Audit Logs</h1>
           <p className="text-gray-500 mt-1">System-wide activity tracking</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Show:</span>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <span className="text-sm text-gray-600 whitespace-nowrap">Show:</span>
           <Select value={limit} onValueChange={setLimit}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-full md:w-[120px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

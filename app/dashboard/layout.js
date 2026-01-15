@@ -26,38 +26,28 @@ export default function DashboardLayout({ children }) {
         return
       }
 
-      console.log('✅ [Dashboard] User authenticated:', user.email)
+
 
       // 2. Get user profile via API (bypasses RLS)
       const profileResponse = await fetch('/api/auth/user')
       const profileData = await profileResponse.json()
 
       if (!profileResponse.ok || !profileData.user?.profile) {
-        console.error('❌ [Dashboard] Profile fetch failed:', profileData.error)
         router.push('/')
         return
       }
 
       const profile = profileData.user.profile
 
-      console.log('📊 [Dashboard] Profile loaded:', {
-        role: profile.role,
-        orgId: profile.organization_id,
-        onboardingStatus: profile.organization?.onboarding_status
-      })
-      console.log('🔍 [Dashboard] Full profile data:', profile)
-      console.log('🔍 [Dashboard] Organization data:', profile.organization)
 
-      // 3. Check onboarding status
-      if (!profile.organization_id || profile.organization?.onboarding_status === 'pending') {
-        console.log('⚠️ [Dashboard] Onboarding incomplete, redirecting')
-        console.log('📊 [Dashboard] Org ID:', profile.organization_id)
-        console.log('📊 [Dashboard] Status:', profile.organization?.onboarding_status)
+
+      // 3. Check onboarding status (skip for platform admins)
+      if (profile.role !== 'platform_admin' && (!profile.organization_id || profile.organization?.onboarding_status === 'pending')) {
         router.push('/onboarding')
         return
       }
 
-      console.log('✅ [Dashboard] Onboarding complete, proceeding...')
+
 
       // 4. Role-based dashboard redirect
       const roleRoutes = {
@@ -71,16 +61,15 @@ export default function DashboardLayout({ children }) {
 
       // Only redirect if not already on correct dashboard
       if (!pathname.startsWith(targetRoute)) {
-        console.log(`🔄 [Dashboard] Redirecting ${profile.role} to ${targetRoute}`)
         router.push(targetRoute)
         return
       }
 
-      console.log('✅ [Dashboard] User on correct dashboard')
+
       setLoading(false)
 
     } catch (error) {
-      console.error('❌ [Dashboard] Error:', error)
+
       router.push('/')
     }
   }

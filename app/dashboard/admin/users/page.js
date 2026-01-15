@@ -1,13 +1,17 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { toast } from 'sonner'
+import { useToast } from '@/hooks/use-toast'
+import CredentialsModal from '@/components/dashboard/CredentialsModal'
 
 export default function UsersPage() {
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
+    const [showCredentials, setShowCredentials] = useState(false)
+    const [newCredentials, setNewCredentials] = useState(null)
     const [editingUser, setEditingUser] = useState(null)
+    const { toast } = useToast()
 
     useEffect(() => {
         fetchUsers()
@@ -39,8 +43,12 @@ export default function UsersPage() {
 
             setUsers(data.users || [])
         } catch (error) {
-            console.error('Error fetching users:', error)
-            toast.error('Failed to load users')
+
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Failed to load users'
+            })
         } finally {
             setLoading(false)
         }
@@ -59,10 +67,17 @@ export default function UsersPage() {
                 throw new Error(data.error || 'Failed to delete user')
             }
 
-            toast.success('User deleted successfully')
+            toast({
+                title: 'Success',
+                description: 'User deleted successfully'
+            })
             fetchUsers()
         } catch (error) {
-            toast.error(error.message)
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error.message
+            })
         }
     }
 
@@ -112,7 +127,7 @@ export default function UsersPage() {
             </div>
 
             {/* Users Table */}
-            <div className="bg-white rounded-lg shadow overflow-x-auto">
+            <div className="bg-white rounded-lg shadow overflow-x-auto max-w-[calc(100vw-2rem)] md:max-w-full">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -192,19 +207,31 @@ export default function UsersPage() {
                         setShowModal(false)
                         setEditingUser(null)
                     }}
-                    onSuccess={() => {
+                    onSuccess={(credentials) => {
                         setShowModal(false)
                         setEditingUser(null)
                         fetchUsers()
+                        if (credentials?.tempPassword) {
+                            setNewCredentials(credentials)
+                            setShowCredentials(true)
+                        }
                     }}
                 />
             )}
+
+            {/* Credentials Modal */}
+            <CredentialsModal
+                open={showCredentials}
+                onOpenChange={setShowCredentials}
+                credentials={newCredentials}
+            />
         </div>
     )
 }
 
 function UserModal({ user, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false)
+    const { toast } = useToast()
 
     const [formData, setFormData] = useState({
         email: user?.email || '',
@@ -233,10 +260,17 @@ function UserModal({ user, onClose, onSuccess }) {
                 throw new Error(data.error || 'Operation failed')
             }
 
-            toast.success(user ? 'User updated successfully!' : 'User added successfully!')
-            onSuccess()
+            toast({
+                title: 'Success',
+                description: user ? 'User updated successfully!' : 'User added successfully!'
+            })
+            onSuccess(data.user)
         } catch (error) {
-            toast.error(error.message)
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: error.message
+            })
         } finally {
             setLoading(false)
         }

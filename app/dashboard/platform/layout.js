@@ -47,7 +47,7 @@ export default function PlatformLayout({ children }) {
       }
 
       // CRITICAL: Verify Platform Admin access
-      if (!data.user.profile?.is_platform_admin) {
+      if (data.user.profile?.role !== 'platform_admin') {
         router.push('/dashboard') // Redirect org users to their dashboard
         return
       }
@@ -92,6 +92,7 @@ export default function PlatformLayout({ children }) {
     { icon: Shield, label: 'Dashboard', href: '/dashboard/platform/dashboard' },
     { icon: Building2, label: 'Organizations', href: '/dashboard/platform/organizations' },
     { icon: FileText, label: 'Audit Logs', href: '/dashboard/platform/audit' },
+    { icon: Users2, label: 'Profile', href: '/dashboard/platform/profile' },
   ]
 
   if (loading) {
@@ -154,8 +155,8 @@ export default function PlatformLayout({ children }) {
                     key={item.href}
                     variant={isActive ? 'secondary' : 'ghost'}
                     className={`w-full justify-start ${isActive
-                        ? 'bg-purple-700 text-white hover:bg-purple-600'
-                        : 'text-purple-100 hover:bg-purple-800 hover:text-white'
+                      ? 'bg-purple-700 text-white hover:bg-purple-600'
+                      : 'text-purple-100 hover:bg-purple-800 hover:text-white'
                       }`}
                     onClick={() => {
                       router.push(item.href)

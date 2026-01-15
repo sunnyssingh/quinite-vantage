@@ -56,7 +56,8 @@ export async function GET(request, { params }) {
         id,
         call_status,
         transferred,
-        call_timestamp,
+        transferred,
+        created_at,
         duration,
         notes,
         lead:leads (
@@ -67,7 +68,7 @@ export async function GET(request, { params }) {
         )
       `)
             .eq('campaign_id', id)
-            .order('call_timestamp', { ascending: false })
+            .order('created_at', { ascending: false })
 
         if (error) throw error
 

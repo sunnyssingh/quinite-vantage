@@ -135,13 +135,29 @@ export async function DELETE(request, { params }) {
             return handleCORS(NextResponse.json({ error: 'Campaign not found' }, { status: 404 }))
         }
 
+        // 1. Delete related call_logs first (Manual Cascade)
+        const { error: logsError } = await supabase
+            .from('call_logs')
+            .delete()
+            .eq('campaign_id', id)
+
+        if (logsError) {
+            console.error('❌ [Campaign DELETE] Failed to cleanup call_logs:', logsError)
+        } else {
+            console.log('✅ [Campaign DELETE] Cleaned up related call_logs')
+        }
+
+        // 2. Delete Campaign
         const { error } = await supabase
             .from('campaigns')
             .delete()
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
 
-        if (error) throw error
+        if (error) {
+            console.error('❌ [Campaign DELETE] Delete error:', error)
+            throw error
+        }
 
         try {
             await logAudit(supabase, user.id, profile.full_name || user.email, 'campaign.delete', 'campaign', id, {})

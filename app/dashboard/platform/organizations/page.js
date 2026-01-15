@@ -58,51 +58,53 @@ export default function PlatformOrganizationsPage() {
               <p className="text-sm mt-2">Organizations will appear here after signup</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>Onboarding</TableHead>
-                  <TableHead>Users</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {organizations.map(org => (
-                  <TableRow key={org.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-gray-400" />
-                        {org.name}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(org.onboarding_status)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Users className="w-4 h-4 text-gray-400" />
-                        {org._count || 0}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {new Date(org.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/platform/organizations/${org.id}`)}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Organization</TableHead>
+                    <TableHead>Onboarding</TableHead>
+                    <TableHead>Users</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {organizations.map(org => (
+                    <TableRow key={org.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-5 h-5 text-gray-400" />
+                          {org.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(org.onboarding_status)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          {org._count || 0}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {new Date(org.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/platform/organizations/${org.id}`)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

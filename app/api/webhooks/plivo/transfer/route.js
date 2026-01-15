@@ -24,30 +24,22 @@ export async function POST(request) {
                 .single();
 
             if (campaign?.organization_id) {
-                // 2. Find 'Employee' Role ID
-                const { data: role } = await supabase
-                    .from('roles')
-                    .select('id')
-                    .eq('name', 'Employee')
-                    .single();
+                // 2. Find an Employee Profile in this Org with a Phone Number
+                // User uses 'role' enum in profiles table, not a separate roles table
+                const { data: employee } = await supabase
+                    .from('profiles')
+                    .select('phone, full_name')
+                    .eq('organization_id', campaign.organization_id)
+                    .eq('role', 'employee')
+                    .not('phone', 'is', null) // Must have phone
+                    .limit(1)
+                    .maybeSingle();
 
-                if (role?.id) {
-                    // 3. Find an Employee Profile in this Org with a Phone Number
-                    const { data: employee } = await supabase
-                        .from('profiles')
-                        .select('phone, full_name')
-                        .eq('organization_id', campaign.organization_id)
-                        .eq('role_id', role.id)
-                        .not('phone', 'is', null) // Must have phone
-                        .limit(1)
-                        .maybeSingle();
-
-                    if (employee?.phone) {
-                        console.log(`✅ Found available employee: ${employee.full_name} (${employee.phone})`);
-                        transferToNumber = employee.phone;
-                    } else {
-                        console.log('⚠️ No employees with phone numbers found in this organization.');
-                    }
+                if (employee?.phone) {
+                    console.log(`✅ Found available employee: ${employee.full_name} (${employee.phone})`);
+                    transferToNumber = employee.phone;
+                } else {
+                    console.log('⚠️ No employees with phone numbers found in this organization.');
                 }
             }
         }
@@ -63,6 +55,18 @@ export async function POST(request) {
     }
 
     console.log(`📞 Final Transfer Target: ${transferToNumber}`);
+
+    // Update call_logs to mark as transferred
+    if (leadId && campaignId) {
+        await supabase
+            .from('call_logs')
+            .update({ call_status: 'transferred' })
+            .eq('lead_id', leadId)
+            .eq('campaign_id', campaignId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .select()
+    }
 
     // Generate Plivo XML for blind transfer
     const xml = `<?xml version="1.0" encoding="UTF-8"?>

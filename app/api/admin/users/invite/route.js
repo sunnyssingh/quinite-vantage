@@ -31,9 +31,13 @@ export async function POST(request) {
 
         const admin = createAdminClient()
 
+        // Generate a random 12-char password
+        const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4)
+
         // Create user in auth.users
         const { data: newUser, error: createError } = await admin.auth.admin.createUser({
             email,
+            password, // Set the generated password
             email_confirm: true, // Auto-confirm email
             phone: phone || undefined,
             phone_confirm: !!phone,
@@ -86,16 +90,14 @@ export async function POST(request) {
             }
         })
 
-        // TODO: Send invitation email with password reset link
-        // For now, user will need to use "Forgot Password" to set their password
-
         return NextResponse.json({
             success: true,
             user: {
                 id: newUser.user.id,
                 email,
                 full_name: fullName,
-                role
+                role,
+                tempPassword: password // Return the password for display
             }
         })
 

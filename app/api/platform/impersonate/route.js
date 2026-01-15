@@ -16,8 +16,8 @@ export async function POST(request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
 
-    const { data: impersonatorProfile } = await supabase.from('profiles').select('is_platform_admin').eq('id', user.id).single()
-    if (!impersonatorProfile?.is_platform_admin) return handleCORS(NextResponse.json({ error: 'Only Platform Admins can impersonate users' }, { status: 403 }))
+    const { data: impersonatorProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (impersonatorProfile?.role !== 'platform_admin') return handleCORS(NextResponse.json({ error: 'Only Platform Admins can impersonate users' }, { status: 403 }))
 
     const { targetUserId, organizationId } = body
     if (!targetUserId || !organizationId) return handleCORS(NextResponse.json({ error: 'targetUserId and organizationId are required' }, { status: 400 }))

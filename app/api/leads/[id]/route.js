@@ -142,14 +142,37 @@ export async function DELETE(request, { params }) {
             return corsJSON({ error: 'Unauthorized' }, { status: 403 })
         }
 
-        // Delete
+        // 1. Break the circular dependency (Lead -> CallLog)
+        // If the lead references a call log, we must unlink it first
+        const { error: unlinkError } = await adminClient
+            .from('leads')
+            .update({ call_log_id: null })
+            .eq('id', id)
+
+        if (unlinkError) {
+            console.error('❌ Failed to unlink call_log_id:', unlinkError)
+        }
+
+        // 2. Delete related call_logs (CallLog -> Lead)
+        const { error: logsError } = await adminClient
+            .from('call_logs')
+            .delete()
+            .eq('lead_id', id)
+
+        if (logsError) {
+            console.error('❌ Failed to cleanup call_logs:', logsError)
+        } else {
+            console.log('✅ Cleaned up related call_logs')
+        }
+
+        // 2. Delete Lead
         const { error } = await adminClient
             .from('leads')
             .delete()
             .eq('id', id)
 
         if (error) {
-            console.error('❌ Lead delete error:', error)
+            console.error('❌ [Leads DELETE] Lead delete error:', error)
             // Check for foreign key constraint violation (Postgres code 23503)
             if (error.code === '23503') {
                 return corsJSON({

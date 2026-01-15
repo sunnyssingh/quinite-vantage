@@ -8,21 +8,35 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Shield, Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useToast } from '@/hooks/use-toast'
 
 export default function AdminLoginPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.push('/dashboard/platform')
+        // Check if user is actually a platform admin
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profile?.role === 'platform_admin') {
+          router.push('/dashboard/platform')
+        } else {
+          // If logged in but not admin, maybe sign them out or just show form?
+          // For now, let's show the form so they can switch accounts.
+          // Optional: Auto-sign out to prevent state confusion
+          await supabase.auth.signOut()
+          setLoading(false)
+        }
       } else {
         setLoading(false)
       }
@@ -32,8 +46,6 @@ export default function AdminLoginPage() {
 
   const handleSignIn = async (e) => {
     e.preventDefault()
-    setError('')
-    setSuccess('')
     setSubmitting(true)
 
     const formData = new FormData(e.target)
@@ -47,16 +59,32 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ email, password, isPlatformAdmin: true })
       })
 
-      const data = await response.json()
+      let data
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json()
+      } else {
+        const text = await response.text()
+        console.error('Non-JSON response:', text)
+        throw new Error(`Server returned ${response.status} ${response.statusText}`)
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed')
       }
 
-      setSuccess('Login successful! Redirecting...')
+      toast({
+        title: 'Login successful!',
+        description: 'Redirecting to platform dashboard...'
+      })
       setTimeout(() => router.push('/dashboard/platform'), 1000)
     } catch (err) {
-      setError(err.message)
+      console.error('Login error:', err)
+      toast({
+        variant: 'destructive',
+        title: 'Access Denied',
+        description: err.message
+      })
     } finally {
       setSubmitting(false)
     }
@@ -85,17 +113,6 @@ export default function AdminLoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <Alert className="mb-4 bg-green-50 text-green-800 border-green-200">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
 
           <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">

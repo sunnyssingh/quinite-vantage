@@ -304,6 +304,28 @@ export default function CampaignsPage() {
     return project?.name || 'Unknown Project'
   }
 
+  async function handleCancel(campaignId) {
+    try {
+      await fetch(`/api/campaigns/${campaignId}/cancel`, { method: 'POST' })
+      toast({
+        title: "Request Sent",
+        description: "Cancelling campaign... this may take a few seconds."
+      })
+    } catch (e) {
+      console.error(e)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to cancel campaign"
+      })
+    }
+  }
+
+  function handleProgressComplete() {
+    // The polling detected completion, but the main handleStartCampaign will likely close the modal.
+    // We can leave this empty or use it to force close if needed.
+  }
+
   async function handleStartCampaign(campaign) {
     setStarting(true)
     setStartingCampaignId(campaign.id)
@@ -766,6 +788,23 @@ export default function CampaignsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Progress Modal */}
+      <Dialog open={!!startingCampaignId} onOpenChange={() => { }}>
+        <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+              Campaign Running...
+            </DialogTitle>
+            <CardDescription>
+              Calling leads for this campaign. Please do not close this window.
+            </CardDescription>
+          </DialogHeader>
+
+          <CampaignProgress campaignId={startingCampaignId} onCancel={handleCancel} onComplete={handleProgressComplete} />
+        </DialogContent>
+      </Dialog>
+
       {/* Results Dialog */}
       <Dialog open={resultsDialogOpen} onOpenChange={setResultsDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -783,7 +822,7 @@ export default function CampaignsPage() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-slate-900">{campaignResults.totalCalls}</div>
+                      <div className="text-3xl font-bold text-slate-900">{campaignResults.totalCalls || campaignResults.processed || 0}</div>
                       <div className="text-sm text-slate-500 mt-1">Total Calls</div>
                     </div>
                   </CardContent>
@@ -791,7 +830,7 @@ export default function CampaignsPage() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-green-600">{campaignResults.transferredCalls}</div>
+                      <div className="text-3xl font-bold text-green-600">{campaignResults.transferredCalls || 0}</div>
                       <div className="text-sm text-slate-500 mt-1">Transferred</div>
                     </div>
                   </CardContent>
@@ -799,51 +838,120 @@ export default function CampaignsPage() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-purple-600">{campaignResults.conversionRate}%</div>
+                      <div className="text-3xl font-bold text-purple-600">{campaignResults.conversionRate || "0%"}</div>
                       <div className="text-sm text-slate-500 mt-1">Conversion Rate</div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Call Logs Preview */}
-              <div>
-                <h4 className="font-medium text-slate-900 mb-3">Call Results</h4>
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {campaignResults.callLogs?.slice(0, 10).map((log, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Phone className="w-4 h-4 text-slate-400" />
-                        <div>
-                          <div className="font-medium text-sm">{log.leadName}</div>
-                          <div className="text-xs text-slate-500">{log.outcome?.replace('_', ' ') || 'Unknown'}</div>
-                        </div>
+              {/* Call Logs */}
+              <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-lg p-2">
+                <h4 className="font-medium text-sm text-slate-700 px-2 sticky top-0 bg-white pb-2">Call Results</h4>
+                {campaignResults.callLogs?.map((log, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg text-sm">
+                    <div>
+                      <div className="font-medium flex items-center gap-2">
+                        <Phone className="w-3 h-3 text-slate-400" />
+                        {log.leadName}
                       </div>
-                      {log.transferred && (
-                        <Badge className="bg-green-100 text-green-800">
-                          Transferred
-                        </Badge>
-                      )}
+                      <div className="text-slate-500 text-xs mt-0.5 capitalize">{log.outcome || log.status}</div>
                     </div>
-                  ))}
-                </div>
-                {campaignResults.callLogs?.length > 10 && (
-                  <div className="text-sm text-slate-500 text-center mt-2">
-                    And {campaignResults.callLogs.length - 10} more calls...
+                    {log.transferred && (
+                      <Badge className="bg-green-100 text-green-800 border-green-200">Transferred</Badge>
+                    )}
+                  </div>
+                ))}
+                {!campaignResults.callLogs?.length && (
+                  <div className="text-center py-8 text-slate-400">
+                    No calls made yet
                   </div>
                 )}
               </div>
-
-              <Button
-                onClick={() => setResultsDialogOpen(false)}
-                className="w-full"
-              >
-                Close
-              </Button>
             </div>
           )}
+
+          <DialogFooter>
+            <Button onClick={() => setResultsDialogOpen(false)}>Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function CampaignProgress({ campaignId, onCancel, onComplete }) {
+  const [progress, setProgress] = useState({ percentage: 0, processed: 0, total: 0 })
+  const [cancelling, setCancelling] = useState(false)
+
+  useEffect(() => {
+    let interval
+    if (campaignId) {
+      // Poll progress every 1s
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/campaigns/${campaignId}/progress`)
+          if (res.ok) {
+            const data = await res.json()
+            setProgress(data)
+
+            // If status is cancelled or completed, simpler to let the parent handle the API response
+            // But if the parent API call is stalled or disconnected, we might need to auto-close here.
+            // For now, we rely on the Start API returning to close this modal.
+          }
+        } catch (e) {
+          console.error("Poll error", e)
+        }
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [campaignId])
+
+  const handleCancelClick = async () => {
+    setCancelling(true)
+    await onCancel(campaignId)
+    // Don't close immediately, wait for the Start API to return 'cancelled'
+  }
+
+  return (
+    <div className="space-y-6 py-2">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-slate-600">Progress</span>
+          <span className="font-medium">{progress.percentage}%</span>
+        </div>
+        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-purple-600 transition-all duration-500 ease-out"
+            style={{ width: `${progress.percentage}%` }}
+          />
+        </div>
+        <div className="flex justify-between text-xs text-slate-500">
+          <span>{progress.processed} called</span>
+          <span>{progress.total} total</span>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleCancelClick}
+          disabled={cancelling}
+        >
+          {cancelling ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Cancelling...
+            </>
+          ) : (
+            <>
+              <XCircle className="w-4 h-4 mr-2" />
+              Cancel Campaign
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   )
 }

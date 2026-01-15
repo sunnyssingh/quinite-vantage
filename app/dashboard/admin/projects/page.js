@@ -341,34 +341,141 @@ export default function ProjectsPage() {
 
       {/* View Modal */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Project Details</DialogTitle>
           </DialogHeader>
           {viewingProject && (
             <div className="space-y-4">
-              <div className="aspect-video w-full rounded-lg overflow-hidden bg-slate-100">
-                {viewingProject.image_url ? (
-                  <img
-                    src={viewingProject.image_url}
-                    alt={viewingProject.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <Building2 className="w-12 h-12 text-slate-300" />
+              <div className="space-y-6">
+                <div className="aspect-video w-full rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shadow-sm relative group">
+                  {viewingProject.image_url ? (
+                    <img
+                      src={viewingProject.image_url}
+                      alt={viewingProject.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <Building2 className="w-12 h-12 text-slate-300" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                    <div>
+                      <h2 className="text-white text-xl font-bold">{viewingProject.name}</h2>
+                      <p className="text-white/90 text-sm">{viewingProject.address}</p>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold text-slate-900">Description</h3>
-                  <p className="text-slate-600">{viewingProject.description || 'No description'}</p>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">Address</h3>
-                  <p className="text-slate-600">{viewingProject.address || 'No address'}</p>
-                </div>
+
+                {(() => {
+                  let meta = {}
+                  try {
+                    meta = typeof viewingProject.metadata === 'string'
+                      ? JSON.parse(viewingProject.metadata)
+                      : viewingProject.metadata || {}
+                  } catch (e) {
+                    console.error("Failed to parse metadata", e)
+                  }
+                  const re = meta.real_estate || {}
+                  const prop = re.property || {}
+                  const loc = re.location || {}
+                  const price = re.pricing || {}
+                  const res = prop.residential || {}
+                  const comm = prop.commercial || {}
+                  const land = prop.land || {}
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Key Info Card */}
+                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
+                        <h3 className="font-semibold text-slate-900 border-b pb-2 mb-2">Property Highlights</h3>
+
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-slate-500">Transaction</p>
+                            <p className="font-medium text-slate-900 capitalize">{re.transaction || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500">Type</p>
+                            <p className="font-medium text-slate-900 capitalize">
+                              {[prop.category, prop.use_case].filter(Boolean).join(' - ') || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-slate-500">Price Range</p>
+                            <p className="font-medium text-green-700">
+                              {price.min && price.max
+                                ? `₹${price.min.toLocaleString()} - ₹${price.max.toLocaleString()}`
+                                : 'Price on Request'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Location Card */}
+                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
+                        <h3 className="font-semibold text-slate-900 border-b pb-2 mb-2">Location Details</h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">City:</span>
+                            <span className="font-medium text-slate-900">{loc.city || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Locality:</span>
+                            <span className="font-medium text-slate-900">{loc.locality || 'N/A'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Landmark:</span>
+                            <span className="font-medium text-slate-900">{loc.landmark || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Specifications */}
+                      <div className="md:col-span-2 bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
+                        <h3 className="font-semibold text-slate-900 border-b pb-2 mb-2">Specifications</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          {res.bhk && (
+                            <div>
+                              <p className="text-slate-500">Configuration</p>
+                              <p className="font-medium text-slate-900">{res.bhk}</p>
+                            </div>
+                          )}
+                          {res.carpet_area > 0 && (
+                            <div>
+                              <p className="text-slate-500">Carpet Area</p>
+                              <p className="font-medium text-slate-900">{res.carpet_area} sq.ft</p>
+                            </div>
+                          )}
+                          {res.built_up_area > 0 && (
+                            <div>
+                              <p className="text-slate-500">Built-up Area</p>
+                              <p className="font-medium text-slate-900">{res.built_up_area} sq.ft</p>
+                            </div>
+                          )}
+                          {res.super_built_up_area > 0 && (
+                            <div>
+                              <p className="text-slate-500">Super Built-up</p>
+                              <p className="font-medium text-slate-900">{res.super_built_up_area} sq.ft</p>
+                            </div>
+                          )}
+                          {/* Commercial/Land Fallbacks */}
+                          {comm.area > 0 && <div><p className="text-slate-500">Area</p><p className="font-medium">{comm.area} sq.ft</p></div>}
+                          {land.plot_area > 0 && <div><p className="text-slate-500">Plot Area</p><p className="font-medium">{land.plot_area} sq.ft</p></div>}
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="md:col-span-2">
+                        <h3 className="font-semibold text-slate-900 mb-2">Description</h3>
+                        <p className="text-slate-600 text-sm leading-relaxed border-l-4 border-blue-100 pl-4 py-1">
+                          {viewingProject.description || 'No description provided.'}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           )}

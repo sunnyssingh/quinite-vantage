@@ -82,7 +82,7 @@ export async function GET(request) {
         const { count: totalTransferred } = await adminClient
             .from('call_logs')
             .select('*', { count: 'exact', head: true })
-            .match({ ...orgFilter, transferred: true })
+            .match({ ...orgFilter, call_status: 'transferred' })
 
         const overallConversionRate = totalCalls > 0 ? (totalTransferred / totalCalls * 100).toFixed(2) : 0
 

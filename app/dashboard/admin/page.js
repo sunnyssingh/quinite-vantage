@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,12 +18,46 @@ import {
 import Link from 'next/link'
 
 export default function AdminDashboardPage() {
+    const [dashboardStats, setDashboardStats] = useState({
+        users: { value: 0, trend: 0 },
+        projects: { value: 0, trend: 0 },
+        leads: { value: 0, trend: 0 },
+        activeCampaigns: { value: 0, trend: 0 }
+    })
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const res = await fetch('/api/admin/stats')
+                const data = await res.json()
+                if (res.ok) {
+                    setDashboardStats(data)
+                }
+            } catch (error) {
+                console.error('Failed to fetch stats:', error)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchStats()
+    }, [])
+
+    const formatTrend = (val) => {
+        if (val > 0) return `+${val}%`
+        return `${val}%`
+    }
+
+    const getTrendDirection = (val) => {
+        return val >= 0 ? 'up' : 'down'
+    }
+
     const stats = [
         {
             title: 'Total Users',
-            value: '--',
-            change: '+12%',
-            trend: 'up',
+            value: loading ? '...' : dashboardStats.users?.value || 0,
+            change: loading ? '...' : `${formatTrend(dashboardStats.users?.trend || 0)} from last 30 days`,
+            trend: getTrendDirection(dashboardStats.users?.trend || 0),
             icon: Users,
             color: 'blue',
             bgColor: 'bg-blue-50',
@@ -31,9 +66,9 @@ export default function AdminDashboardPage() {
         },
         {
             title: 'Total Projects',
-            value: '--',
-            change: '+8%',
-            trend: 'up',
+            value: loading ? '...' : dashboardStats.projects?.value || 0,
+            change: loading ? '...' : `${formatTrend(dashboardStats.projects?.trend || 0)} from last 30 days`,
+            trend: getTrendDirection(dashboardStats.projects?.trend || 0),
             icon: FolderKanban,
             color: 'indigo',
             bgColor: 'bg-indigo-50',
@@ -42,9 +77,9 @@ export default function AdminDashboardPage() {
         },
         {
             title: 'Total Leads',
-            value: '--',
-            change: '+23%',
-            trend: 'up',
+            value: loading ? '...' : dashboardStats.leads?.value || 0,
+            change: loading ? '...' : `${formatTrend(dashboardStats.leads?.trend || 0)} from last 30 days`,
+            trend: getTrendDirection(dashboardStats.leads?.trend || 0),
             icon: UserPlus,
             color: 'green',
             bgColor: 'bg-green-50',
@@ -53,9 +88,9 @@ export default function AdminDashboardPage() {
         },
         {
             title: 'Active Campaigns',
-            value: '--',
-            change: '-3%',
-            trend: 'down',
+            value: loading ? '...' : dashboardStats.activeCampaigns?.value || 0,
+            change: loading ? '...' : `${formatTrend(dashboardStats.activeCampaigns?.trend || 0)} from last 30 days`,
+            trend: getTrendDirection(dashboardStats.activeCampaigns?.trend || 0),
             icon: Megaphone,
             color: 'amber',
             bgColor: 'bg-amber-50',

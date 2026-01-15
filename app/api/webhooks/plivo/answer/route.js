@@ -21,10 +21,10 @@ export async function POST(request) {
         callUUID = formData.get('CallUUID') || formData.get('callSid')
       }
     } catch (e) {
-      console.log('No form data in answer request')
+      // Ignore missing form data
     }
 
-    console.log('Call answered:', { leadId, campaignId, callUUID })
+
 
     // Get lead and campaign details
     const adminClient = createAdminClient()
@@ -50,6 +50,28 @@ export async function POST(request) {
 </Response>`,
         { headers: { 'Content-Type': 'text/xml' } }
       )
+    }
+
+    // CREATE CALL LOG ENTRY
+    const { error: logError } = await adminClient
+      .from('call_logs')
+      .insert({
+        organization_id: campaign.organization_id,
+        project_id: lead.project_id,
+        campaign_id: campaign.id,
+        lead_id: lead.id,
+        call_sid: callUUID,
+        call_status: 'in-progress',
+        direction: 'inbound', // Mark as inbound
+        caller_number: request.headers.get('x-plivo-from') || 'unknown',
+        callee_number: request.headers.get('x-plivo-to') || 'unknown'
+      })
+
+    if (logError) {
+      console.error('Failed to create call log:', logError)
+      // Continue anyway to allow call to proceed, but log error
+    } else {
+      console.log('Call log created successfully for SID:', callUUID)
     }
 
     // Check if real-time AI is enabled
@@ -92,8 +114,7 @@ export async function POST(request) {
   >${wsFullXmlUrl}</Stream>
 </Response>`
 
-      console.log('Returning WebSocket stream XML:', wsFullUrl)
-      console.log('Status callback URL:', statusCallbackUrl)
+
       return new NextResponse(xml, {
         headers: { 'Content-Type': 'text/xml' }
       })
@@ -111,7 +132,7 @@ export async function POST(request) {
   <Hangup/>
 </Response>`
 
-      console.log('Returning simple TTS XML (fallback)')
+
       return new NextResponse(xml, {
         headers: { 'Content-Type': 'text/xml' }
       })
