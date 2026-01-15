@@ -10,7 +10,20 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, KeyRound } from 'lucide-react'
 
+// Main component with Suspense boundary
 export default function ResetPasswordPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+                <div className="animate-pulse text-gray-600">Loading...</div>
+            </div>
+        }>
+            <ResetPasswordContent />
+        </React.Suspense>
+    )
+}
+
+function ResetPasswordContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const supabase = createClient()
