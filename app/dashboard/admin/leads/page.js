@@ -43,7 +43,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState([])
@@ -52,7 +52,6 @@ export default function LeadsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const { toast } = useToast()
   const [statusFilter, setStatusFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedRows, setExpandedRows] = useState(new Set())
@@ -132,10 +131,7 @@ export default function LeadsPage() {
         throw new Error(result.error || 'Failed to save lead')
       }
 
-      toast({
-        title: "Success",
-        description: editingLead ? 'Lead updated successfully' : 'Lead created successfully'
-      })
+      toast.success(editingLead ? 'Lead updated successfully' : 'Lead created successfully')
       e.target.reset()
       setEditingLead(null)
 
@@ -144,11 +140,7 @@ export default function LeadsPage() {
         fetchData()
       }, 1200)
     } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message
-      })
+      toast.error(err.message)
     } finally {
       setSubmitting(false)
     }
@@ -184,16 +176,9 @@ export default function LeadsPage() {
       setLeads(prev => prev.map(lead =>
         lead.id === leadId ? { ...lead, status: newStatus } : lead
       ))
-      toast({
-        title: "Success",
-        description: "Status updated successfully"
-      })
+      toast.success("Status updated successfully")
     } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message
-      })
+      toast.error(err.message)
     } finally {
       setUpdatingStatus(false)
     }
@@ -214,18 +199,11 @@ export default function LeadsPage() {
       }
 
       setLeads(prev => prev.filter(l => l.id !== leadToDelete.id))
-      toast({
-        title: "Success",
-        description: "Lead deleted successfully"
-      })
+      toast.success("Lead deleted successfully")
       setDeleteDialogOpen(false)
       setLeadToDelete(null)
     } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message
-      })
+      toast.error(err.message)
       setDeleteDialogOpen(false)
     } finally {
       setSubmitting(false)
@@ -236,7 +214,7 @@ export default function LeadsPage() {
     const colors = {
       'new': 'bg-blue-100 text-blue-800',
       'contacted': 'bg-yellow-100 text-yellow-800',
-      'qualified': 'bg-purple-100 text-purple-800',
+      'transferred': 'bg-purple-100 text-purple-800',
       'converted': 'bg-green-100 text-green-800',
       'lost': 'bg-gray-100 text-gray-800'
     }
@@ -270,11 +248,7 @@ export default function LeadsPage() {
     if (!file) return
 
     if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please upload a valid CSV file"
-      })
+      toast.error("Please upload a valid CSV file")
       return
     }
 
@@ -352,11 +326,7 @@ export default function LeadsPage() {
         // The following lines are moved to confirmUpload
         // const res = await fetch('/api/leads/upload', ...
       } catch (err) {
-        toast({
-          variant: "destructive",
-          title: "CSV Upload Error",
-          description: err.message || 'Error processing file'
-        })
+        toast.error(err.message || 'Error processing file')
       } finally {
         setSubmitting(false)
         e.target.value = '' // Reset input
@@ -381,21 +351,14 @@ export default function LeadsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
 
-      toast({
-        title: "Success!",
-        description: `Successfully uploaded ${data.count} lead${data.count > 1 ? 's' : ''}`
-      })
+      toast.success(`Successfully uploaded ${data.count} lead${data.count > 1 ? 's' : ''}`)
       setPreviewOpen(false)
       setPreviewLeads([])
       setSelectedProjectForImport('none')
       setInvalidRowCount(0)
       fetchData()
     } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || 'Error uploading leads'
-      })
+      toast.error(err.message || 'Error uploading leads')
     } finally {
       setSubmitting(false)
     }
@@ -490,7 +453,7 @@ export default function LeadsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
-                      {projects.map(project => (
+                      {projects.filter(p => p.id).map(project => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
                         </SelectItem>
@@ -644,9 +607,24 @@ export default function LeadsPage() {
                           {lead.project?.name || <span className="text-gray-400">-</span>}
                         </TableCell>
                         <TableCell>
-                          <Badge className={getStatusBadgeColor(lead.status)}>
-                            {lead.status}
-                          </Badge>
+                          <Select
+                            defaultValue={lead.status || 'new'}
+                            onValueChange={(value) => handleStatusUpdate(lead.id, value)}
+                            disabled={updatingStatus}
+                          >
+                            <SelectTrigger
+                              className={`w-[130px] h-8 border-0 ${getStatusBadgeColor(lead.status)} text-xs font-semibold focus:ring-0 focus:ring-offset-0 transition-opacity hover:opacity-80`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="new" disabled>New</SelectItem>
+                              <SelectItem value="contacted" disabled>Contacted</SelectItem>
+                              <SelectItem value="transferred" disabled>Transferred</SelectItem>
+                              <SelectItem value="converted">Converted</SelectItem>
+                              <SelectItem value="lost">Lost</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>
                           <Badge className={getCallStatusBadgeColor(lead.call_status)}>
@@ -759,7 +737,7 @@ export default function LeadsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No Project (Unassigned)</SelectItem>
-                  {projects.map(project => (
+                  {projects.filter(p => p.id).map(project => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
                     </SelectItem>

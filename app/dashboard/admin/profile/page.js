@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { User, Mail, Phone, Shield } from 'lucide-react'
+import { User, Mail, Phone, Shield, Building2 } from 'lucide-react'
 import ChangePasswordForm from '@/components/dashboard/ChangePasswordForm'
 
 export default function AdminProfilePage() {
@@ -71,6 +71,16 @@ export default function AdminProfilePage() {
                             <div>
                                 <p className="text-sm font-medium text-gray-500">Phone</p>
                                 <p className="text-lg font-medium text-gray-900">{profile?.phone || 'Not provided'}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 bg-indigo-100 rounded-lg">
+                                <Building2 className="w-5 h-5 text-indigo-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-gray-500">Organization</p>
+                                <p className="text-lg font-medium text-gray-900">{profile?.organization?.name || 'Not assigned'}</p>
                             </div>
                         </div>
 

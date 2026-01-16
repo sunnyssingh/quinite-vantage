@@ -11,7 +11,6 @@ import {
   FileText,
   Activity,
   User,
-  Calendar,
   Download,
   Search,
   Filter,
@@ -26,6 +25,7 @@ import {
   Database
 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default function AuditPage() {
   const [logs, setLogs] = useState([])
@@ -40,11 +40,11 @@ export default function AuditPage() {
 
   // Filters
   const [search, setSearch] = useState('')
-  const [action, setAction] = useState('')
-  const [entityType, setEntityType] = useState('')
+  const [action, setAction] = useState('ALL')
+  const [entityType, setEntityType] = useState('ALL')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [isImpersonated, setIsImpersonated] = useState('')
+  const [isImpersonated, setIsImpersonated] = useState('ALL')
   const [showFilters, setShowFilters] = useState(false)
 
   // Statistics
@@ -75,11 +75,11 @@ export default function AuditPage() {
       })
 
       if (search) params.append('search', search)
-      if (action) params.append('action', action)
-      if (entityType) params.append('entity_type', entityType)
+      if (action && action !== 'ALL') params.append('action', action)
+      if (entityType && entityType !== 'ALL') params.append('entity_type', entityType)
       if (startDate) params.append('start_date', startDate)
       if (endDate) params.append('end_date', endDate)
-      if (isImpersonated) params.append('is_impersonated', isImpersonated)
+      if (isImpersonated && isImpersonated !== 'ALL') params.append('is_impersonated', isImpersonated)
 
       const response = await fetch(`/api/audit?${params}`)
       if (response.ok) {
@@ -124,11 +124,11 @@ export default function AuditPage() {
       const params = new URLSearchParams({ format })
 
       if (search) params.append('search', search)
-      if (action) params.append('action', action)
-      if (entityType) params.append('entity_type', entityType)
+      if (action && action !== 'ALL') params.append('action', action)
+      if (entityType && entityType !== 'ALL') params.append('entity_type', entityType)
       if (startDate) params.append('start_date', startDate)
       if (endDate) params.append('end_date', endDate)
-      if (isImpersonated) params.append('is_impersonated', isImpersonated)
+      if (isImpersonated && isImpersonated !== 'ALL') params.append('is_impersonated', isImpersonated)
 
       const response = await fetch(`/api/audit/export?${params}`)
       if (response.ok) {
@@ -151,11 +151,11 @@ export default function AuditPage() {
 
   const clearFilters = () => {
     setSearch('')
-    setAction('')
-    setEntityType('')
+    setAction('ALL')
+    setEntityType('ALL')
     setStartDate('')
     setEndDate('')
-    setIsImpersonated('')
+    setIsImpersonated('ALL')
     setPage(1)
   }
 
@@ -169,12 +169,13 @@ export default function AuditPage() {
     setExpandedRows(newExpanded)
   }
 
-  const getActionBadgeColor = (actionText) => {
-    if (actionText.includes('CREATE') || actionText.includes('STARTED')) return 'bg-green-100 text-green-800 border-green-200'
-    if (actionText.includes('UPDATE') || actionText.includes('EDIT')) return 'bg-blue-100 text-blue-800 border-blue-200'
-    if (actionText.includes('DELETE') || actionText.includes('ENDED')) return 'bg-red-100 text-red-800 border-red-200'
-    if (actionText.includes('IMPERSONATION')) return 'bg-purple-100 text-purple-800 border-purple-200'
-    return 'bg-gray-100 text-gray-800 border-gray-200'
+  const getActionBadgeColor = (action) => {
+    const upper = action?.toUpperCase() || ''
+    if (upper.includes('CREATE') || upper.includes('STARTED') || upper.includes('LOGIN')) return '!bg-green-100 !text-green-800 !border-green-200 hover:!bg-green-100'
+    if (upper.includes('UPDATE') || upper.includes('EDIT')) return '!bg-blue-100 !text-blue-800 !border-blue-200 hover:!bg-blue-100'
+    if (upper.includes('DELETE') || upper.includes('ENDED')) return '!bg-red-100 !text-red-800 !border-red-200 hover:!bg-red-100'
+    if (upper.includes('IMPERSONATION')) return '!bg-purple-100 !text-purple-800 !border-purple-200 hover:!bg-purple-100'
+    return '!bg-gray-100 !text-gray-800 !border-gray-200 hover:!bg-gray-100'
   }
 
   const formatRelativeTime = (dateString) => {
@@ -192,7 +193,29 @@ export default function AuditPage() {
     return date.toLocaleDateString()
   }
 
-  const hasActiveFilters = search || action || entityType || startDate || endDate || isImpersonated
+  const formatActionLabel = (action) => {
+    if (!action) return 'Unknown'
+
+    // Specific overrides
+    const map = {
+      'campaign.started_real': 'Campaign Started (Real)',
+      'campaign.started_simulated': 'Campaign Started (Sim)',
+      'lead.create': 'Lead Created',
+      'user.created': 'User Created',
+      'project.edit': 'Project Edited',
+      'campaign.update': 'Campaign Updated',
+      'user.login': 'User Login',
+    }
+
+    if (map[action]) return map[action]
+
+    // Fallback: capitalized words
+    return action
+      .replace(/[._]/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+  }
+
+  const hasActiveFilters = search || (action && action !== 'ALL') || (entityType && entityType !== 'ALL') || startDate || endDate || (isImpersonated && isImpersonated !== 'ALL')
 
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 via-purple-50/20 to-slate-50 min-h-screen">
@@ -322,9 +345,9 @@ export default function AuditPage() {
                     <SelectValue placeholder="All actions" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All actions</SelectItem>
+                    <SelectItem value="ALL">All actions</SelectItem>
                     {actions.map(a => (
-                      <SelectItem key={a} value={a}>{a}</SelectItem>
+                      <SelectItem key={a} value={a}>{formatActionLabel(a)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -337,7 +360,7 @@ export default function AuditPage() {
                     <SelectValue placeholder="All entities" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All entities</SelectItem>
+                    <SelectItem value="ALL">All entities</SelectItem>
                     {entityTypes.map(e => (
                       <SelectItem key={e} value={e}>{e}</SelectItem>
                     ))}
@@ -370,7 +393,7 @@ export default function AuditPage() {
                     <SelectValue placeholder="All logs" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All logs</SelectItem>
+                    <SelectItem value="ALL">All logs</SelectItem>
                     <SelectItem value="true">Impersonated only</SelectItem>
                     <SelectItem value="false">Non-impersonated only</SelectItem>
                   </SelectContent>
@@ -476,18 +499,27 @@ export default function AuditPage() {
                               </span>
 
                               {log.is_impersonated && (
-                                <Badge className="ml-2 bg-orange-100 text-orange-800 border-orange-200 text-xs">
-                                  <Shield className="w-3 h-3 mr-1" />
-                                  Impersonated
-                                </Badge>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Badge className="ml-2 !bg-orange-100 !text-orange-800 !border-orange-200 text-xs cursor-help hover:!bg-orange-100 shadow-none">
+                                        <Shield className="w-3 h-3 mr-1" />
+                                        Impersonated
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Action performed by a Platform Admin on behalf of this user</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               )}
                             </div>
                           </div>
                         </TableCell>
 
                         <TableCell>
-                          <Badge className={`${getActionBadgeColor(log.action)} border font-medium`}>
-                            {log.action}
+                          <Badge className={`${getActionBadgeColor(log.action)} border font-medium hover:brightness-100 cursor-default shadow-none`}>
+                            {formatActionLabel(log.action)}
                           </Badge>
                         </TableCell>
 

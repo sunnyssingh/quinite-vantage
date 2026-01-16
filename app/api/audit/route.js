@@ -30,6 +30,13 @@ export async function GET(request) {
     const pageSize = Math.min(parseInt(searchParams.get('page_size') || '50'), 200)
     const offset = (page - 1) * pageSize
 
+    const search = searchParams.get('search')
+    const action = searchParams.get('action')
+    const entityType = searchParams.get('entity_type')
+    const startDate = searchParams.get('start_date')
+    const endDate = searchParams.get('end_date')
+    const isImpersonated = searchParams.get('is_impersonated')
+
     let query = supabase
       .from('audit_logs')
       .select('*', { count: 'exact' })
@@ -37,6 +44,28 @@ export async function GET(request) {
 
     if (!profile.is_platform_admin) {
       query = query.eq('organization_id', profile.organization_id)
+    }
+
+    // Apply filters
+    if (search) {
+      query = query.or(`user_name.ilike.%${search}%,action.ilike.%${search}%,entity_type.ilike.%${search}%`)
+    }
+    if (action) {
+      query = query.eq('action', action)
+    }
+    if (entityType) {
+      query = query.eq('entity_type', entityType)
+    }
+    if (startDate) {
+      query = query.gte('created_at', startDate)
+    }
+    if (endDate) {
+      query = query.lte('created_at', endDate)
+    }
+    if (isImpersonated === 'true') {
+      query = query.eq('is_impersonated', true)
+    } else if (isImpersonated === 'false') {
+      query = query.eq('is_impersonated', false)
     }
 
     query = query.range(offset, offset + pageSize - 1)

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Lock, Loader2 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 export default function ChangePasswordForm() {
     const [passwords, setPasswords] = useState({
@@ -14,26 +14,23 @@ export default function ChangePasswordForm() {
         confirmPassword: ''
     })
     const [loading, setLoading] = useState(false)
-    const { toast } = useToast()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
 
         if (passwords.newPassword.length < 6) {
-            toast({
-                variant: "destructive",
-                title: "Invalid Password",
-                description: "Password must be at least 6 characters long."
-            })
+            if (passwords.newPassword.length < 6) {
+                toast.error("Password must be at least 6 characters long.")
+                return
+            }
             return
         }
 
         if (passwords.newPassword !== passwords.confirmPassword) {
-            toast({
-                variant: "destructive",
-                title: "Mismatch",
-                description: "Passwords do not match."
-            })
+            if (passwords.newPassword !== passwords.confirmPassword) {
+                toast.error("Passwords do not match.")
+                return
+            }
             return
         }
 
@@ -52,20 +49,13 @@ export default function ChangePasswordForm() {
                 throw new Error(data.error || 'Failed to update password')
             }
 
-            toast({
-                title: "Password Updated",
-                description: "Your password has been changed successfully."
-            })
+            toast.success("Your password has been changed successfully.")
 
             // Reset form
             setPasswords({ newPassword: '', confirmPassword: '' })
 
         } catch (error) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: error.message
-            })
+            toast.error(error.message)
         } finally {
             setLoading(false)
         }

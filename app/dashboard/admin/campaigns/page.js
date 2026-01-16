@@ -34,23 +34,23 @@ import {
 const StatusBadge = ({ status }) => {
   const statusConfig = {
     scheduled: {
-      color: 'bg-blue-100 text-blue-800 border-blue-200',
+      color: 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100',
       icon: <Clock className="w-3 h-3" />
     },
     active: {
-      color: 'bg-green-100 text-green-800 border-green-200',
+      color: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100',
       icon: <PlayCircle className="w-3 h-3" />
     },
     paused: {
-      color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      color: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100',
       icon: <PauseCircle className="w-3 h-3" />
     },
     completed: {
-      color: 'bg-purple-100 text-purple-800 border-purple-200',
+      color: 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100',
       icon: <CheckCircle2 className="w-3 h-3" />
     },
     cancelled: {
-      color: 'bg-red-100 text-red-800 border-red-200',
+      color: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100',
       icon: <XCircle className="w-3 h-3" />
     }
   }
@@ -65,11 +65,10 @@ const StatusBadge = ({ status }) => {
   )
 }
 
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 export default function CampaignsPage() {
   const supabase = createClient()
-  const { toast } = useToast()
 
   const [campaigns, setCampaigns] = useState([])
   const [projects, setProjects] = useState([])
@@ -122,11 +121,7 @@ export default function CampaignsPage() {
       setProjects(pData.projects || [])
     } catch (e) {
       console.error(e)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load campaigns or projects"
-      })
+      toast.error("Failed to load campaigns or projects")
     } finally {
       setLoading(false)
     }
@@ -137,31 +132,19 @@ export default function CampaignsPage() {
     setSuccess(null)
 
     if (!projectId || !name || !startDate || !endDate || !timeStart || !timeEnd) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "Please fill in all required fields"
-      })
+      toast.error("Please fill in all required fields")
       return
     }
 
     // Validate end date is not before start date
     if (new Date(endDate) < new Date(startDate)) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "End date cannot be before start date"
-      })
+      toast.error("End date cannot be before start date")
       return
     }
 
     // Validate time range
     if (timeEnd <= timeStart) {
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description: "End time must be after start time"
-      })
+      toast.error("End time must be after start time")
       return
     }
 
@@ -187,10 +170,7 @@ export default function CampaignsPage() {
 
       const payload = await res.json()
       setCampaigns(prev => [payload.campaign, ...prev])
-      toast({
-        title: "Success",
-        description: "Campaign created successfully!"
-      })
+      toast.success("Campaign created successfully!")
 
       // Reset form
       setName('')
@@ -204,11 +184,7 @@ export default function CampaignsPage() {
 
     } catch (e) {
       console.error(e)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: e.message || 'Failed to create campaign'
-      })
+      toast.error(e.message || 'Failed to create campaign')
     }
   }
 
@@ -226,17 +202,10 @@ export default function CampaignsPage() {
       }
 
       setCampaigns(prev => prev.filter(c => c.id !== campaign.id))
-      toast({
-        title: "Success",
-        description: "Campaign deleted successfully!"
-      })
+      toast.success("Campaign deleted successfully!")
     } catch (err) {
       console.error(err)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || 'Delete failed'
-      })
+      toast.error(err.message || 'Delete failed')
     } finally {
       setDeleting(false)
     }
@@ -285,17 +254,10 @@ export default function CampaignsPage() {
       const data = await res.json()
       setCampaigns(prev => prev.map(c => c.id === data.campaign.id ? data.campaign : c))
       setEditModalOpen(false)
-      toast({
-        title: "Success",
-        description: "Campaign updated successfully!"
-      })
+      toast.success("Campaign updated successfully!")
     } catch (err) {
       console.error(err)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || 'Update failed'
-      })
+      toast.error(err.message || 'Update failed')
     }
   }
 
@@ -307,17 +269,10 @@ export default function CampaignsPage() {
   async function handleCancel(campaignId) {
     try {
       await fetch(`/api/campaigns/${campaignId}/cancel`, { method: 'POST' })
-      toast({
-        title: "Request Sent",
-        description: "Cancelling campaign... this may take a few seconds."
-      })
+      toast.success("Cancelling campaign... this may take a few seconds.")
     } catch (e) {
       console.error(e)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to cancel campaign"
-      })
+      toast.error("Failed to cancel campaign")
     }
   }
 
@@ -348,17 +303,10 @@ export default function CampaignsPage() {
       // Show results
       setCampaignResults(data.summary)
       setResultsDialogOpen(true)
-      toast({
-        title: "Success",
-        description: "Campaign completed successfully!"
-      })
+      toast.success("Campaign completed successfully!")
     } catch (err) {
       console.error(err)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: err.message || 'Failed to start campaign'
-      })
+      toast.error(err.message || 'Failed to start campaign')
     } finally {
       setStarting(false)
       setStartingCampaignId(null)

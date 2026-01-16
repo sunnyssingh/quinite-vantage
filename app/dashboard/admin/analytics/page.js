@@ -21,62 +21,57 @@ import {
   Activity
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState(null)
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
+
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
     fetchAnalytics()
     // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchAnalytics, 30000)
+    const interval = setInterval(() => fetchAnalytics(), 30000)
     return () => clearInterval(interval)
   }, [])
 
   const fetchAnalytics = async (isManual = false) => {
     try {
+      if (isManual) setIsRefreshing(true)
       // Don't set loading to true on background refreshes if data exists
-      if (!overview) setLoading(true)
+      else if (!overview) setLoading(true)
 
       // Fetch overview
-      const overviewRes = await fetch('/api/analytics/overview')
+      const overviewRes = await fetch('/api/analytics/overview', { cache: 'no-store' })
       if (overviewRes.ok) {
         const data = await overviewRes.json()
         setOverview(data)
       }
 
       // Fetch campaigns
-      const campaignsRes = await fetch('/api/analytics/campaigns')
+      const campaignsRes = await fetch('/api/analytics/campaigns', { cache: 'no-store' })
       if (campaignsRes.ok) {
         const data = await campaignsRes.json()
         setCampaigns(data.campaigns || [])
       }
 
       if (isManual) {
-        toast({
-          title: "Dashboard Refreshed",
-          description: "Latest analytics data has been loaded.",
-        })
+        toast.success("Dashboard Refreshed")
       }
     } catch (err) {
       console.error('Error fetching analytics:', err)
       if (isManual) {
-        toast({
-          variant: "destructive",
-          title: "Refresh Failed",
-          description: "Could not load latest data. Please try again.",
-        })
+        toast.error("Refresh Failed: Could not load latest data.")
       }
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
   const handleRefresh = () => {
-    setLoading(true)
     fetchAnalytics(true)
   }
 
@@ -149,10 +144,11 @@ export default function AnalyticsPage() {
         <Button
           variant="outline"
           onClick={handleRefresh}
+          disabled={isRefreshing}
           className="gap-2 w-full md:w-auto"
         >
-          <Activity className="h-4 w-4" />
-          Refresh Data
+          <Activity className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
         </Button>
       </div>
 

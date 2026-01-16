@@ -42,8 +42,23 @@ export async function POST(request) {
                         }
                     })
                     .eq('call_sid', callSid)
+                    .select('lead_id') // Fetch lead_id to update lead status
+                    .single()
 
                 if (error) throw new Error(error.message)
+
+                // If call was successful, update lead status to 'contacted' (unless already converted/transferred)
+                if (data?.lead_id && (hangupCause === 'NORMAL_CLEARING')) {
+                    await adminClient
+                        .from('leads')
+                        .update({
+                            status: 'contacted',
+                            call_status: 'called'
+                        })
+                        .eq('id', data.lead_id)
+                        .neq('status', 'transferred') // Don't revert if already transferred
+                        .neq('status', 'converted') // Don't revert if already converted
+                }
 
                 // Success
                 console.log(`Call log updated successfully on attempt ${attempt}`)

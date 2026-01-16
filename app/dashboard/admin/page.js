@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
             borderColor: 'border-l-green-500'
         },
         {
-            title: 'Active Campaigns',
+            title: 'Total Campaigns',
             value: loading ? '...' : dashboardStats.activeCampaigns?.value || 0,
             change: loading ? '...' : `${formatTrend(dashboardStats.activeCampaigns?.trend || 0)} from last 30 days`,
             trend: getTrendDirection(dashboardStats.activeCampaigns?.trend || 0),
@@ -130,6 +130,27 @@ export default function AdminDashboardPage() {
         }
     ]
 
+    const handleExport = () => {
+        const headers = ['Metric,Value,Trend\n']
+        const rows = [
+            `Total Users,${dashboardStats.users?.value || 0},${dashboardStats.users?.trend || 0}%`,
+            `Total Projects,${dashboardStats.projects?.value || 0},${dashboardStats.projects?.trend || 0}%`,
+            `Total Leads,${dashboardStats.leads?.value || 0},${dashboardStats.leads?.trend || 0}%`,
+            `Total Campaigns,${dashboardStats.activeCampaigns?.value || 0},${dashboardStats.activeCampaigns?.trend || 0}%`
+        ]
+
+        const csvContent = headers.concat(rows).join('\n')
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.setAttribute('href', url)
+        link.setAttribute('download', 'dashboard_stats.csv')
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
     return (
         <div className="p-8 bg-gray-50 min-h-screen">
             {/* Page Header */}
@@ -140,14 +161,16 @@ export default function AdminDashboardPage() {
                         <p className="text-gray-600 mt-1 text-sm md:text-base">Welcome back, here's what's happening with your organization</p>
                     </div>
                     <div className="flex flex-wrap gap-3">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={handleExport}>
                             <Download className="w-4 h-4 mr-2" />
                             Export
                         </Button>
-                        <Button size="sm">
-                            <Plus className="w-4 h-4 mr-2" />
-                            New Project
-                        </Button>
+                        <Link href="/dashboard/admin/projects">
+                            <Button size="sm">
+                                <Plus className="w-4 h-4 mr-2" />
+                                New Project
+                            </Button>
+                        </Link>
                     </div>
                 </div>
             </div>

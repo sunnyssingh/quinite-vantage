@@ -73,7 +73,7 @@ export async function GET() {
             getCount('profiles'), getPastCount('profiles', dateStr),
             getCount('projects'), getPastCount('projects', dateStr),
             getCount('leads'), getPastCount('leads', dateStr),
-            getCount('campaigns', { status: 'active' }), getPastCount('campaigns', dateStr, { status: 'active' })
+            getCount('campaigns'), getPastCount('campaigns', dateStr)
         ])
 
         return NextResponse.json({

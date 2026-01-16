@@ -8,6 +8,7 @@ import {
     Home,
     MapPin,
     DollarSign,
+    IndianRupee,
     Upload,
     Image as ImageIcon,
     Store,
@@ -17,18 +18,17 @@ import {
     ChevronLeft,
     AlertCircle
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 const STEPS = [
     { id: 'basic', title: 'Basic Info', icon: Building2, description: 'Project identity' },
     { id: 'property', title: 'Property', icon: Home, description: 'Type & Specs' },
     { id: 'location', title: 'Location', icon: MapPin, description: 'Address details' },
-    { id: 'pricing', title: 'Pricing', icon: DollarSign, description: 'Budget range' }
+    { id: 'pricing', title: 'Pricing', icon: IndianRupee, description: 'Budget range' }
 ]
 
 export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitting }) {
     const fileRef = useRef(null)
-    const { toast } = useToast()
     const [uploading, setUploading] = useState(false)
     const [currentStep, setCurrentStep] = useState(0)
     const [touched, setTouched] = useState({})
@@ -148,11 +148,9 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         } else {
             const stepErrors = Object.keys(errors)
             if (stepErrors.length > 0) {
-                toast({
-                    variant: "destructive",
-                    title: "Incomplete Details",
-                    description: "Please fill all required fields before proceeding."
-                })
+                if (stepErrors.length > 0) {
+                    toast.error("Please fill all required fields before proceeding.")
+                }
             }
         }
     }
@@ -166,7 +164,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         if (!file) return
 
         if (!file.type.startsWith('image/')) {
-            toast({ variant: "destructive", title: "Error", description: "Only images allowed" })
+            toast.error("Only images allowed")
             return
         }
 
@@ -195,10 +193,10 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
             handleChange('imageUrl', data.image_url)
             handleChange('imagePath', data.image_path)
-            toast({ title: "Success", description: "Image uploaded successfully!" })
+            toast.success("Image uploaded successfully!")
         } catch (err) {
             console.error(err)
-            toast({ variant: "destructive", title: "Error", description: "Image upload failed" })
+            toast.error("Image upload failed")
         } finally {
             setUploading(false)
         }
@@ -486,7 +484,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
                         <div className="text-center py-6">
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <DollarSign className="w-8 h-8 text-green-600" />
+                                <IndianRupee className="w-8 h-8 text-green-600" />
                             </div>
                             <h3 className="text-lg font-bold text-slate-900">Final Step: Pricing</h3>
                             <p className="text-slate-500">Set the budget range for your project</p>
@@ -549,19 +547,19 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                         <Button
                             onClick={handleSubmit}
                             disabled={isSubmitting}
-                            className="bg-green-600 hover:bg-green-700 text-white px-3 md:px-4 md:min-w-[140px]"
+                            className={`px-3 md:px-4 md:min-w-[140px] ${initialData ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
                         >
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    <span className="hidden sm:inline">Creating...</span>
+                                    <span className="hidden sm:inline">Saving...</span>
                                     <span className="sm:hidden">Wait...</span>
                                 </>
                             ) : (
                                 <>
                                     <CheckCircle2 className="w-4 h-4 mr-2" />
-                                    <span className="hidden sm:inline">Create Project</span>
-                                    <span className="sm:hidden">Create</span>
+                                    <span className="hidden sm:inline">{initialData ? 'Update Project' : 'Create Project'}</span>
+                                    <span className="sm:hidden">{initialData ? 'Update' : 'Create'}</span>
                                 </>
                             )}
                         </Button>

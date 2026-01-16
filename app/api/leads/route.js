@@ -163,8 +163,7 @@ export async function POST(request) {
                 'lead.create',
                 'lead',
                 lead.id,
-                { lead_name: lead.name },
-                profile.organization_id
+                { lead_name: lead.name }
             )
         } catch (auditError) {
             console.error('Audit log error:', auditError)

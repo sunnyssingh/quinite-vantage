@@ -170,25 +170,33 @@ export async function POST(request, { params }) {
                     const callSid = await makeCall(lead.phone, lead.id, campaign.id)
 
                     // Create call log
+                    // Create call log
+                    const callLogPayload = {
+                        campaign_id: campaign.id,
+                        lead_id: lead.id,
+                        organization_id: profile.organization_id,
+                        project_id: campaign.project_id,
+                        call_sid: callSid,
+                        call_status: 'initiated',
+                        transferred: false,
+                        notes: 'Real AI call initiated'
+                    }
+
+                    console.log('📝 [Campaign Start] Attempting to insert call log:', JSON.stringify(callLogPayload, null, 2))
+
                     const { data: callLog, error: callLogError } = await adminClient
                         .from('call_logs')
-                        .insert({
-                            campaign_id: campaign.id,
-                            lead_id: lead.id,
-                            organization_id: profile.organization_id,
-                            project_id: campaign.project_id,
-                            call_sid: callSid,
-                            call_status: 'initiated',
-                            transferred: false,
-                            notes: 'Real AI call initiated'
-                        })
+                        .insert(callLogPayload)
                         .select()
                         .single()
 
                     if (callLogError) {
-                        console.error('❌ [Campaign Start] Failed to insert call_log for lead:', lead.id, callLogError)
+                        console.error('❌ [Campaign Start] Failed to insert call_log:', callLogError)
+                        console.error('❌ [Campaign Start] Error details:', JSON.stringify(callLogError, null, 2))
                     } else if (callLog) {
                         console.log('✅ [Campaign Start] Call log created successfully:', callLog.id)
+                    } else {
+                        console.warn('⚠️ [Campaign Start] Insert succeeded but no data returned (RLS blocking?)')
                     }
 
                     // Update lead
@@ -275,8 +283,7 @@ export async function POST(request, { params }) {
                     total_leads: leads.length,
                     calls_initiated: totalCalls,
                     failed_calls: failedCalls
-                },
-                profile.organization_id
+                }
             )
 
             return corsJSON({
@@ -370,11 +377,19 @@ export async function POST(request, { params }) {
                     callLogData.transferred_to_phone = transferredEmployee.phone
                 }
 
-                const { data: callLog } = await adminClient
+                console.log('📝 [Simulation] Inserting call log:', JSON.stringify(callLogData, null, 2))
+
+                const { data: callLog, error: simError } = await adminClient
                     .from('call_logs')
                     .insert(callLogData)
                     .select()
                     .single()
+
+                if (simError) {
+                    console.error('❌ [Simulation] Failed to insert log:', simError)
+                } else {
+                    console.log('✅ [Simulation] Log created:', callLog?.id)
+                }
 
                 totalCalls++
                 if (selectedOutcome.transferred) {
@@ -416,8 +431,7 @@ export async function POST(request, { params }) {
                     total_calls: totalCalls,
                     transferred_calls: transferredCalls,
                     conversion_rate: conversionRate
-                },
-                profile.organization_id
+                }
             )
 
             return corsJSON({

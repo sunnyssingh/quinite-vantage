@@ -66,6 +66,16 @@ export async function POST(request) {
             .order('created_at', { ascending: false })
             .limit(1)
             .select()
+
+        // Update lead status to transferred
+        await supabase
+            .from('leads')
+            .update({
+                status: 'transferred',
+                call_status: 'transferred',
+                transferred_to_human: true
+            })
+            .eq('id', leadId)
     }
 
     // Generate Plivo XML for blind transfer

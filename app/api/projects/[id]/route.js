@@ -4,6 +4,8 @@ import { logAudit } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
 import path from 'path'
+import fs from 'fs'
+import Ajv from 'ajv'
 
 function handleCORS(response) {
     response.headers.set('Access-Control-Allow-Origin', '*')
@@ -28,14 +30,24 @@ export async function PUT(request, { params }) {
         }
 
         // 2️⃣ Profile
-        const { data: profile } = await supabase
+        const adminClient = createAdminClient()
+        const { data: profile, error: profileError } = await adminClient
             .from('profiles')
-            .select('organization_id, full_name, is_platform_admin')
+            .select('organization_id, full_name, role')
             .eq('id', user.id)
             .single()
 
+        if (profileError || !profile) {
+            console.error('[Project Update] Profile check failed:', profileError)
+            return handleCORS(
+                NextResponse.json({ error: 'Profile check failed', details: profileError }, { status: 404 })
+            )
+        }
+
+        console.log('[Project Update] Profile found:', profile.organization_id, 'Project ID:', id)
+
         // 3️⃣ Fetch project (IMPORTANT)
-        const { data: existing } = await supabase
+        const { data: existing } = await adminClient
             .from('projects')
             .select('id, name, image_path, created_by')
             .eq('id', id)
@@ -43,6 +55,7 @@ export async function PUT(request, { params }) {
             .single()
 
         if (!existing) {
+            console.error('[Project Update] Project not found or org mismatch. ProjectId:', id, 'OrgId:', profile.organization_id)
             return handleCORS(
                 NextResponse.json({ error: 'Project not found' }, { status: 404 })
             )
@@ -53,7 +66,7 @@ export async function PUT(request, { params }) {
 
         if (
             !isOwner &&
-            !profile.is_platform_admin
+            !['super_admin', 'platform_admin'].includes(profile.role)
         ) {
             return handleCORS(
                 NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -91,7 +104,7 @@ export async function PUT(request, { params }) {
         }
 
         // 6️⃣ Update project
-        const { data: project, error } = await supabase
+        const { data: project, error } = await adminClient
             .from('projects')
             .update(updates)
             .eq('id', id)
@@ -151,14 +164,19 @@ export async function DELETE(request, { params }) {
         }
 
         // 2️⃣ Profile
-        const { data: profile } = await supabase
+        const adminClient = createAdminClient()
+        const { data: profile } = await adminClient
             .from('profiles')
-            .select('organization_id, full_name, is_platform_admin')
+            .select('organization_id, full_name, role')
             .eq('id', user.id)
             .single()
 
+        if (!profile) {
+            return handleCORS(NextResponse.json({ error: 'Profile not found' }, { status: 404 }))
+        }
+
         // 3️⃣ Fetch project
-        const { data: project } = await supabase
+        const { data: project } = await adminClient
             .from('projects')
             .select('id, name, image_path, created_by')
             .eq('id', id)
@@ -176,7 +194,7 @@ export async function DELETE(request, { params }) {
 
         if (
             !isOwner &&
-            !profile.is_platform_admin
+            !['super_admin', 'platform_admin'].includes(profile.role)
         ) {
             return handleCORS(
                 NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -184,7 +202,7 @@ export async function DELETE(request, { params }) {
         }
 
         // 5️⃣ Delete DB row
-        await supabase
+        await adminClient
             .from('projects')
             .delete()
             .eq('id', id)
@@ -235,13 +253,19 @@ export async function GET(request, { params }) {
             return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
         }
 
-        const { data: profile } = await supabase
+        // 2️⃣ Profile
+        const adminClient = createAdminClient()
+        const { data: profile } = await adminClient
             .from('profiles')
             .select('organization_id')
             .eq('id', user.id)
             .single()
 
-        const { data: project, error } = await supabase
+        if (!profile) {
+            return handleCORS(NextResponse.json({ error: 'Profile not found' }, { status: 404 }))
+        }
+
+        const { data: project, error } = await adminClient
             .from('projects')
             .select('*')
             .eq('id', id)

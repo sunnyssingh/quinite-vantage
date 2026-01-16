@@ -28,10 +28,9 @@ export async function GET() {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
     }
 
-    // Projects can be fetched with standard client if policies allow
-    // But if RLS is strict for projects, use admin or ensure policies exist
-    // Assuming projects table RLS allows organization access
-    const { data, error } = await supabase
+    // Use admin client for fetching projects to avoid RLS recursion issues
+    // We manually verify organization_id above, so this is safe
+    const { data, error } = await admin
       .from('projects')
       .select('*')
       .eq('organization_id', profile.organization_id)
@@ -116,7 +115,7 @@ export async function POST(request) {
       created_by: user.id
     }
 
-    const { data: project, error } = await supabase
+    const { data: project, error } = await admin
       .from('projects')
       .insert(payload)
       .select()

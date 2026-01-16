@@ -57,28 +57,28 @@ export async function GET(request) {
         const campaigns = campaignsRaw || []
 
         // 2. Fetch leads for these campaigns to calculate stats
-        const campaignIds = campaigns.map(c => c.id)
-        // Only fetch leads if there are campaigns
+        // Leads are linked to projects, not directly to campaigns (unless via call_log, but we use leads table for reliability)
+        const projectIds = campaigns.map(c => c.project?.id).filter(Boolean)
+
         let leads = []
-        if (campaignIds.length > 0) {
+        if (projectIds.length > 0) {
             const { data: leadsData } = await adminClient
                 .from('leads')
-                .select('campaign_id, call_status, transferred_to_human')
-                .in('campaign_id', campaignIds)
+                .select('project_id, call_status, transferred_to_human')
+                .in('project_id', projectIds)
             leads = leadsData || []
         }
 
         // 3. Aggregate stats
         const campaignsWithStats = campaigns.map(campaign => {
-            const campaignLeads = leads.filter(l => l.campaign_id === campaign.id)
+            // Find leads belonging to this campaign's project
+            const campaignLeads = leads.filter(l => l.project_id === campaign.project?.id)
 
-            // Count calls: any lead that has a call_status other than null/new/pending if desired, 
-            // but usually 'called', 'transferred', 'no_answer', 'voicemail' implies a call was made.
-            // We'll trust call_status is populated for calls.
+            // Count calls: any lead that has a call_status other than null/not_called
             const totalCalls = campaignLeads.filter(l => l.call_status && l.call_status !== 'not_called').length
 
             // Count transfers
-            const transferredCalls = campaignLeads.filter(l => l.transferred_to_human || l.call_status === 'transferred').length
+            const transferredCalls = campaignLeads.filter(l => l.transferred_to_human === true).length
 
             const conversionRate = totalCalls > 0 ? ((transferredCalls / totalCalls) * 100).toFixed(1) : 0
 

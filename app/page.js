@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building2, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 export default function AuthPage() {
   const router = useRouter()
@@ -22,7 +22,6 @@ export default function AuthPage() {
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('signin')
-  const { toast } = useToast()
 
   // Check if user is already logged in
   useEffect(() => {
@@ -31,10 +30,7 @@ export default function AuthPage() {
       if (session) {
         // User is logged in - show option to continue or sign out
         setLoading(false)
-        toast({
-          title: 'Welcome back!',
-          description: `You're logged in as ${session.user.email}`
-        })
+        toast.success(`Welcome back! You're logged in as ${session.user.email}`)
       } else {
         setLoading(false)
       }
@@ -48,18 +44,11 @@ export default function AuthPage() {
       await fetch('/api/auth/signout', { method: 'POST' })
       await supabase.auth.signOut()
       await supabase.auth.signOut()
-      toast({
-        title: 'Success',
-        description: 'Signed out successfully'
-      })
+      toast.success('Signed out successfully')
       // Reload the page to show signin/signup forms
       window.location.reload()
     } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to sign out'
-      })
+      toast.error('Failed to sign out')
     } finally {
       setSubmitting(false)
     }
@@ -98,11 +87,7 @@ export default function AuthPage() {
 
       // Check if email confirmation is needed
       if (signupData.needsConfirmation) {
-        toast({
-          title: 'Account created!',
-          description: 'Please check your email to confirm before signing in.',
-          duration: 6000
-        })
+        toast.success('Account created! Please check your email to confirm before signing in.')
         setActiveTab('signin')
         setSubmitting(false)
         return
@@ -145,11 +130,7 @@ export default function AuthPage() {
 
       if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
 
-        toast({
-          variant: 'destructive',
-          title: 'Onboarding failed',
-          description: `${onboardData.error}. Setup incomplete. Try logging in again.`
-        })
+        toast.error(`${onboardData.error}. Setup incomplete. Try logging in again.`)
         setActiveTab('signin')
         setSubmitting(false)
         return
@@ -159,18 +140,11 @@ export default function AuthPage() {
 
       // Success! Redirect to onboarding wizard
 
-      toast({
-        title: 'Success',
-        description: 'Account created! Complete your onboarding to get started.'
-      })
+      toast.success('Account created! Complete your onboarding to get started.')
       setTimeout(() => router.push('/onboarding'), 1500)
     } catch (err) {
 
-      toast({
-        variant: 'destructive',
-        title: 'Signup failed',
-        description: err.message
-      })
+      toast.error(err.message)
     } finally {
       setSubmitting(false)
     }
@@ -230,21 +204,14 @@ export default function AuthPage() {
 
         if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
 
-          toast({
-            variant: 'destructive',
-            title: 'Setup failed',
-            description: `${onboardData.error}. Please try again.`
-          })
+          toast.error(`${onboardData.error}. Please try again.`)
           setSubmitting(false)
           return
         }
 
 
 
-        toast({
-          title: 'Welcome!',
-          description: 'Complete your onboarding to get started.'
-        })
+        toast.success('Complete your onboarding to get started.')
         setTimeout(() => router.push('/onboarding'), 1000)
       } else {
 
@@ -261,19 +228,12 @@ export default function AuthPage() {
         const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
 
 
-        toast({
-          title: 'Welcome back!',
-          description: 'Redirecting to dashboard...'
-        })
+        toast.success('Welcome back! Redirecting to dashboard...')
         setTimeout(() => router.push(dashboardRoute), 1000)
       }
     } catch (err) {
 
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: err.message
-      })
+      toast.error(err.message)
     } finally {
       setSubmitting(false)
     }

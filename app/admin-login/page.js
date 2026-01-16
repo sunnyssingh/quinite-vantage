@@ -8,12 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Shield, Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 export default function AdminLoginPage() {
   const router = useRouter()
   const supabase = createClient()
-  const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -73,18 +72,11 @@ export default function AdminLoginPage() {
         throw new Error(data.error || 'Login failed')
       }
 
-      toast({
-        title: 'Login successful!',
-        description: 'Redirecting to platform dashboard...'
-      })
+      toast.success('Login successful! Redirecting to platform dashboard...')
       setTimeout(() => router.push('/dashboard/platform'), 1000)
     } catch (err) {
       console.error('Login error:', err)
-      toast({
-        variant: 'destructive',
-        title: 'Access Denied',
-        description: err.message
-      })
+      toast.error(err.message)
     } finally {
       setSubmitting(false)
     }

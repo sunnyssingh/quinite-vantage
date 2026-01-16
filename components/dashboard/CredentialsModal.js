@@ -10,28 +10,20 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Check, Copy, AlertTriangle } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 
 export default function CredentialsModal({ open, onOpenChange, credentials }) {
     const [copied, setCopied] = useState(false)
-    const { toast } = useToast()
 
     const handleCopy = async () => {
         try {
             const textToCopy = `Email: ${credentials.email}\nPassword: ${credentials.tempPassword}`
             await navigator.clipboard.writeText(textToCopy)
             setCopied(true)
-            toast({
-                title: "Copied!",
-                description: "Credentials copied to clipboard",
-            })
+            toast.success("Credentials copied to clipboard")
             setTimeout(() => setCopied(false), 2000)
         } catch (err) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to copy credentials",
-            })
+            toast.error("Failed to copy credentials")
         }
     }
 

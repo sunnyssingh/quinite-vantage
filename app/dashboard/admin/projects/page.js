@@ -13,13 +13,12 @@ import {
   DialogDescription
 } from '@/components/ui/dialog'
 import { Building2, Plus, Sparkles, Loader2, Briefcase } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectForm from '@/components/projects/ProjectForm'
 
 export default function ProjectsPage() {
   const router = useRouter()
-  const { toast } = useToast()
 
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +37,10 @@ export default function ProjectsPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [campName, setCampName] = useState('')
   const [campProjectId, setCampProjectId] = useState(null)
+  const [campStartDate, setCampStartDate] = useState(new Date().toISOString().split('T')[0])
+  const [campEndDate, setCampEndDate] = useState(new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0])
+  const [campTimeStart, setCampTimeStart] = useState('09:00')
+  const [campTimeEnd, setCampTimeEnd] = useState('18:00')
 
   // Delete State
   const [deletingId, setDeletingId] = useState(null)
@@ -53,11 +56,7 @@ export default function ProjectsPage() {
       const data = await res.json()
       setProjects(data.projects || [])
     } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load projects"
-      })
+      toast.error("Failed to load projects")
     } finally {
       setLoading(false)
     }
@@ -118,10 +117,10 @@ export default function ProjectsPage() {
       if (!res.ok) throw new Error(data.error)
 
       setProjects(prev => [data.project, ...prev])
-      toast({ title: "Success", description: "Project created successfully!" })
+      toast.success("Project created successfully!")
       setShowCreateForm(false)
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: err.message || "Failed to create project" })
+      toast.error(err.message || "Failed to create project")
     } finally {
       setSubmitting(false)
     }
@@ -183,9 +182,9 @@ export default function ProjectsPage() {
 
       setProjects(prev => prev.map(p => p.id === data.project.id ? data.project : p))
       setEditOpen(false)
-      toast({ title: "Success", description: "Project updated successfully!" })
+      toast.success("Project updated successfully!")
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: err.message || "Update failed" })
+      toast.error(err.message || "Update failed")
     } finally {
       setSubmitting(false)
     }
@@ -201,9 +200,9 @@ export default function ProjectsPage() {
       if (!res.ok) throw new Error(data.error || 'Delete failed')
 
       setProjects(prev => prev.filter(p => p.id !== project.id))
-      toast({ title: "Success", description: "Project deleted successfully!" })
+      toast.success("Project deleted successfully!")
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: err.message || "Delete failed" })
+      toast.error(err.message || "Delete failed")
     } finally {
       setDeletingId(null)
     }
@@ -219,24 +218,23 @@ export default function ProjectsPage() {
         body: JSON.stringify({
           name: campName,
           project_id: campProjectId,
-          start_date: new Date().toISOString(), // Default valid range
-          end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-          daily_start_time: '09:00',
-          daily_end_time: '18:00',
-          max_calls_per_day: 100
+          start_date: campStartDate,
+          end_date: campEndDate,
+          time_start: campTimeStart,
+          time_end: campTimeEnd
         })
       })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      toast({ title: "Success", description: "Campaign created successfully!" })
+      toast.success("Campaign created successfully!")
       setAddOpen(false)
       setCampName('')
       setCampProjectId(null)
-      router.push('/dashboard/campaigns')
+      router.push('/dashboard/admin/campaigns')
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: err.message })
+      toast.error(err.message)
     } finally {
       setSubmitting(false)
     }
@@ -500,6 +498,48 @@ export default function ProjectsPage() {
                 placeholder="e.g., Summer Sale Outreach"
                 required
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Start Date</label>
+                <Input
+                  type="date"
+                  value={campStartDate}
+                  onChange={e => setCampStartDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">End Date</label>
+                <Input
+                  type="date"
+                  value={campEndDate}
+                  onChange={e => setCampEndDate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Daily Start Time</label>
+                <Input
+                  type="time"
+                  value={campTimeStart}
+                  onChange={e => setCampTimeStart(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Daily End Time</label>
+                <Input
+                  type="time"
+                  value={campTimeEnd}
+                  onChange={e => setCampTimeEnd(e.target.value)}
+                  required
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>

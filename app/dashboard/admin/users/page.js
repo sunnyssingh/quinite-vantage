@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'react-hot-toast'
 import CredentialsModal from '@/components/dashboard/CredentialsModal'
+import { Pencil, Trash2, Plus } from 'lucide-react'
 
 export default function UsersPage() {
     const [users, setUsers] = useState([])
@@ -11,7 +12,6 @@ export default function UsersPage() {
     const [showCredentials, setShowCredentials] = useState(false)
     const [newCredentials, setNewCredentials] = useState(null)
     const [editingUser, setEditingUser] = useState(null)
-    const { toast } = useToast()
 
     useEffect(() => {
         fetchUsers()
@@ -44,11 +44,7 @@ export default function UsersPage() {
             setUsers(data.users || [])
         } catch (error) {
 
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Failed to load users'
-            })
+            toast.error('Failed to load users')
         } finally {
             setLoading(false)
         }
@@ -67,17 +63,10 @@ export default function UsersPage() {
                 throw new Error(data.error || 'Failed to delete user')
             }
 
-            toast({
-                title: 'Success',
-                description: 'User deleted successfully'
-            })
+            toast.success('User deleted successfully')
             fetchUsers()
         } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: error.message
-            })
+            toast.error(error.message)
         }
     }
 
@@ -174,18 +163,22 @@ export default function UsersPage() {
                                     {new Date(user.created_at).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <button
-                                        onClick={() => openEditModal(user)}
-                                        className="text-blue-600 hover:text-blue-900 mr-4"
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteUser(user.id)}
-                                        className="text-red-600 hover:text-red-900"
-                                    >
-                                        Delete
-                                    </button>
+                                    <div className="flex justify-end gap-3">
+                                        <button
+                                            onClick={() => openEditModal(user)}
+                                            className="p-1.5 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-full transition-colors"
+                                            title="Edit User"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteUser(user.id)}
+                                            className="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-full transition-colors"
+                                            title="Delete User"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -231,7 +224,6 @@ export default function UsersPage() {
 
 function UserModal({ user, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false)
-    const { toast } = useToast()
 
     const [formData, setFormData] = useState({
         email: user?.email || '',
@@ -260,17 +252,10 @@ function UserModal({ user, onClose, onSuccess }) {
                 throw new Error(data.error || 'Operation failed')
             }
 
-            toast({
-                title: 'Success',
-                description: user ? 'User updated successfully!' : 'User added successfully!'
-            })
+            toast.success(user ? 'User updated successfully!' : 'User added successfully!')
             onSuccess(data.user)
         } catch (error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: error.message
-            })
+            toast.error(error.message)
         } finally {
             setLoading(false)
         }

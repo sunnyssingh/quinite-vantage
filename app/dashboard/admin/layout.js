@@ -128,7 +128,7 @@ export default function AdminLayout({ children }) {
                                 <Building2 className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-bold text-gray-900">Admin Panel</h2>
+                                <h2 className="text-lg font-bold text-gray-900">{profile?.organization?.name || 'Admin Panel'}</h2>
                                 <p className="text-xs text-gray-500">Super Admin</p>
                             </div>
                         </div>
