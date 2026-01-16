@@ -245,6 +245,11 @@ export async function POST(request, { params }) {
                         return corsJSON({
                             success: true,
                             status: 'cancelled',
+                            campaign: {
+                                id: campaign.id,
+                                name: campaign.name,
+                                status: 'cancelled'
+                            },
                             summary: {
                                 totalLeads: leads.length,
                                 callsInitiated: totalCalls,
