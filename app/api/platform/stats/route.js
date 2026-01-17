@@ -61,6 +61,12 @@ export async function GET() {
             database: {
                 projectId: projectId,
                 url: supabaseUrl
+            },
+            overview: {
+                totalOrgs: stats.counts.organizations || 0,
+                activeOrgs: -1,
+                totalUsers: stats.counts.profiles || 0,
+                totalCalls: stats.counts.call_logs || 0
             }
         })
     } catch (e) {

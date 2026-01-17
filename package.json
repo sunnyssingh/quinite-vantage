@@ -65,6 +65,7 @@
         "next-themes": "^0.4.6",
         "openai": "^6.15.0",
         "plivo": "^4.75.3",
+        "razorpay": "^2.9.6",
         "react": "^18.3.1",
         "react-day-picker": "^9.7.0",
         "react-dom": "^18.3.1",
@@ -86,8 +87,8 @@
         "cross-env": "^10.1.0",
         "globals": "^16.2.0",
         "postcss": "^8",
-        "tailwindcss": "^3.4.1",
-        "supabase": "^2.72.7"
+        "supabase": "^2.72.7",
+        "tailwindcss": "^3.4.1"
     },
     "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

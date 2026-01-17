@@ -19,13 +19,30 @@ export async function POST(request) {
     const { data: impersonatorProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     if (impersonatorProfile?.role !== 'platform_admin') return handleCORS(NextResponse.json({ error: 'Only Platform Admins can impersonate users' }, { status: 403 }))
 
-    const { targetUserId, organizationId } = body
-    if (!targetUserId || !organizationId) return handleCORS(NextResponse.json({ error: 'targetUserId and organizationId are required' }, { status: 400 }))
-
     const adminClient = createAdminClient()
 
+    let targetId = targetUserId
+
+    // If no specific user provided, find the first owner/admin of the organization
+    if (!targetId) {
+      const { data: users, error: usersError } = await adminClient
+        .from('profiles')
+        .select('id, role')
+        .eq('organization_id', organizationId)
+        // .in('role', ['super_admin', 'manager']) // Assuming roles; filtering in JS if needed
+        .limit(5)
+
+      if (usersError || !users || users.length === 0) {
+        return handleCORS(NextResponse.json({ error: 'No users found in this organization' }, { status: 404 }))
+      }
+
+      // Prefer manager/admin, else first user
+      const adminUser = users.find(u => u.role === 'super_admin' || u.role === 'manager') || users[0]
+      targetId = adminUser.id
+    }
+
     try {
-      const { data: targetProfile, error: targetError } = await adminClient.from('profiles').select('*, organization:organizations(name), role:roles(name)').eq('id', targetUserId).eq('organization_id', organizationId).single()
+      const { data: targetProfile, error: targetError } = await adminClient.from('profiles').select('*, organization:organizations(name), role:roles(name)').eq('id', targetId).eq('organization_id', organizationId).single()
       if (targetError || !targetProfile) throw new Error('Target user not found in specified organization')
 
       await adminClient.from('impersonation_sessions').update({ is_active: false, ended_at: new Date().toISOString() }).eq('impersonator_user_id', user.id).eq('is_active', true)

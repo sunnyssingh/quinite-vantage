@@ -16,13 +16,13 @@ export default function SettingsPage() {
                 </a>
 
                 <a
-                    href="/dashboard/admin/settings/billing"
+                    href="/dashboard/admin/settings/subscription"
                     className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
                 >
                     <div className="text-4xl mb-4">💳</div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Billing</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">Subscription</h3>
                     <p className="text-gray-600">
-                        View plans, billing history, and payment methods
+                        Manage your subscription, view usage, and upgrade plans
                     </p>
                 </a>
 

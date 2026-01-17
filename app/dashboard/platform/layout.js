@@ -14,7 +14,8 @@ import {
   LogOut,
   Menu,
   X,
-  AlertCircle
+  AlertCircle,
+  CreditCard
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
@@ -91,6 +92,7 @@ export default function PlatformLayout({ children }) {
   const navItems = [
     { icon: Shield, label: 'Dashboard', href: '/dashboard/platform/dashboard' },
     { icon: Building2, label: 'Organizations', href: '/dashboard/platform/organizations' },
+    { icon: CreditCard, label: 'Subscriptions', href: '/dashboard/platform/subscriptions' },
     { icon: FileText, label: 'Audit Logs', href: '/dashboard/platform/audit' },
     { icon: Users2, label: 'Profile', href: '/dashboard/platform/profile' },
   ]
@@ -182,8 +184,7 @@ export default function PlatformLayout({ children }) {
             </div>
             <Separator className="mb-3 bg-purple-800" />
             <Button
-              variant="outline"
-              className="w-full justify-start border-purple-700 text-white hover:bg-purple-800"
+              className="w-full justify-start border border-purple-700 bg-purple-800 text-white hover:bg-purple-700 hover:text-white shadow-sm"
               onClick={handleSignOut}
             >
               <LogOut className="w-4 h-4 mr-2" />
