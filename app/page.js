@@ -28,9 +28,27 @@ export default function AuthPage() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // User is logged in - show option to continue or sign out
-        setLoading(false)
-        toast.success(`Welcome back! You're logged in as ${session.user.email}`)
+        setLoading(false) // Stop loading immediately to show UI/toast if needed briefly
+
+        // Fetch user profile to get role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+
+        const role = profile?.role || 'employee'
+        const dashboardRoutes = {
+          platform_admin: '/dashboard/platform',
+          super_admin: '/dashboard/admin',
+          manager: '/dashboard/manager',
+          employee: '/dashboard/employee'
+        }
+
+        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
+
+        toast.success(`Welcome back! Redirecting to dashboard...`)
+        router.push(dashboardRoute)
       } else {
         setLoading(false)
       }
