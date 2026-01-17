@@ -10,6 +10,11 @@ export async function GET(request) {
         await supabase.auth.exchangeCodeForSession(code)
     }
 
-    // Redirect to home page after email confirmation
+    // Redirect to home page or specific next page after email confirmation
+    const next = requestUrl.searchParams.get('next')
+    if (next) {
+        return NextResponse.redirect(new URL(next, requestUrl.origin))
+    }
+
     return NextResponse.redirect(new URL('/', requestUrl.origin))
 }
