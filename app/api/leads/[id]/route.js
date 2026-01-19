@@ -17,14 +17,17 @@ export async function PUT(request, { params }) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Get user's profile
-        const { data: profile } = await supabase
+        // Use admin client to reliably get role
+        const adminClient = createAdminClient()
+        const { data: profile } = await adminClient
             .from('profiles')
-            .select('organization_id, full_name')
+            .select('organization_id, role, full_name')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id) {
+        const isPlatformAdmin = profile?.role === 'platform_admin'
+
+        if (!profile?.organization_id && !isPlatformAdmin) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 
@@ -38,10 +41,7 @@ export async function PUT(request, { params }) {
             return corsJSON({ error: 'Name is required' }, { status: 400 })
         }
 
-        // Use admin client to update lead
-        const adminClient = createAdminClient()
-
-        // First, verify the lead belongs to the user's organization
+        // First, verify the lead exists
         const { data: existingLead } = await adminClient
             .from('leads')
             .select('id, organization_id, name')
@@ -52,7 +52,8 @@ export async function PUT(request, { params }) {
             return corsJSON({ error: 'Lead not found' }, { status: 404 })
         }
 
-        if (existingLead.organization_id !== profile.organization_id) {
+        // Check permission (Platform Admin bypass OR Same Org)
+        if (!isPlatformAdmin && existingLead.organization_id !== profile.organization_id) {
             return corsJSON({ error: 'Unauthorized' }, { status: 403 })
         }
 
@@ -88,7 +89,7 @@ export async function PUT(request, { params }) {
                 'lead',
                 lead.id,
                 { lead_name: lead.name },
-                profile.organization_id
+                profile.organization_id || existingLead.organization_id
             )
         } catch (auditError) {
             console.error('Audit log error:', auditError)
@@ -114,20 +115,23 @@ export async function DELETE(request, { params }) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        const { data: profile } = await supabase
+        // Use admin client to reliably get role
+        const adminClient = createAdminClient()
+        const { data: profile } = await adminClient
             .from('profiles')
-            .select('organization_id, full_name')
+            .select('organization_id, role, full_name')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id) {
+        const isPlatformAdmin = profile?.role === 'platform_admin'
+
+        if (!profile?.organization_id && !isPlatformAdmin) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 
         const { id } = await params
-        const adminClient = createAdminClient()
 
-        // Verify ownership
+        // Verify ownership/existence
         const { data: existingLead } = await adminClient
             .from('leads')
             .select('id, organization_id, name')
@@ -138,12 +142,12 @@ export async function DELETE(request, { params }) {
             return corsJSON({ error: 'Lead not found' }, { status: 404 })
         }
 
-        if (existingLead.organization_id !== profile.organization_id) {
+        // Check permission (Platform Admin bypass OR Same Org)
+        if (!isPlatformAdmin && existingLead.organization_id !== profile.organization_id) {
             return corsJSON({ error: 'Unauthorized' }, { status: 403 })
         }
 
         // 1. Break the circular dependency (Lead -> CallLog)
-        // If the lead references a call log, we must unlink it first
         const { error: unlinkError } = await adminClient
             .from('leads')
             .update({ call_log_id: null })
@@ -151,6 +155,7 @@ export async function DELETE(request, { params }) {
 
         if (unlinkError) {
             console.error('❌ Failed to unlink call_log_id:', unlinkError)
+            return corsJSON({ error: 'Failed to unlink lead from call logs' }, { status: 500 })
         }
 
         // 2. Delete related call_logs (CallLog -> Lead)
@@ -161,11 +166,13 @@ export async function DELETE(request, { params }) {
 
         if (logsError) {
             console.error('❌ Failed to cleanup call_logs:', logsError)
-        } else {
-            console.log('✅ Cleaned up related call_logs')
+            return corsJSON({
+                error: 'Failed to delete related call logs',
+                details: logsError.message
+            }, { status: 500 })
         }
 
-        // 2. Delete Lead
+        // 3. Delete Lead
         const { error } = await adminClient
             .from('leads')
             .delete()
@@ -195,7 +202,7 @@ export async function DELETE(request, { params }) {
                 'lead',
                 id,
                 { lead_name: existingLead.name },
-                profile.organization_id
+                profile.organization_id || existingLead.organization_id
             )
         } catch (auditError) {
             console.error('Audit log error:', auditError)

@@ -85,4 +85,4 @@ node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node
 node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.node
 
 # Exclude websocket server (separate repo)
-websocker-server/
+/websocker-server

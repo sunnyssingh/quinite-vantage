@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function POST(request) {
@@ -10,18 +11,40 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Get Organisation ID from profile
-        const { data: profile } = await supabase
+        // Use admin client to reliably get role
+        const adminClient = createAdminClient()
+        const { data: profile } = await adminClient
             .from('profiles')
-            .select('organization_id')
+            .select('organization_id, role')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id) {
+        const isPlatformAdmin = profile?.role === 'platform_admin'
+
+        if (!profile?.organization_id && !isPlatformAdmin) {
             return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
         }
 
         const { leads, projectId } = await request.json()
+
+        let targetOrgId = profile.organization_id
+
+        // If Platform Admin and no org in profile, try to get org from project
+        if (isPlatformAdmin && !targetOrgId && projectId) {
+            const { data: project } = await adminClient
+                .from('projects')
+                .select('organization_id')
+                .eq('id', projectId)
+                .single()
+
+            if (project) {
+                targetOrgId = project.organization_id
+            }
+        }
+
+        if (!targetOrgId) {
+            return NextResponse.json({ error: 'Target Organization not found. Please select a project.' }, { status: 400 })
+        }
 
         if (!Array.isArray(leads) || leads.length === 0) {
             return NextResponse.json({ error: 'Invalid leads data' }, { status: 400 })
@@ -59,7 +82,7 @@ export async function POST(request) {
             }
 
             leadsToInsert.push({
-                organization_id: profile.organization_id,
+                organization_id: targetOrgId,
                 project_id: projectId || null,
                 name: lead.name,
                 email: lead.email || null,
@@ -75,7 +98,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'No valid leads with phone numbers found' }, { status: 400 })
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await adminClient
             .from('leads')
             .insert(leadsToInsert)
             .select()
