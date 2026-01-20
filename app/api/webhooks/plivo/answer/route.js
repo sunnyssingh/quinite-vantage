@@ -55,7 +55,7 @@ export async function POST(request) {
     // CREATE CALL LOG ENTRY
     const { error: logError } = await adminClient
       .from('call_logs')
-      .insert({
+      .upsert({
         organization_id: campaign.organization_id,
         project_id: lead.project_id,
         campaign_id: campaign.id,
@@ -65,7 +65,7 @@ export async function POST(request) {
         direction: 'inbound', // Mark as inbound
         caller_number: request.headers.get('x-plivo-from') || 'unknown',
         callee_number: request.headers.get('x-plivo-to') || 'unknown'
-      })
+      }, { onConflict: 'call_sid', ignoreDuplicates: true })
 
     if (logError) {
       console.error('Failed to create call log:', logError)
