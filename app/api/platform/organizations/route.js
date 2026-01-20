@@ -41,7 +41,7 @@ export async function GET(request) {
     // Handle Actions (Suspend, Activate, Delete)
     if (action && id) {
       if (request.method === 'POST') {
-        const { data: org, error: fetchError } = await supabase
+        const { data: org, error: fetchError } = await adminClient
           .from('organizations')
           .select('settings')
           .eq('id', id)
@@ -56,6 +56,16 @@ export async function GET(request) {
           updateData.settings = { ...settings, status: 'suspended' }
         } else if (action === 'activate') {
           updateData.settings = { ...settings, status: 'active' }
+        } else if (action === 'update_settings') {
+          const body = await request.json();
+          // Handle explicit column updates if present
+          if (body.caller_id) {
+            updateData.caller_id = body.caller_id;
+          }
+          // Preserving generic settings update potential
+          if (body.settings) {
+            updateData.settings = { ...settings, ...body.settings };
+          }
         } else if (action === 'delete') {
           // Check for active subscriptions or other blockers before deleting?
           // For now, allow Platform Admin to delete.
