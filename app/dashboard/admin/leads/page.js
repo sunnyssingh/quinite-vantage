@@ -560,11 +560,23 @@ export default function LeadsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {lead.rejection_reason ? (
-                            <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                              {lead.rejection_reason}
-                            </Badge>
-                          ) : '-'}
+                          <div className="flex items-center gap-2">
+                            {lead.rejection_reason ? (
+                              <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+                                {lead.rejection_reason}
+                              </Badge>
+                            ) : '-'}
+                            {(lead.notes || lead.disconnect_notes) && (
+                              <div className="relative group">
+                                <span className="cursor-help text-gray-400 hover:text-gray-600">
+                                  <FileDown className="w-4 h-4 rotate-180" /> {/* Using FileIcon or similar if available, else generic info */}
+                                </span>
+                                <div className="absolute z-50 bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 p-2 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                  {lead.notes || lead.disconnect_notes}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
