@@ -58,9 +58,16 @@ export async function POST(request, { params }) {
         console.log('📊 [Campaign Start] Current status:', campaign.status)
 
         // Validate time window
+        // Validate time window (Corrected for IST)
         const now = new Date()
-        const currentDate = now.toISOString().split('T')[0]
-        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5) // HH:MM
+
+        // Get current date/time in IST (India Standard Time)
+        // en-CA gives YYYY-MM-DD format
+        const currentDate = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+        // en-GB gives HH:MM:SS format (24h)
+        const currentTime = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false }).substring(0, 5)
+
+        console.log(`🕒 [Campaign Start] Server Time: ${now.toISOString()} | IST Time: ${currentDate} ${currentTime}`)
 
         // Check date range
         if (campaign.start_date && campaign.end_date) {
