@@ -79,7 +79,9 @@ export async function POST(request) {
             const order = await razorpay.orders.create({
                 amount: amount * 100, // Razorpay expects amount in paise
                 currency: 'INR',
-                receipt: `sub_${profile.organization_id}_${Date.now()}`,
+                // Receipt length max 40. UUID is 36. Timestamp is 13.
+                // Format: sub_<short_timestamp>_<short_org_id>
+                receipt: `sub_${Date.now().toString().slice(-10)}_${profile.organization_id.slice(0, 8)}`,
                 notes: {
                     organization_id: profile.organization_id,
                     plan_id: plan.id,
