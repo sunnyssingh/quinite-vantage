@@ -96,8 +96,11 @@ export default function SubscriptionPage() {
 
         try {
             // Check if Razorpay SDK is loaded
-            if (!isRazorpayLoaded && !window.Razorpay) {
-                toast.error('Payment gateway is still loading. Please try again in 3 seconds.', { id: loadingToast })
+            console.log('🔍 Razorpay Check:', { isRazorpayLoaded, hasWindow: typeof window !== 'undefined', hasRazorpay: typeof window?.Razorpay !== 'undefined' })
+
+            if (!window?.Razorpay) {
+                console.error('❌ Razorpay SDK not loaded')
+                toast.error('Payment gateway failed to load. Please refresh the page and try again.', { id: loadingToast })
                 return
             }
 

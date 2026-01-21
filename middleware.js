@@ -166,7 +166,7 @@ export async function middleware(request) {
     // Add CSP header (adjust as needed for your app)
     const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://dlbxhbukzyygbabrujuv.supabase.co;
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://dlbxhbukzyygbabrujuv.supabase.co https://checkout.razorpay.com;
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data: https://dlbxhbukzyygbabrujuv.supabase.co;
     font-src 'self';
