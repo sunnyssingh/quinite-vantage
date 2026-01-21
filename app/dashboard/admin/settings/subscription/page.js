@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Script from 'next/script'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ export default function SubscriptionPage() {
     const [selectedPlan, setSelectedPlan] = useState(null)
     const [mandateDialogOpen, setMandateDialogOpen] = useState(false)
     const [mandateData, setMandateData] = useState(null)
+    const [isRazorpayLoaded, setIsRazorpayLoaded] = useState(false)
 
     useEffect(() => {
         fetchSubscription()
@@ -93,6 +95,12 @@ export default function SubscriptionPage() {
         const loadingToast = toast.loading('Initiating payment...')
 
         try {
+            // Check if Razorpay SDK is loaded
+            if (!isRazorpayLoaded && !window.Razorpay) {
+                toast.error('Payment gateway is still loading. Please try again in 3 seconds.', { id: loadingToast })
+                return
+            }
+
             const response = await fetch('/api/payment/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -122,57 +130,47 @@ export default function SubscriptionPage() {
                 return
             }
 
-            // Load Razorpay script for real payments
-            const script = document.createElement('script')
-            script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-            script.async = true
-            document.body.appendChild(script)
-
-            script.onload = () => {
-                const isTestMode = data.key?.startsWith('rzp_test')
-                if (isTestMode) {
-                    toast('💳 Test Mode Verified', {
-                        icon: '🧪',
-                        style: {
-                            borderRadius: '10px',
-                            background: '#333',
-                            color: '#fff',
-                        },
-                    })
-                }
-
-                const options = {
-                    key: data.key,
-                    amount: data.amount * 100,
-                    currency: data.currency,
-                    name: data.name,
-                    description: data.description,
-                    order_id: data.order_id,
-                    prefill: data.prefill,
-                    theme: data.theme,
-                    handler: function (response) {
-                        toast.success('Payment successful! Verifying subscription...')
-                        setUpgradeDialogOpen(false)
-                        // Wait 2s for webhook to process
-                        setTimeout(() => {
-                            fetchSubscription()
-                            toast.success('Subscription upgraded!')
-                        }, 2000)
+            // Real Payment Flow using Window.Razorpay
+            const isTestMode = data.key?.startsWith('rzp_test')
+            if (isTestMode) {
+                toast('💳 Test Mode Verified', {
+                    icon: '🧪',
+                    style: {
+                        borderRadius: '10px',
+                        background: '#333',
+                        color: '#fff',
                     },
-                    modal: {
-                        ondismiss: function () {
-                            toast.error('Payment cancelled')
-                        }
+                })
+            }
+
+            const options = {
+                key: data.key,
+                amount: data.amount * 100,
+                currency: data.currency,
+                name: data.name,
+                description: data.description,
+                order_id: data.order_id,
+                prefill: data.prefill,
+                theme: data.theme,
+                handler: function (response) {
+                    toast.success('Payment successful! Verifying subscription...')
+                    setUpgradeDialogOpen(false)
+                    // Wait 2s for webhook to process
+                    setTimeout(() => {
+                        fetchSubscription()
+                        toast.success('Subscription upgraded!')
+                    }, 2000)
+                },
+                modal: {
+                    ondismiss: function () {
+                        toast.error('Payment cancelled')
                     }
                 }
-
-                const razorpay = new window.Razorpay(options)
-                razorpay.open()
             }
 
-            script.onerror = () => {
-                toast.error('Failed to load payment gateway')
-            }
+            const razorpay = new window.Razorpay(options)
+            razorpay.open()
+
         } catch (error) {
             console.error('Error initiating payment:', error)
             toast.error('Payment initiation failed', { id: loadingToast })
@@ -544,6 +542,14 @@ export default function SubscriptionPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Razorpay SDK Script */}
+            <Script
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                strategy="lazyOnload"
+                onLoad={() => setIsRazorpayLoaded(true)}
+                onError={() => toast.error("Failed to load Razorpay SDK. Please check your internet connection.")}
+            />
         </div>
     )
 }
