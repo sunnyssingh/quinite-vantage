@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { normalizeLead } from '@/lib/lead-normalization'
 
@@ -11,7 +11,7 @@ export async function POST(req) {
         const EXPECTED_SECRET = process.env.INGESTION_SECRET || 'vantage-secret-key';
         if (secret !== EXPECTED_SECRET) {
             // Check if authenticated user session exists (for internal CSV upload)
-            const supabase = createClient()
+            const supabase = await createServerSupabaseClient()
             const { data: { user } } = await supabase.auth.getUser()
 
             if (!user) {
@@ -19,7 +19,7 @@ export async function POST(req) {
             }
         }
 
-        const supabase = createClient()
+        const supabase = await createServerSupabaseClient()
 
         // 2. Normalize Data
         if (!data) {
