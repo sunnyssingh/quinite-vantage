@@ -91,7 +91,7 @@ export default function IntegrationsPage() {
                 {INTEGRATIONS.map((tool) => (
                     <div key={tool.id} className="bg-white rounded-xl border hover:shadow-md transition-all p-6 flex flex-col">
                         <div className="flex items-start justify-between mb-4">
-                            <img src={tool.logo} alt={tool.name} className="w-16 h-16 object-contain" />
+                            <img src={tool.logo} alt={tool.name} className="w-12 h-12 object-contain" />
                             {tool.connected ? (
                                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-full tracking-wide">
                                     Active
