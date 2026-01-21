@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Building2, Facebook, Phone, Copy, Check, Upload, AlertCircle } from "lucide-react"
+import { Copy, Check, Upload, AlertCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { toast } from "react-hot-toast"
@@ -11,7 +11,7 @@ const INTEGRATIONS = [
         id: "magicbricks",
         name: "MagicBricks",
         description: "Receive leads instantly from MagicBricks property listings.",
-        icon: Building2,
+        logo: "/assets/magicbricks.svg",
         color: "bg-red-100 text-red-600",
         docs: {
             step1: "Contact your MagicBricks Account Manager.",
@@ -29,7 +29,7 @@ const INTEGRATIONS = [
         id: "99acres",
         name: "99Acres",
         description: "Sync potential buyer leads from 99Acres automatically.",
-        icon: Building2,
+        logo: "/assets/99acres.webp",
         color: "bg-blue-100 text-blue-600",
         docs: {
             step1: "Login to your 99Acres Advertiser Dashboard.",
@@ -48,7 +48,7 @@ const INTEGRATIONS = [
         id: "facebook",
         name: "Facebook Ads",
         description: "Connect Meta Lead Forms directly to your dashboard.",
-        icon: Facebook,
+        logo: "/assets/facebook.svg",
         color: "bg-indigo-100 text-indigo-600",
         docs: {
             step1: "Go to Meta Business Suite -> Leads Setup.",
@@ -58,14 +58,6 @@ const INTEGRATIONS = [
 // We automatically parse 'field_data' 
 // to extract full_name, phone_number, etc.`
         }
-    },
-    {
-        id: "plivo",
-        name: "Plivo Voice",
-        description: "Telephony provider for AI calling and SMS.",
-        icon: Phone,
-        color: "bg-green-100 text-green-600",
-        connected: true
     }
 ]
 
@@ -99,8 +91,8 @@ export default function IntegrationsPage() {
                 {INTEGRATIONS.map((tool) => (
                     <div key={tool.id} className="bg-white rounded-xl border hover:shadow-md transition-all p-6 flex flex-col">
                         <div className="flex items-start justify-between mb-4">
-                            <div className={`p-3 rounded-lg ${tool.color}`}>
-                                <tool.icon className="h-6 w-6" />
+                            <div className={`p-3 rounded-lg ${tool.color} flex items-center justify-center`}>
+                                <img src={tool.logo} alt={tool.name} className="h-6 w-6 object-contain" />
                             </div>
                             {tool.connected ? (
                                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-full tracking-wide">
@@ -112,11 +104,11 @@ export default function IntegrationsPage() {
                                 </span>
                             )}
                         </div>
-                        
+
                         <h3 className="text-lg font-bold text-gray-900 mb-2">{tool.name}</h3>
                         <p className="text-gray-600 text-sm mb-6 flex-grow">{tool.description}</p>
 
-                        <Button 
+                        <Button
                             variant={tool.connected ? "outline" : "default"}
                             className="w-full"
                             onClick={() => {
@@ -135,8 +127,8 @@ export default function IntegrationsPage() {
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-xl">
-                            {selectedIntegration?.icon && (
-                                <selectedIntegration.icon className="h-6 w-6 text-gray-500" />
+                            {selectedIntegration?.logo && (
+                                <img src={selectedIntegration.logo} alt={selectedIntegration.name} className="h-6 w-6 object-contain" />
                             )}
                             Setup {selectedIntegration?.name}
                         </DialogTitle>
@@ -166,9 +158,9 @@ export default function IntegrationsPage() {
                                     <code className="flex-1 bg-gray-100 p-3 rounded-lg border text-sm font-mono text-gray-800 break-all">
                                         {webhookUrl}
                                     </code>
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
                                         onClick={() => handleCopy(webhookUrl)}
                                     >
                                         {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
@@ -176,16 +168,16 @@ export default function IntegrationsPage() {
                                 </div>
                             </div>
 
-                             {/* Step 3: Secret Key */}
-                             <div className="space-y-2">
+                            {/* Step 3: Secret Key */}
+                            <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Secret Key / Token</label>
                                 <div className="flex items-center gap-2">
                                     <code className="flex-1 bg-gray-100 p-3 rounded-lg border text-sm font-mono text-gray-800">
                                         {SECRET_KEY}
                                     </code>
-                                    <Button 
-                                        variant="outline" 
-                                        size="icon" 
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
                                         onClick={() => handleCopy(SECRET_KEY)}
                                     >
                                         <Copy className="h-4 w-4" />
