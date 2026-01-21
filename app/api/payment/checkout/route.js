@@ -69,6 +69,7 @@ export async function POST(request) {
 
         if (isRazorpayConfigured) {
             // Initialize Razorpay
+            console.log('💳 [Payment] Initializing Real Razorpay Order')
             const razorpay = new Razorpay({
                 key_id: process.env.RAZORPAY_KEY_ID,
                 key_secret: process.env.RAZORPAY_KEY_SECRET

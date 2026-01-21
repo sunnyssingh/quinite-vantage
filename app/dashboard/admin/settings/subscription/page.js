@@ -129,6 +129,18 @@ export default function SubscriptionPage() {
             document.body.appendChild(script)
 
             script.onload = () => {
+                const isTestMode = data.key?.startsWith('rzp_test')
+                if (isTestMode) {
+                    toast('💳 Test Mode Verified', {
+                        icon: '🧪',
+                        style: {
+                            borderRadius: '10px',
+                            background: '#333',
+                            color: '#fff',
+                        },
+                    })
+                }
+
                 const options = {
                     key: data.key,
                     amount: data.amount * 100,
@@ -139,9 +151,13 @@ export default function SubscriptionPage() {
                     prefill: data.prefill,
                     theme: data.theme,
                     handler: function (response) {
-                        toast.success('Payment successful! Your subscription has been upgraded.')
+                        toast.success('Payment successful! Verifying subscription...')
                         setUpgradeDialogOpen(false)
-                        fetchSubscription()
+                        // Wait 2s for webhook to process
+                        setTimeout(() => {
+                            fetchSubscription()
+                            toast.success('Subscription upgraded!')
+                        }, 2000)
                     },
                     modal: {
                         ondismiss: function () {
