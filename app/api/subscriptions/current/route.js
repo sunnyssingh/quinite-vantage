@@ -213,6 +213,21 @@ export async function POST(request) {
 
             if (error) throw error
 
+            // Update organization tier
+            // We update the tier directly on the organization to reflect the new plan
+            const { error: orgError } = await adminClient
+                .from('organizations')
+                .update({
+                    tier: plan_slug,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', profile.organization_id)
+
+            if (orgError) {
+                console.error('Failed to sync organization tier:', orgError)
+                // We don't throw here as the subscription is already updated
+            }
+
             // Log action
             await adminClient.from('audit_logs').insert({
                 organization_id: profile.organization_id,

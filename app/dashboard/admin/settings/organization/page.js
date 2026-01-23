@@ -38,6 +38,9 @@ export default function OrganizationSettingsPage() {
 
             const org = data.organization
             setOrganization(org)
+            console.log('Fetched Organization:', org)
+            console.log('Settings:', org.settings)
+
 
             // If logo exists in settings, set it
             if (org.settings?.logo_url) {
