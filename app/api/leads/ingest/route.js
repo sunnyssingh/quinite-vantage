@@ -38,7 +38,7 @@ export async function POST(req) {
                 error: 'Missing Source',
                 message: 'The "source" field is required to identify where the lead came from.',
                 hint: 'Valid sources: magicbricks, 99acres, facebook, csv',
-                example: { source: 'magicbricks', data: { ... } }
+                example: { source: 'magicbricks', data: { name: 'John Doe', phone: '+919876543210' } }
             }, { status: 400 })
         }
 
