@@ -150,6 +150,38 @@ export default function AdminLoginPage() {
               Back to User Login
             </Button>
           </div>
+
+          {/* Legal Links Footer */}
+          <div className="mt-4 pt-4 border-t border-gray-200 text-center text-xs text-gray-400 space-y-2">
+            <div className="flex justify-center gap-3 flex-wrap">
+              <a
+                href="https://quinite.co/terms-conditions/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:underline"
+              >
+                Terms & Conditions
+              </a>
+              <span>•</span>
+              <a
+                href="https://quinite.co/privacy-policy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:underline"
+              >
+                Privacy Policy
+              </a>
+              <span>•</span>
+              <a
+                href="https://quinite.co/refund-and-cancellation/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:underline"
+              >
+                Refund & Cancellation
+              </a>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

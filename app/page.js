@@ -365,11 +365,6 @@ export default function AuthPage() {
                   </button>
                 </div>
               </form>
-              <div className="mt-4 text-center text-sm text-gray-600">
-                <a href="/admin-login" className="text-blue-600 hover:underline">
-                  Platform Admin Login
-                </a>
-              </div>
             </TabsContent>
 
             <TabsContent value="signup">
@@ -446,6 +441,39 @@ export default function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
+
+          {/* Legal Links Footer */}
+          <div className="mt-6 pt-4 border-t border-gray-200 text-center text-xs text-gray-500 space-y-2">
+            <p>By signing up, you agree to our</p>
+            <div className="flex justify-center gap-3 flex-wrap">
+              <a
+                href="https://quinite.co/terms-conditions/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Terms & Conditions
+              </a>
+              <span>•</span>
+              <a
+                href="https://quinite.co/privacy-policy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Privacy Policy
+              </a>
+              <span>•</span>
+              <a
+                href="https://quinite.co/refund-and-cancellation/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Refund & Cancellation
+              </a>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
