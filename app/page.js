@@ -474,7 +474,7 @@ export default function AuthPage() {
               </a>
             </div>
             <div className="mt-4 text-xs text-gray-500">
-              If you have any problem, <a href="https://quinite.co/contact/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Contact Us</a>
+              Need help? <a href="https://quinite.co/contact/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Contact us</a>
             </div>
           </div>
         </CardContent>
