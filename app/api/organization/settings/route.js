@@ -42,6 +42,24 @@ export async function GET() {
             return corsJSON({ error: 'Failed to fetch organization' }, { status: 500 })
         }
 
+        // Fetch active subscription to ensure tier is up to date
+        const { data: subscription } = await admin
+            .from('subscriptions')
+            .select(`
+                plan_id,
+                plan:subscription_plans(slug, name)
+            `)
+            .eq('organization_id', profile.organization_id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+        // If active subscription exists, override the stored tier to ensure accuracy
+        if (subscription?.plan?.slug) {
+            organization.tier = subscription.plan.slug
+        }
+
         return corsJSON({ organization })
     } catch (e) {
         console.error('organization/settings error:', e)
