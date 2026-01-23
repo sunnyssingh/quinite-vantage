@@ -25,7 +25,8 @@ export default function OrganizationSettingsPage() {
     const fetchOrganization = async () => {
         try {
             // Get current user
-            const { data: { user } } = await supabase.auth.getUser()
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+            console.log('User:', user, 'Error:', userError)
             if (!user) {
                 toast.error('Not authenticated')
                 return
@@ -38,16 +39,28 @@ export default function OrganizationSettingsPage() {
                 .eq('id', user.id)
                 .single()
 
-            if (profileError) throw profileError
+            console.log('Profile:', profile, 'Error:', profileError)
+            if (profileError) {
+                console.error('Profile error details:', profileError)
+                throw profileError
+            }
+            if (!profile?.organization_id) {
+                throw new Error('No organization_id found in profile')
+            }
 
             // Fetch organization details
+            console.log('Fetching org with ID:', profile.organization_id)
             const { data: org, error: orgError } = await supabase
                 .from('organizations')
                 .select('*')
                 .eq('id', profile.organization_id)
                 .single()
 
-            if (orgError) throw orgError
+            console.log('Organization:', org, 'Error:', orgError)
+            if (orgError) {
+                console.error('Org error details:', orgError)
+                throw orgError
+            }
 
             setOrganization(org)
 
@@ -57,7 +70,9 @@ export default function OrganizationSettingsPage() {
             }
         } catch (error) {
             console.error('Error fetching organization:', error)
-            toast.error('Failed to load organization details')
+            console.error('Error message:', error.message)
+            console.error('Error stack:', error.stack)
+            toast.error(`Failed to load organization: ${error.message || 'Unknown error'}`)
         } finally {
             setLoading(false)
         }
