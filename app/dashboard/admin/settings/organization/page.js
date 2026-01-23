@@ -32,28 +32,25 @@ export default function OrganizationSettingsPage() {
                 return
             }
 
-            // Get user's profile to find organization_id
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('organization_id')
-                .eq('id', user.id)
-                .single()
+            // Use RPC function to avoid RLS infinite recursion
+            const { data: organizationId, error: rpcError } = await supabase
+                .rpc('get_user_organization_id', { user_id: user.id })
 
-            console.log('Profile:', profile, 'Error:', profileError)
-            if (profileError) {
-                console.error('Profile error details:', profileError)
-                throw profileError
+            console.log('Organization ID from RPC:', organizationId, 'Error:', rpcError)
+            if (rpcError) {
+                console.error('RPC error details:', rpcError)
+                throw rpcError
             }
-            if (!profile?.organization_id) {
-                throw new Error('No organization_id found in profile')
+            if (!organizationId) {
+                throw new Error('No organization_id found for user')
             }
 
             // Fetch organization details
-            console.log('Fetching org with ID:', profile.organization_id)
+            console.log('Fetching org with ID:', organizationId)
             const { data: org, error: orgError } = await supabase
                 .from('organizations')
                 .select('*')
-                .eq('id', profile.organization_id)
+                .eq('id', organizationId)
                 .single()
 
             console.log('Organization:', org, 'Error:', orgError)
