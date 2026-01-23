@@ -248,7 +248,7 @@ export default function OrganizationSettingsPage() {
                         <Label htmlFor="sector">Industry / Sector</Label>
                         <Input
                             id="sector"
-                            value={organization.sector || ''}
+                            value={organization.sector?.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || ''}
                             readOnly
                             disabled
                             className="mt-2 bg-gray-50 cursor-not-allowed"
