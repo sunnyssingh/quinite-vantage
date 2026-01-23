@@ -28,133 +28,144 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 async function getAllTables() {
-    const { data, error } = await supabase.rpc('get_all_tables')
+    // Query pg_catalog directly to get all tables
+    const { data, error } = await supabase
+        .from('pg_catalog.pg_tables')
+        .select('tablename, schemaname')
+        .eq('schemaname', 'public')
+        .order('tablename')
 
     if (error) {
-        // Fallback: Query information_schema
-        const { data: tables, error: err } = await supabase
-            .from('information_schema.tables')
-            .select('table_name, table_schema')
-            .eq('table_schema', 'public')
-
-        if (err) throw err
-        return tables
+        console.error('Error fetching tables:', error)
+        throw error
     }
 
-    return data
+    // Map to consistent format
+    return data.map(t => ({
+        table_name: t.tablename,
+        table_schema: t.schemaname
+    }))
 }
 
 async function getTableColumns(tableName) {
-    const query = `
-        SELECT 
-            column_name,
-            data_type,
-            is_nullable,
-            column_default,
-            character_maximum_length
-        FROM information_schema.columns
-        WHERE table_schema = 'public' 
-        AND table_name = '${tableName}'
-        ORDER BY ordinal_position;
-    `
+    // Use information_schema.columns which is accessible via Supabase
+    const { data, error } = await supabase
+        .from('information_schema.columns')
+        .select('column_name, data_type, is_nullable, column_default, character_maximum_length')
+        .eq('table_schema', 'public')
+        .eq('table_name', tableName)
+        .order('ordinal_position')
 
-    const { data, error } = await supabase.rpc('exec_sql', { query })
+    if (error) {
+        console.error(`Error fetching columns for ${tableName}:`, error)
+        return []
+    }
+
     return data || []
 }
 
 async function getForeignKeys(tableName) {
-    const query = `
-        SELECT
-            tc.constraint_name,
-            kcu.column_name,
-            ccu.table_name AS foreign_table_name,
-            ccu.column_name AS foreign_column_name
-        FROM information_schema.table_constraints AS tc
-        JOIN information_schema.key_column_usage AS kcu
-            ON tc.constraint_name = kcu.constraint_name
-        JOIN information_schema.constraint_column_usage AS ccu
-            ON ccu.constraint_name = tc.constraint_name
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_schema = 'public'
-        AND tc.table_name = '${tableName}';
-    `
+    // Get foreign key constraints
+    const { data: constraints, error: err1 } = await supabase
+        .from('information_schema.table_constraints')
+        .select('constraint_name, table_name')
+        .eq('constraint_type', 'FOREIGN KEY')
+        .eq('table_schema', 'public')
+        .eq('table_name', tableName)
 
-    const { data, error } = await supabase.rpc('exec_sql', { query })
-    return data || []
+    if (err1 || !constraints || constraints.length === 0) {
+        return []
+    }
+
+    const fkData = []
+    for (const constraint of constraints) {
+        // Get column info for this constraint
+        const { data: kcu } = await supabase
+            .from('information_schema.key_column_usage')
+            .select('column_name, constraint_name')
+            .eq('constraint_name', constraint.constraint_name)
+            .single()
+
+        const { data: ccu } = await supabase
+            .from('information_schema.constraint_column_usage')
+            .select('table_name, column_name')
+            .eq('constraint_name', constraint.constraint_name)
+            .single()
+
+        if (kcu && ccu) {
+            fkData.push({
+                constraint_name: constraint.constraint_name,
+                column_name: kcu.column_name,
+                foreign_table_name: ccu.table_name,
+                foreign_column_name: ccu.column_name,
+                table_name: tableName
+            })
+        }
+    }
+
+    return fkData
 }
 
 async function getRLSPolicies(tableName) {
-    const query = `
-        SELECT 
-            schemaname,
-            tablename,
-            policyname,
-            permissive,
-            roles,
-            cmd,
-            qual,
-            with_check
-        FROM pg_policies
-        WHERE schemaname = 'public'
-        AND tablename = '${tableName}';
-    `
+    const { data, error } = await supabase
+        .from('pg_policies')
+        .select('schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check')
+        .eq('schemaname', 'public')
+        .eq('tablename', tableName)
 
-    const { data, error } = await supabase.rpc('exec_sql', { query })
+    if (error) {
+        console.error(`Error fetching RLS policies for ${tableName}:`, error)
+        return []
+    }
+
     return data || []
 }
 
 async function getAllRLSPolicies() {
-    const query = `
-        SELECT 
-            schemaname,
-            tablename,
-            policyname,
-            permissive,
-            roles,
-            cmd,
-            qual,
-            with_check
-        FROM pg_policies
-        WHERE schemaname = 'public'
-        ORDER BY tablename, policyname;
-    `
+    const { data, error } = await supabase
+        .from('pg_policies')
+        .select('schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check')
+        .eq('schemaname', 'public')
+        .order('tablename')
+        .order('policyname')
 
-    const { data, error } = await supabase.rpc('exec_sql', { query })
+    if (error) {
+        console.error('Error fetching all RLS policies:', error)
+        return []
+    }
+
     return data || []
 }
 
 async function getTriggers(tableName) {
-    const query = `
-        SELECT 
-            trigger_name,
-            event_manipulation,
-            event_object_table,
-            action_statement,
-            action_timing
-        FROM information_schema.triggers
-        WHERE event_object_schema = 'public'
-        AND event_object_table = '${tableName}'
-        ORDER BY trigger_name;
-    `
+    const { data, error } = await supabase
+        .from('information_schema.triggers')
+        .select('trigger_name, event_manipulation, event_object_table, action_statement, action_timing')
+        .eq('event_object_schema', 'public')
+        .eq('event_object_table', tableName)
+        .order('trigger_name')
 
-    const { data, error } = await supabase.rpc('exec_sql', { query })
+    if (error) {
+        console.error(`Error fetching triggers for ${tableName}:`, error)
+        return []
+    }
+
     return data || []
 }
 
 async function getAllFunctions() {
-    const query = `
-        SELECT 
-            routine_name,
-            routine_type,
-            data_type,
-            routine_definition
-        FROM information_schema.routines
-        WHERE routine_schema = 'public'
-        AND routine_type = 'FUNCTION'
-        ORDER BY routine_name;
-    `
+    const { data, error } = await supabase
+        .from('information_schema.routines')
+        .select('routine_name, routine_type, data_type, routine_definition')
+        .eq('routine_schema', 'public')
+        .eq('routine_type', 'FUNCTION')
+        .order('routine_name')
 
-    const { data, error } = await supabase.rpc('exec_sql', { query })
+    if (error) {
+        console.error('Error fetching functions:', error)
+        return []
+    }
+
     return data || []
 }
 

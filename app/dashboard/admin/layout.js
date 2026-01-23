@@ -15,8 +15,10 @@ import {
     Building2
 } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import MobileNav from '@/components/dashboard/MobileNav'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 
 export default function AdminLayout({ children }) {
@@ -90,18 +92,7 @@ export default function AdminLayout({ children }) {
         { icon: Settings, label: 'Settings', href: '/dashboard/admin/settings' },
     ]
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading dashboard...</p>
-                </div>
-            </div>
-        )
-    }
-
-    if (!authorized) {
+    if (!loading && !authorized) {
         return null
     }
 
@@ -124,8 +115,17 @@ export default function AdminLayout({ children }) {
                     {/* Logo/Brand */}
                     <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-600 rounded-lg">
-                                <Building2 className="w-6 h-6 text-white" />
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-blue-600 flex items-center justify-center">
+                                {profile?.organization?.settings?.logo_url ? (
+                                    <Image
+                                        src={profile.organization.settings.logo_url}
+                                        alt="Logo"
+                                        fill
+                                        className="object-cover"
+                                    />
+                                ) : (
+                                    <Building2 className="w-6 h-6 text-white" />
+                                )}
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold text-gray-900">{profile?.organization?.name || 'Admin Panel'}</h2>

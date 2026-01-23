@@ -18,6 +18,7 @@ import {
   CreditCard
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function PlatformLayout({ children }) {
   const router = useRouter()
@@ -97,13 +98,6 @@ export default function PlatformLayout({ children }) {
     { icon: Users2, label: 'Profile', href: '/dashboard/platform/profile' },
   ]
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-pulse">Loading Platform...</div>
-      </div>
-    )
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-gray-100">

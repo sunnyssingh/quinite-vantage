@@ -13,6 +13,7 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import MobileNav from '@/components/dashboard/MobileNav'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 
 export default function ManagerLayout({ children }) {
@@ -74,18 +75,8 @@ export default function ManagerLayout({ children }) {
         { icon: Megaphone, label: 'Campaigns', href: '/dashboard/manager/campaigns' },
     ]
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading dashboard...</p>
-                </div>
-            </div>
-        )
-    }
 
-    if (!authorized) {
+    if (!loading && !authorized) {
         return null
     }
 

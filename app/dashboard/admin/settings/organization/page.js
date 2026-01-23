@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Building2, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Image from 'next/image'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function OrganizationSettingsPage() {
     const supabase = createClient()
@@ -24,41 +25,18 @@ export default function OrganizationSettingsPage() {
 
     const fetchOrganization = async () => {
         try {
-            // Get current user
-            const { data: { user }, error: userError } = await supabase.auth.getUser()
-            console.log('User:', user, 'Error:', userError)
-            if (!user) {
-                toast.error('Not authenticated')
-                return
+            const response = await fetch('/api/organization/settings')
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch organization')
             }
 
-            // Use RPC function to avoid RLS infinite recursion
-            const { data: organizationId, error: rpcError } = await supabase
-                .rpc('get_user_organization_id', { user_id: user.id })
-
-            console.log('Organization ID from RPC:', organizationId, 'Error:', rpcError)
-            if (rpcError) {
-                console.error('RPC error details:', rpcError)
-                throw rpcError
-            }
-            if (!organizationId) {
-                throw new Error('No organization_id found for user')
+            if (!data.organization) {
+                throw new Error('No organization data received')
             }
 
-            // Fetch organization details
-            console.log('Fetching org with ID:', organizationId)
-            const { data: org, error: orgError } = await supabase
-                .from('organizations')
-                .select('*')
-                .eq('id', organizationId)
-                .single()
-
-            console.log('Organization:', org, 'Error:', orgError)
-            if (orgError) {
-                console.error('Org error details:', orgError)
-                throw orgError
-            }
-
+            const org = data.organization
             setOrganization(org)
 
             // If logo exists in settings, set it
@@ -67,8 +45,6 @@ export default function OrganizationSettingsPage() {
             }
         } catch (error) {
             console.error('Error fetching organization:', error)
-            console.error('Error message:', error.message)
-            console.error('Error stack:', error.stack)
             toast.error(`Failed to load organization: ${error.message || 'Unknown error'}`)
         } finally {
             setLoading(false)
@@ -112,39 +88,77 @@ export default function OrganizationSettingsPage() {
                 .from('public-assets')
                 .getPublicUrl(filePath)
 
-            // Update organization settings with logo URL
-            const updatedSettings = {
-                ...organization.settings,
-                logo_url: publicUrl
+            // Update organization settings with logo URL via API (server-side)
+            const response = await fetch('/api/organization/settings', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    logo_url: publicUrl
+                })
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to update organization logo')
             }
 
-            const { error: updateError } = await supabase
-                .from('organizations')
-                .update({ settings: updatedSettings })
-                .eq('id', organization.id)
-
-            if (updateError) throw updateError
-
+            // Update local state with the returned organization data
             setLogoUrl(publicUrl)
-            setOrganization({ ...organization, settings: updatedSettings })
+            setOrganization(data.organization)
             toast.success('Logo uploaded successfully!')
         } catch (error) {
             console.error('Error uploading logo:', error)
-            toast.error('Failed to upload logo')
+            toast.error(`Failed to upload logo: ${error.message}`)
         } finally {
             setUploading(false)
         }
     }
 
-    if (loading) {
+    const handleSave = async () => {
+        try {
+            setLoading(true)
+            const response = await fetch('/api/organization/settings', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: organization.name,
+                    sector: organization.sector,
+                    company_name: organization.company_name,
+                    address: organization.settings?.address
+                })
+            })
+
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to update organization')
+            }
+
+            setOrganization(data.organization)
+            toast.success('Organization updated successfully')
+        } catch (error) {
+            console.error('Error updating organization:', error)
+            toast.error(error.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+
+    if (loading && !organization) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <div className="flex w-full items-center justify-center min-h-[80vh]">
+                <LoadingSpinner />
             </div>
         )
     }
 
-    if (!organization) {
+    if (!organization && !loading) {
         return (
             <div className="p-8">
                 <div className="text-center text-gray-500">
@@ -162,7 +176,7 @@ export default function OrganizationSettingsPage() {
                 <CardHeader>
                     <CardTitle>Organization Details</CardTitle>
                     <CardDescription>
-                        View your organization information. Contact support to update these details.
+                        Update your organization information and public profile.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -215,62 +229,61 @@ export default function OrganizationSettingsPage() {
                         </div>
                     </div>
 
-                    {/* Organization Name - Read Only */}
+                    {/* Organization Name */}
                     <div>
                         <Label htmlFor="org-name">Organization Name</Label>
-                        <div className="flex items-center gap-3 mt-2">
-                            {logoUrl && (
-                                <div className="relative w-10 h-10 rounded-md overflow-hidden flex-shrink-0">
-                                    <Image
-                                        src={logoUrl}
-                                        alt="Logo"
-                                        fill
-                                        className="object-cover"
-                                    />
-                                </div>
-                            )}
-                            <Input
-                                id="org-name"
-                                value={organization.name || ''}
-                                readOnly
-                                disabled
-                                className="bg-gray-50 cursor-not-allowed"
-                            />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                            This field cannot be edited
-                        </p>
+                        <Input
+                            id="org-name"
+                            value={organization.name || ''}
+                            onChange={(e) => setOrganization({ ...organization, name: e.target.value })}
+                            className="mt-2"
+                            placeholder="Enter organization name"
+                        />
                     </div>
 
-                    {/* Sector/Industry - Read Only */}
+                    {/* Sector/Industry */}
                     <div>
                         <Label htmlFor="sector">Industry / Sector</Label>
                         <Input
                             id="sector"
-                            value={organization.sector || 'Not specified'}
-                            readOnly
-                            disabled
-                            className="bg-gray-50 cursor-not-allowed mt-2"
+                            value={organization.sector || ''}
+                            onChange={(e) => setOrganization({ ...organization, sector: e.target.value })}
+                            className="mt-2"
+                            placeholder="e.g. Real Estate, Healthcare, Education"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
-                            This field cannot be edited
-                        </p>
                     </div>
 
-                    {/* Additional Info (Optional - can be shown but read-only) */}
-                    {organization.company_name && (
-                        <div>
-                            <Label htmlFor="company-name">Company Name</Label>
-                            <Input
-                                id="company-name"
-                                value={organization.company_name}
-                                readOnly
-                                disabled
-                                className="bg-gray-50 cursor-not-allowed mt-2"
-                            />
-                        </div>
-                    )}
+                    {/* Company Name */}
+                    <div>
+                        <Label htmlFor="company-name">Legal Company Name</Label>
+                        <Input
+                            id="company-name"
+                            value={organization.company_name || ''}
+                            onChange={(e) => setOrganization({ ...organization, company_name: e.target.value })}
+                            className="mt-2"
+                            placeholder="Official registered company name"
+                        />
+                    </div>
 
+                    {/* Address */}
+                    <div>
+                        <Label htmlFor="address">Address</Label>
+                        <textarea
+                            id="address"
+                            value={organization.settings?.address || ''}
+                            onChange={(e) => setOrganization({
+                                ...organization,
+                                settings: {
+                                    ...organization.settings,
+                                    address: e.target.value
+                                }
+                            })}
+                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
+                            placeholder="Enter full office address"
+                        />
+                    </div>
+
+                    {/* Tier - Read Only */}
                     {organization.tier && (
                         <div>
                             <Label htmlFor="tier">Subscription Tier</Label>
@@ -283,6 +296,23 @@ export default function OrganizationSettingsPage() {
                             />
                         </div>
                     )}
+
+                    <div className="pt-4 flex justify-end">
+                        <Button
+                            onClick={handleSave}
+                            disabled={loading || uploading}
+                            className="min-w-[120px]"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                'Save Changes'
+                            )}
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         </div>

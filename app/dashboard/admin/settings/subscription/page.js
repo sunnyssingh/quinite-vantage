@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { CreditCard, TrendingUp, Users, Zap, Calendar, Check, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function SubscriptionPage() {
     const [subscription, setSubscription] = useState(null)
@@ -266,10 +267,11 @@ export default function SubscriptionPage() {
         }
     }
 
+
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-pulse">Loading subscription...</div>
+            <div className="flex w-full items-center justify-center min-h-[80vh]">
+                <LoadingSpinner />
             </div>
         )
     }
@@ -436,7 +438,7 @@ export default function SubscriptionPage() {
                     </DialogHeader>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                        {plans.map((plan) => (
+                        {plans.filter(plan => plan.slug !== 'free').map((plan) => (
                             <Card
                                 key={plan.id}
                                 className={`cursor-pointer transition-all ${selectedPlan?.id === plan.id ? 'ring-2 ring-blue-500' : ''
@@ -553,6 +555,39 @@ export default function SubscriptionPage() {
                 onLoad={() => setIsRazorpayLoaded(true)}
                 onError={() => toast.error("Failed to load Razorpay SDK. Please check your internet connection.")}
             />
+
+            {/* Legal Links Footer */}
+            <div className="pt-8 mt-8 border-t border-gray-200 text-center">
+                <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-500">
+                    <a
+                        href="https://quinite.co/terms-conditions/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-blue-600 transition-colors"
+                    >
+                        Terms & Conditions
+                    </a>
+                    <a
+                        href="https://quinite.co/refund-and-cancellation/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-blue-600 transition-colors"
+                    >
+                        Refund & Cancellation
+                    </a>
+                    <a
+                        href="https://quinite.co/privacy-policy/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-blue-600 transition-colors"
+                    >
+                        Privacy Policy
+                    </a>
+                </div>
+                <p className="text-xs text-gray-400 mt-4">
+                    © {new Date().getFullYear()} Quinite Technologies. All rights reserved.
+                </p>
+            </div>
         </div>
     )
 }

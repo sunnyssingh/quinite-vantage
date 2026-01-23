@@ -60,18 +60,29 @@ export async function GET(request) {
             .lte('period_end', periodEnd)
 
         // Get current counts from actual tables
-        const [projectsCount, usersCount, campaignsCount, callsCount] = await Promise.all([
-            adminClient.from('projects').select('id', { count: 'exact', head: true }).eq('organization_id', profile.organization_id),
-            adminClient.from('profiles').select('id', { count: 'exact', head: true }).eq('organization_id', profile.organization_id),
-            adminClient.from('campaigns').select('id', { count: 'exact', head: true }).eq('organization_id', profile.organization_id),
-            adminClient.from('call_logs').select('id', { count: 'exact', head: true }).eq('organization_id', profile.organization_id)
+        // Get current counts from actual tables
+        const [
+            { count: projectsCount, error: projectsError },
+            { count: usersCount, error: usersError },
+            { count: campaignsCount, error: campaignsError },
+            { count: callsCount, error: callsError }
+        ] = await Promise.all([
+            adminClient.from('projects').select('*', { count: 'exact', head: true }).eq('organization_id', profile.organization_id),
+            adminClient.from('profiles').select('*', { count: 'exact', head: true }).eq('organization_id', profile.organization_id),
+            adminClient.from('campaigns').select('*', { count: 'exact', head: true }).eq('organization_id', profile.organization_id),
+            adminClient.from('call_logs').select('*', { count: 'exact', head: true }).eq('organization_id', profile.organization_id)
         ])
 
+        if (projectsError) console.error('Projects count error:', projectsError)
+        if (usersError) console.error('Users count error:', usersError)
+        if (campaignsError) console.error('Campaigns count error:', campaignsError)
+        if (callsError) console.error('Call logs count error:', callsError)
+
         const currentUsage = {
-            projects: projectsCount.count || 0,
-            users: usersCount.count || 0,
-            campaigns: campaignsCount.count || 0,
-            ai_calls: callsCount.count || 0
+            projects: projectsCount || 0,
+            users: usersCount || 0,
+            campaigns: campaignsCount || 0,
+            ai_calls: callsCount || 0
         }
 
         // Calculate usage percentages

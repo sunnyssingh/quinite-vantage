@@ -91,7 +91,9 @@ export default function IntegrationsPage() {
                 {INTEGRATIONS.map((tool) => (
                     <div key={tool.id} className="bg-white rounded-xl border hover:shadow-md transition-all p-6 flex flex-col">
                         <div className="flex items-start justify-between mb-4">
-                            <img src={tool.logo} alt={tool.name} className="w-12 h-12 object-contain" />
+                            <div className="h-12 flex items-center">
+                                <img src={tool.logo} alt={tool.name} className="h-full w-auto object-contain max-w-[140px]" />
+                            </div>
                             {tool.connected ? (
                                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-full tracking-wide">
                                     Active
@@ -126,7 +128,7 @@ export default function IntegrationsPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-xl">
                             {selectedIntegration?.logo && (
-                                <img src={selectedIntegration.logo} alt={selectedIntegration.name} className="h-6 w-6 object-contain" />
+                                <img src={selectedIntegration.logo} alt={selectedIntegration.name} className="h-8 w-auto object-contain" />
                             )}
                             Setup {selectedIntegration?.name}
                         </DialogTitle>
