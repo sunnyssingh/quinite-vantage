@@ -473,6 +473,9 @@ export default function AuthPage() {
                 Refund & Cancellation
               </a>
             </div>
+            <div className="mt-4 text-xs text-gray-500">
+              If you have any problem, <a href="https://quinite.co/contact/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Contact Us</a>
+            </div>
           </div>
         </CardContent>
       </Card>
