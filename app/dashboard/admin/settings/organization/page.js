@@ -129,9 +129,7 @@ export default function OrganizationSettingsPage() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    name: organization.name,
-                    sector: organization.sector,
-                    company_name: organization.company_name,
+                    // Only address is editable by the user
                     address: organization.settings?.address
                 })
             })
@@ -232,38 +230,41 @@ export default function OrganizationSettingsPage() {
                         </div>
                     </div>
 
-                    {/* Organization Name */}
+                    {/* Organization Name - Read Only */}
                     <div>
                         <Label htmlFor="org-name">Organization Name</Label>
                         <Input
                             id="org-name"
                             value={organization.name || ''}
-                            onChange={(e) => setOrganization({ ...organization, name: e.target.value })}
-                            className="mt-2"
+                            readOnly
+                            disabled
+                            className="mt-2 bg-gray-50 cursor-not-allowed"
                             placeholder="Enter organization name"
                         />
                     </div>
 
-                    {/* Sector/Industry */}
+                    {/* Sector/Industry - Read Only */}
                     <div>
                         <Label htmlFor="sector">Industry / Sector</Label>
                         <Input
                             id="sector"
                             value={organization.sector || ''}
-                            onChange={(e) => setOrganization({ ...organization, sector: e.target.value })}
-                            className="mt-2"
+                            readOnly
+                            disabled
+                            className="mt-2 bg-gray-50 cursor-not-allowed"
                             placeholder="e.g. Real Estate, Healthcare, Education"
                         />
                     </div>
 
-                    {/* Company Name */}
+                    {/* Company Name - Read Only */}
                     <div>
                         <Label htmlFor="company-name">Legal Company Name</Label>
                         <Input
                             id="company-name"
                             value={organization.company_name || ''}
-                            onChange={(e) => setOrganization({ ...organization, company_name: e.target.value })}
-                            className="mt-2"
+                            readOnly
+                            disabled
+                            className="mt-2 bg-gray-50 cursor-not-allowed"
                             placeholder="Official registered company name"
                         />
                     </div>
