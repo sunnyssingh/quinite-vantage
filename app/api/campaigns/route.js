@@ -25,7 +25,7 @@ export async function GET(request) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from('campaigns')
       .select('*')
       .eq('organization_id', profile.organization_id)
@@ -83,7 +83,7 @@ export async function POST(request) {
       created_by: user.id
     }
 
-    const { data: campaign, error } = await supabase
+    const { data: campaign, error } = await admin
       .from('campaigns')
       .insert(payload)
       .select()
