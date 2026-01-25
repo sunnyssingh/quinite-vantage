@@ -43,7 +43,8 @@ export async function GET(request) {
             .from('leads')
             .select(`
                 *,
-                project:projects(id, name)
+                project:projects(id, name),
+                stage:pipeline_stages(id, name, color)
             `)
             .order('created_at', { ascending: false })
 
@@ -72,6 +73,8 @@ export async function GET(request) {
             console.log('📊 [Leads GET] Sample lead:', {
                 id: leads[0].id,
                 name: leads[0].name,
+                stage_id: leads[0].stage_id,
+                stage: leads[0].stage,
                 call_status: leads[0].call_status,
                 call_log_id: leads[0].call_log_id
             })
@@ -130,6 +133,26 @@ export async function POST(request) {
             return corsJSON({ error: 'Name is required' }, { status: 400 })
         }
 
+        // Auto-assign to first stage if project is specified
+        let defaultStageId = null
+        if (projectId) {
+            try {
+                const { data: stages } = await adminClient
+                    .from('pipeline_stages')
+                    .select('id')
+                    .eq('project_id', projectId)
+                    .order('position', { ascending: true })
+                    .limit(1)
+
+                if (stages && stages.length > 0) {
+                    defaultStageId = stages[0].id
+                    console.log('✅ [Leads POST] Auto-assigned to first stage:', defaultStageId)
+                }
+            } catch (err) {
+                console.warn('⚠️ [Leads POST] Could not fetch default stage:', err)
+            }
+        }
+
         // Create the lead
         const { data: lead, error } = await adminClient
             .from('leads')
@@ -138,11 +161,12 @@ export async function POST(request) {
                 email: email?.trim() || null,
                 phone: phone?.trim() || null,
                 project_id: projectId || null,
+                stage_id: defaultStageId, // Auto-assign to first stage
                 status: status || 'new',
                 notes: notes?.trim() || null,
                 organization_id: profile.organization_id,
-                created_by: user.id, // Kept original created_by
-                source: 'manual' // Kept original source
+                created_by: user.id,
+                source: 'manual'
             })
             .select()
             .single()

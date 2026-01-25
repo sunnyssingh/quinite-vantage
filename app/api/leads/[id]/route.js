@@ -34,17 +34,11 @@ export async function PUT(request, { params }) {
         // Await params for Next.js 15
         const { id } = await params
         const body = await request.json()
-        const { name, email, phone, projectId, status, notes } = body
 
-        // Validation
-        if (!name || name.trim() === '') {
-            return corsJSON({ error: 'Name is required' }, { status: 400 })
-        }
-
-        // First, verify the lead exists
+        // Fetch existing lead FIRST to allow partial updates
         const { data: existingLead } = await adminClient
             .from('leads')
-            .select('id, organization_id, name')
+            .select('id, organization_id, name, project_id, email, phone, status, notes, stage_id, assigned_to')
             .eq('id', id)
             .single()
 
@@ -57,8 +51,58 @@ export async function PUT(request, { params }) {
             return corsJSON({ error: 'Unauthorized' }, { status: 403 })
         }
 
+        // Prepare new values (Partial Update Support)
+        const name = body.name !== undefined ? body.name : existingLead.name
+        const email = body.email !== undefined ? body.email : existingLead.email
+        const phone = body.phone !== undefined ? body.phone : existingLead.phone
+        const projectId = body.projectId !== undefined ? body.projectId : existingLead.project_id
+        const status = body.status !== undefined ? body.status : existingLead.status
+        const stageId = body.stageId !== undefined ? body.stageId : existingLead.stage_id
+        const assignedTo = body.assignedTo !== undefined ? body.assignedTo : existingLead.assigned_to
+        const notes = body.notes !== undefined ? body.notes : existingLead.notes
+
+        // Validation
+        if (!name || name.trim() === '') {
+            return corsJSON({ error: 'Name is required' }, { status: 400 })
+        }
+
+        // --- Smart Sync: If Status changed but StageId not provided, try to find matching stage ---
+        let resolvedStageId = stageId || null
+        const targetProjectId = projectId || existingLead.project_id
+
+        if (status && !stageId && targetProjectId) {
+            console.log(`🔄 [SmartSync] Status updated to '${status}', attempts to find matching stage...`)
+            try {
+                const { data: projectStages } = await adminClient
+                    .from('pipeline_stages')
+                    .select('id, name')
+                    .eq('project_id', targetProjectId)
+                    .order('position', { ascending: true })
+
+                if (projectStages && projectStages.length > 0) {
+                    // Fuzzy match status to stage name
+                    const statusLower = status.toLowerCase()
+                    const match = projectStages.find(s =>
+                        s.name.toLowerCase().includes(statusLower) ||
+                        statusLower.includes(s.name.toLowerCase())
+                    )
+
+                    if (match) {
+                        console.log(`✅ [SmartSync] Found matching stage: ${match.name} (${match.id})`)
+                        resolvedStageId = match.id
+                    } else if (status === 'new' && projectStages.length > 0) {
+                        // Default 'new' to first stage if no match
+                        resolvedStageId = projectStages[0].id
+                    }
+                }
+            } catch (syncError) {
+                console.warn('⚠️ [SmartSync] Failed to sync stage:', syncError)
+            }
+        }
+        // -----------------------------------------------------------------------------------------
+
         // Update the lead
-        console.log(`📝 [Leads PUT] Updating lead ${id}, project_id: ${projectId}`)
+        console.log(`📝 [Leads PUT] Updating lead ${id}, project_id: ${targetProjectId}, stage_id: ${resolvedStageId}`)
         const { data: lead, error } = await adminClient
             .from('leads')
             .update({
@@ -67,6 +111,8 @@ export async function PUT(request, { params }) {
                 phone: phone?.trim() || null,
                 project_id: projectId || null,
                 status: status || 'new',
+                stage_id: resolvedStageId, // CRM Stage (Smart Synced)
+                assigned_to: assignedTo || null, // CRM Owner
                 recording_consent: typeof body.recordingConsent === 'boolean' ? body.recordingConsent : undefined,
                 notes: notes?.trim() || null
             })

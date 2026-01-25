@@ -25,10 +25,19 @@ export async function GET(request) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const projectId = searchParams.get('project_id')
+
+    let query = supabase
       .from('campaigns')
       .select('*')
       .eq('organization_id', profile.organization_id)
+
+    if (projectId) {
+      query = query.eq('project_id', projectId)
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -83,7 +92,7 @@ export async function POST(request) {
       created_by: user.id
     }
 
-    const { data: campaign, error } = await supabase
+    const { data: campaign, error } = await admin
       .from('campaigns')
       .insert(payload)
       .select()

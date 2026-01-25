@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation' // [NEW]
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -28,7 +29,8 @@ import {
   PlayCircle,
   PauseCircle,
   XCircle,
-  Phone
+  Phone,
+  KanbanSquare
 } from 'lucide-react'
 
 const StatusBadge = ({ status }) => {
@@ -69,6 +71,7 @@ import { toast } from 'react-hot-toast'
 
 export default function CampaignsPage() {
   const supabase = createClient()
+  const router = useRouter() // [NEW]
 
   const [campaigns, setCampaigns] = useState([])
   const [projects, setProjects] = useState([])
@@ -83,6 +86,8 @@ export default function CampaignsPage() {
   const [startingCampaignId, setStartingCampaignId] = useState(null)
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false)
   const [campaignResults, setCampaignResults] = useState(null)
+
+  const [selectedProjectId, setSelectedProjectId] = useState('') // [NEW] Filter State
 
   // Create form states
   const [projectId, setProjectId] = useState('')
@@ -111,8 +116,16 @@ export default function CampaignsPage() {
     setLoading(true)
     setError(null)
     try {
+      const params = new URLSearchParams(window.location.search)
+      const pid = params.get('project_id')
+
+      if (pid) setSelectedProjectId(pid)
+      else setSelectedProjectId('')
+
+      const campaignUrl = pid ? `/api/campaigns?project_id=${pid}` : '/api/campaigns'
+
       const [cRes, pRes] = await Promise.all([
-        fetch('/api/campaigns'),
+        fetch(campaignUrl),
         fetch('/api/projects')
       ])
       const cData = await cRes.json()
@@ -322,19 +335,62 @@ export default function CampaignsPage() {
             <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl">
               <Megaphone className="w-6 h-6 md:w-7 md:h-7 text-white" />
             </div>
-            Campaigns
+            {selectedProjectId ? `${getProjectName(selectedProjectId)} Campaigns` : 'All Campaigns'}
           </h1>
-          <p className="text-slate-600 mt-1 text-sm md:text-base">Create and manage your outbound call campaigns</p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-slate-600 text-sm md:text-base">
+              {selectedProjectId ? 'Manage outbound campaigns for this project' : 'Create and manage your outbound call campaigns'}
+            </p>
+
+            {/* Project Filter */}
+            {!selectedProjectId ? (
+              <select
+                className="ml-2 text-sm border-slate-300 rounded-md px-2 py-1 bg-white focus:ring-purple-500 focus:border-purple-500"
+                value={selectedProjectId || ''}
+                onChange={(e) => {
+                  const val = e.target.value
+                  if (val) {
+                    router.push(`/dashboard/admin/crm/campaigns?project_id=${val}`)
+                  } else {
+                    router.push(`/dashboard/admin/crm/campaigns`)
+                  }
+                }}
+              >
+                <option value="">All Projects</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/dashboard/admin/crm/campaigns')}
+                className="ml-2 text-slate-500 hover:text-slate-900 h-7 text-xs"
+              >
+                ← Back to All
+              </Button>
+            )}
+          </div>
         </div>
 
-        <Button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="w-full md:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/30"
-          size="lg"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          New Campaign
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={() => {
+              // Pre-fill project ID if we are filtered
+              const params = new URLSearchParams(window.location.search)
+              const pid = params.get('project_id')
+              if (pid) setProjectId(pid)
+
+              setShowCreateForm(!showCreateForm)
+            }}
+            className="w-full md:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/30 text-white"
+            size="lg"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            New Campaign
+          </Button>
+        </div>
       </div>
 
       {/* Create Form */}
@@ -497,14 +553,17 @@ export default function CampaignsPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {campaigns.map(campaign => (
             <Card key={campaign.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-300 border-2 hover:border-purple-200">
-              <div className="relative bg-gradient-to-br from-purple-500 to-pink-500 p-6">
+              <div className="relative bg-gradient-to-br from-purple-500 to-pink-500 p-6 cursor-pointer hover:opacity-95 transition-opacity"
+                onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
+                title="Click to Open Pipeline"
+              >
                 <div className="flex items-start justify-between">
                   <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
                     <Phone className="w-6 h-6 text-white" />
                   </div>
 
                   {/* Action Buttons - Always visible on mobile, hover on desktop */}
-                  <div className="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="secondary"
                       size="sm"
@@ -528,9 +587,9 @@ export default function CampaignsPage() {
                 </div>
               </div>
 
-              <CardContent className="p-5 space-y-3">
+              <CardContent className="p-5 space-y-3 cursor-pointer" onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-1 truncate">
+                  <h3 className="text-lg font-bold text-slate-900 mb-1 truncate hover:text-purple-600 transition-colors">
                     {campaign.name}
                   </h3>
                   <p className="text-sm text-slate-600 flex items-center gap-1">
@@ -612,6 +671,16 @@ export default function CampaignsPage() {
                     )}
                   </Button>
 
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
+                    className="w-full"
+                    size="sm"
+                  >
+                    <KanbanSquare className="w-4 h-4 mr-2" />
+                    Open Pipeline
+                  </Button>
+
                   <div className="text-xs text-slate-500">
                     Created {campaign.created_at ? new Date(campaign.created_at).toLocaleDateString() : 'N/A'}
                   </div>
@@ -620,7 +689,8 @@ export default function CampaignsPage() {
             </Card>
           ))}
         </div>
-      )}
+      )
+      }
 
       {/* Edit Modal */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
@@ -824,7 +894,7 @@ export default function CampaignsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }
 

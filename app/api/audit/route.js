@@ -42,9 +42,9 @@ export async function GET(request) {
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
 
-    if (!profile.is_platform_admin) {
-      query = query.eq('organization_id', profile.organization_id)
-    }
+    // Strict Organization Filter: All users can only see their own organization's logs
+    // unless explicit platform admin logic is implemented in profile which we assume implies org_id anyway
+    query = query.eq('organization_id', profile.organization_id)
 
     // Apply filters
     if (search) {
@@ -62,6 +62,7 @@ export async function GET(request) {
     if (endDate) {
       query = query.lte('created_at', endDate)
     }
+    // Handle boolean string conversion carefully
     if (isImpersonated === 'true') {
       query = query.eq('is_impersonated', true)
     } else if (isImpersonated === 'false') {

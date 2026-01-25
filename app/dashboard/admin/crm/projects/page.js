@@ -12,10 +12,11 @@ import {
   DialogHeader,
   DialogDescription
 } from '@/components/ui/dialog'
-import { Building2, Plus, Sparkles, Loader2, Briefcase } from 'lucide-react'
+import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectForm from '@/components/projects/ProjectForm'
+import ProjectList from '@/components/projects/ProjectList'
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -24,6 +25,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
 
   // Edit State
   const [editOpen, setEditOpen] = useState(false)
@@ -254,14 +256,38 @@ export default function ProjectsPage() {
           <p className="text-slate-600 mt-1 text-sm md:text-base">Manage your real estate projects and campaigns</p>
         </div>
 
-        <Button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30"
-          size="lg"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          {showCreateForm ? 'Cancel Creation' : 'New Project'}
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* View Toggle */}
+          <div className="bg-white border rounded-lg p-1 flex items-center gap-1 shadow-sm">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="sm"
+              className={`h-8 w-8 p-0 ${viewMode === 'grid' ? 'bg-blue-100 text-blue-700' : 'text-slate-500'}`}
+              onClick={() => setViewMode('grid')}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="sm"
+              className={`h-8 w-8 p-0 ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'text-slate-500'}`}
+              onClick={() => setViewMode('list')}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <Button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30"
+            size="lg"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            {showCreateForm ? 'Cancel Creation' : 'New Project'}
+          </Button>
+        </div>
       </div>
 
       {/* Create Form */}
@@ -284,23 +310,51 @@ export default function ProjectsPage() {
         </Card>
       )}
 
-      {/* Projects Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          [...Array(6)].map((_, i) => (
-            <Card key={i} className="h-[400px] animate-pulse bg-slate-100" />
-          ))
-        ) : projects.length === 0 ? (
-          <div className="col-span-full text-center py-20 text-slate-500">
-            <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" />
-            <p className="text-xl font-medium">No projects found</p>
-            <p className="mt-2">Create your first project to get started</p>
-          </div>
-        ) : (
-          projects.map(project => (
-            <ProjectCard
-              key={project.id}
-              project={project}
+      {/* Projects Display */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
+            [...Array(6)].map((_, i) => (
+              <Card key={i} className="h-[400px] animate-pulse bg-slate-100" />
+            ))
+          ) : projects.length === 0 ? (
+            <div className="col-span-full text-center py-20 text-slate-500">
+              <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" />
+              <p className="text-xl font-medium">No projects found</p>
+              <p className="mt-2">Create your first project to get started</p>
+            </div>
+          ) : (
+            projects.map(project => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onEdit={(p) => {
+                  setEditingProject(p)
+                  setEditOpen(true)
+                }}
+                onDelete={handleDelete}
+                onView={(p) => {
+                  setViewingProject(p)
+                  setViewOpen(true)
+                }}
+                onStartCampaign={(p) => {
+                  // Navigate to Campaigns page filtered by project
+                  router.push(`/dashboard/admin/crm/campaigns?project_id=${p.id}`)
+                }}
+                deleting={deletingId === project.id}
+              />
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="mt-6">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          ) : (
+            <ProjectList
+              projects={projects}
               onEdit={(p) => {
                 setEditingProject(p)
                 setEditOpen(true)
@@ -311,14 +365,13 @@ export default function ProjectsPage() {
                 setViewOpen(true)
               }}
               onStartCampaign={(p) => {
-                setCampProjectId(p.id)
-                setAddOpen(true)
+                router.push(`/dashboard/admin/crm/campaigns?project_id=${p.id}`)
               }}
-              deleting={deletingId === project.id}
+              deletingId={deletingId}
             />
-          ))
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Edit Modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

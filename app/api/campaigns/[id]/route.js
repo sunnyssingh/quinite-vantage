@@ -85,11 +85,10 @@ export async function PUT(request, { params }) {
             updated_at: new Date().toISOString()
         }
 
-        const { data: campaign, error } = await supabase
+        const { data: campaign, error } = await admin
             .from('campaigns')
             .update(updatePayload)
             .eq('id', id)
-            .eq('organization_id', profile.organization_id)
             .select()
             .single()
 
@@ -136,7 +135,7 @@ export async function DELETE(request, { params }) {
         }
 
         // 1. Delete related call_logs first (Manual Cascade)
-        const { error: logsError } = await supabase
+        const { error: logsError } = await admin
             .from('call_logs')
             .delete()
             .eq('campaign_id', id)
@@ -148,11 +147,10 @@ export async function DELETE(request, { params }) {
         }
 
         // 2. Delete Campaign
-        const { error } = await supabase
+        const { error } = await admin
             .from('campaigns')
             .delete()
             .eq('id', id)
-            .eq('organization_id', profile.organization_id)
 
         if (error) {
             console.error('❌ [Campaign DELETE] Delete error:', error)

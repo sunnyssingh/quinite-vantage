@@ -12,13 +12,16 @@ import {
     FileText,
     Settings,
     LogOut,
-    Building2
+    Building2,
+    KanbanSquare,
+    Building
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import MobileNav from '@/components/dashboard/MobileNav'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import AdminHeader from '@/components/admin/AdminHeader'
 
 
 export default function AdminLayout({ children }) {
@@ -82,12 +85,11 @@ export default function AdminLayout({ children }) {
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Overview', href: '/dashboard/admin' },
-        { icon: Users, label: 'Users', href: '/dashboard/admin/users' },
-        { icon: FolderKanban, label: 'Projects', href: '/dashboard/admin/projects' },
-        { icon: UserPlus, label: 'Leads', href: '/dashboard/admin/leads' },
-        { icon: Megaphone, label: 'Campaigns', href: '/dashboard/admin/campaigns' },
+        { icon: KanbanSquare, label: 'CRM', href: '/dashboard/admin/crm' },
+        { icon: Building, label: 'Inventory', href: '/dashboard/admin/inventory' },
         { icon: BarChart3, label: 'Analytics', href: '/dashboard/admin/analytics' },
         { icon: FileText, label: 'Audit Logs', href: '/dashboard/admin/audit' },
+        { icon: Users, label: 'Users', href: '/dashboard/admin/users' },
         { icon: Users, label: 'Profile', href: '/dashboard/admin/profile' },
         { icon: Settings, label: 'Settings', href: '/dashboard/admin/settings' },
     ]
@@ -96,98 +98,17 @@ export default function AdminLayout({ children }) {
         return null
     }
 
+    const isFullScreenModule = pathname?.startsWith('/dashboard/admin/crm') ||
+        pathname?.startsWith('/dashboard/admin/inventory')
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Mobile Header */}
-            <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200 sticky top-0 z-20">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-blue-600 rounded-lg">
-                        <Building2 className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-gray-900">Quinite Vantage</span>
-                </div>
-                <MobileNav navItems={navItems} role={profile?.role} userEmail={user?.email} />
-            </div>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+            <AdminHeader user={user} profile={profile} />
 
-            <div className="flex">
-                {/* Desktop Sidebar - Hidden on mobile */}
-                <aside className="hidden md:block w-64 bg-white border-r border-gray-200 min-h-screen fixed left-0 top-0 overflow-y-auto z-10">
-                    {/* Logo/Brand */}
-                    <div className="p-6 border-b border-gray-200">
-                        <div className="flex items-center gap-3">
-                            <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-blue-600 flex items-center justify-center">
-                                {profile?.organization?.settings?.logo_url ? (
-                                    <Image
-                                        src={profile.organization.settings.logo_url}
-                                        alt="Logo"
-                                        fill
-                                        className="object-cover"
-                                    />
-                                ) : (
-                                    <Building2 className="w-6 h-6 text-white" />
-                                )}
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-gray-900">{profile?.organization?.name || 'Admin Panel'}</h2>
-                                <p className="text-xs text-gray-500">Super Admin</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Navigation */}
-                    <nav className="p-4 space-y-1">
-                        {navItems.map((item, index) => {
-                            const Icon = item.icon
-                            const isActive = pathname === item.href
-
-                            return (
-                                <Link
-                                    key={index}
-                                    href={item.href}
-                                    className={`
-                                        flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                                        ${isActive
-                                            ? 'bg-blue-50 text-blue-600 font-medium'
-                                            : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                                        }
-                                    `}
-                                >
-                                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                                    <span>{item.label}</span>
-                                </Link>
-                            )
-                        })}
-                    </nav>
-
-                    {/* User Info & Logout Button */}
-                    <div className="p-4 border-t border-gray-200 bg-white mt-auto">
-                        <div className="px-4 py-2 mb-2">
-                            <p className="font-semibold text-sm text-gray-900 truncate">
-                                {profile?.full_name || user?.email}
-                            </p>
-                            <p className="text-xs text-gray-500 capitalize">
-                                {profile?.role?.replace('_', ' ') || 'User'}
-                            </p>
-                        </div>
-                        <button
-                            onClick={async () => {
-                                const supabase = createClientSupabaseClient()
-                                await supabase.auth.signOut()
-                                router.push('/')
-                            }}
-                            className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-all w-full"
-                        >
-                            <LogOut className="w-5 h-5" />
-                            <span className="font-medium">Logout</span>
-                        </button>
-                    </div>
-                </aside>
-
-                {/* Main Content - No margin on mobile, margin on desktop */}
-                <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 w-full min-w-0 overflow-x-hidden">
-                    {children}
-                </main>
-            </div>
+            {/* Main Content */}
+            <main className={`flex-1 w-full ${isFullScreenModule ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
+                {children}
+            </main>
         </div>
     )
 }

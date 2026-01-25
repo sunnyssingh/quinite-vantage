@@ -47,9 +47,7 @@ export async function GET(request) {
             `)
 
         // Filter by organization
-        if (!profile.is_platform_admin) {
-            query = query.eq('organization_id', profile.organization_id)
-        }
+        query = query.eq('organization_id', profile.organization_id)
 
         const { data: campaignsRaw, error } = await query
         if (error) throw error

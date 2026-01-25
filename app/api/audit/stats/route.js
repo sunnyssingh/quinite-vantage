@@ -31,9 +31,8 @@ export async function GET() {
             .order('created_at', { ascending: false })
             .limit(5000)
 
-        if (!profile.is_platform_admin) {
-            query = query.eq('organization_id', profile.organization_id)
-        }
+        // Strict Organization Filter
+        query = query.eq('organization_id', profile.organization_id)
 
         const { data } = await query
         const logs = data || []
