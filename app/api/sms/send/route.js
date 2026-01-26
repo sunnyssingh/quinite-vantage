@@ -1,7 +1,7 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function POST(request) {
-    const supabase = await createClient();
+    const supabase = await createServerSupabaseClient();
     const { leadId, message, campaignId } = await request.json();
 
     if (!leadId) {
