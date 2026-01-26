@@ -1,13 +1,19 @@
 'use client'
 
 import { PropertyCard } from './PropertyCard'
+import { Building } from 'lucide-react'
 
 export function PropertyGrid({ properties }) {
     if (!properties || properties.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                <h3 className="text-xl font-semibold text-slate-800">No Properties Found</h3>
-                <p className="text-slate-500 mt-2">Add your first property listing to get started.</p>
+            <div className="flex flex-col items-center justify-center py-20 bg-muted/20 rounded-xl border border-dashed border-border text-center">
+                <div className="p-4 rounded-full bg-secondary/50 mb-4">
+                    <Building className="w-8 h-8 text-muted-foreground/50" />
+                </div>
+                <h3 className="text-lg font-medium text-foreground">No Properties Found</h3>
+                <p className="text-muted-foreground text-sm mt-1 max-w-sm">
+                    Add your first property listing to get started monitoring inventory.
+                </p>
             </div>
         )
     }

@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { normalizeLead } from '@/lib/lead-normalization'
 
@@ -7,12 +8,6 @@ import { normalizeLead } from '@/lib/lead-normalization'
  * Accepts leads from external sources (webhooks, CSV uploads, etc.)
  * 
  * @route POST /api/leads/ingest
- * @body {
- *   source: string (e.g., 'magicbricks', '99acres', 'facebook', 'csv'),
- *   data: object | array (lead data),
- *   secret: string (webhook secret for authentication),
- *   map_project_id: string (optional - override project ID for all leads)
- * }
  */
 export async function POST(req) {
     try {
@@ -37,8 +32,7 @@ export async function POST(req) {
                 success: false,
                 error: 'Missing Source',
                 message: 'The "source" field is required to identify where the lead came from.',
-                hint: 'Valid sources: magicbricks, 99acres, facebook, csv',
-                example: { source: 'magicbricks', data: { name: 'John Doe', phone: '+919876543210' } }
+                hint: 'Valid sources: magicbricks, 99acres, facebook, csv'
             }, { status: 400 })
         }
 
@@ -46,14 +40,13 @@ export async function POST(req) {
             return NextResponse.json({
                 success: false,
                 error: 'Missing Data',
-                message: 'No lead data provided. Please include lead information in the "data" field.',
-                hint: 'Data can be a single object or an array of objects',
-                example: { source: 'magicbricks', data: { name: 'John Doe', phone: '9876543210' } }
+                message: 'No lead data provided. Please include lead information in the "data" field.'
             }, { status: 400 })
         }
 
         // Security Check - Webhook Secret or Authenticated Session
         const EXPECTED_SECRET = process.env.INGESTION_SECRET || 'vantage-secret-key'
+        let currentOrgId = null // [NEW] Context for project lookup
 
         if (secret !== EXPECTED_SECRET) {
             // Check if user is authenticated (for internal CSV uploads)
@@ -66,21 +59,48 @@ export async function POST(req) {
                         success: false,
                         error: 'Unauthorized',
                         message: 'Authentication failed. Please provide a valid webhook secret or sign in.',
-                        hint: 'Add "secret" parameter to your request or ensure you are logged in',
-                        receivedSecret: secret ? '***' + secret.slice(-4) : 'none'
+                        hint: 'Add "secret" parameter to your request or ensure you are logged in'
                     }, { status: 401 })
                 }
+
+                // Fetch user's org for context
+                const supabaseAdmin = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL,
+                    process.env.SUPABASE_SERVICE_ROLE_KEY
+                )
+                const { data: profile } = await supabaseAdmin
+                    .from('profiles')
+                    .select('organization_id')
+                    .eq('id', user.id)
+                    .single()
+
+                if (profile) currentOrgId = profile.organization_id
+
             } catch (authCheckError) {
                 return NextResponse.json({
                     success: false,
                     error: 'Authentication Error',
-                    message: 'Unable to verify authentication. Please try again.',
-                    details: process.env.NODE_ENV === 'development' ? authCheckError.message : undefined
+                    message: 'Unable to verify authentication. Please try again.'
                 }, { status: 401 })
             }
         }
 
-        const supabase = await createServerSupabaseClient()
+        // Initialize Admin Client to bypass RLS for ingestion
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        )
+
+        // Cache for lookup
+        const projectOrgMap = new Map()
+        const projectStageMap = new Map()
+        const projectNameMap = new Map() // [NEW] Name -> ID cache
 
         // Process leads (single or bulk)
         const items = Array.isArray(data) ? data : [data]
@@ -101,14 +121,45 @@ export async function POST(req) {
                 // Normalize lead data based on source
                 const standardized = normalizeLead(source, item)
 
+                // [NEW] Attempt to resolve Project Name to ID if ID is missing and we have Org context
+                if (!standardized.project_id && currentOrgId) {
+                    // Look for project name keys flexibly
+                    const pKeys = Object.keys(item).filter(k => k.toLowerCase().includes('project'))
+                    let pName = null
+                    for (const k of pKeys) {
+                        if (item[k]) { pName = item[k]; break; }
+                    }
+
+                    if (pName) {
+                        // Check cache
+                        let pid = projectNameMap.get(pName.toLowerCase())
+
+                        // DB Lookup if not in cache
+                        if (!pid) {
+                            const { data: foundProjects } = await supabaseAdmin
+                                .from('projects')
+                                .select('id')
+                                .eq('organization_id', currentOrgId)
+                                .ilike('name', pName.trim())
+                                .limit(1)
+
+                            if (foundProjects?.length > 0) {
+                                pid = foundProjects[0].id
+                                projectNameMap.set(pName.toLowerCase(), pid)
+                            }
+                        }
+
+                        if (pid) standardized.project_id = pid
+                    }
+                }
+
                 // Validate required fields
                 if (!standardized.phone) {
                     errors.push({
                         index: i,
                         item: item,
                         error: 'Missing Phone Number',
-                        message: 'Phone number is required for all leads',
-                        hint: 'Ensure your data includes a phone field (mobile, contact_details.mobile, etc.)'
+                        message: 'Phone number is required for all leads'
                     })
                     continue
                 }
@@ -118,20 +169,91 @@ export async function POST(req) {
                         index: i,
                         item: item,
                         error: 'Missing Project ID',
-                        message: 'Could not determine which project this lead belongs to',
-                        hint: 'Either include project_id in the lead data or provide map_project_id in the request body'
+                        message: 'Could not determine which project this lead belongs to. Please ensure the Project Name matches exactly or select a project before upload.',
+                        hint: `Found data: ${JSON.stringify(item)}`
                     })
                     continue
                 }
 
-                // Upsert lead into database
-                const { data: inserted, error: dbError } = await supabase
+                // Fetch Organization ID for the project
+                let orgId = projectOrgMap.get(standardized.project_id)
+                if (!orgId) {
+                    const { data: project, error: projError } = await supabaseAdmin
+                        .from('projects')
+                        .select('organization_id')
+                        .eq('id', standardized.project_id)
+                        .single()
+
+                    if (projError || !project) {
+                        errors.push({
+                            index: i,
+                            item: item,
+                            error: 'Invalid Project',
+                            message: `Could not find project with ID: ${standardized.project_id}`
+                        })
+                        continue
+                    }
+                    orgId = project.organization_id
+                    projectOrgMap.set(standardized.project_id, orgId)
+                }
+
+                // Fetch Default Stage (Org -> Pipeline -> Stage)
+                let stageId = projectStageMap.get(standardized.project_id)
+                if (stageId === undefined) {
+                    try {
+                        // 1. Get default pipeline for this Organization
+                        const { data: pipelines } = await supabaseAdmin
+                            .from('pipelines')
+                            .select('id')
+                            .eq('organization_id', orgId)
+                            .eq('is_default', true)
+                            .limit(1)
+
+                        let pipelineId = pipelines?.[0]?.id
+
+                        // Fallback: If no default, just take the first one
+                        if (!pipelineId) {
+                            const { data: allPipelines } = await supabaseAdmin
+                                .from('pipelines')
+                                .select('id')
+                                .eq('organization_id', orgId)
+                                .limit(1)
+                            pipelineId = allPipelines?.[0]?.id
+                        }
+
+                        if (pipelineId) {
+                            // 2. Get first stage of that pipeline
+                            const { data: stages } = await supabaseAdmin
+                                .from('pipeline_stages')
+                                .select('id')
+                                .eq('pipeline_id', pipelineId)
+                                .order('order_index', { ascending: true })
+                                .limit(1)
+
+                            if (stages && stages.length > 0) {
+                                stageId = stages[0].id
+                                projectStageMap.set(standardized.project_id, stageId)
+                            } else {
+                                projectStageMap.set(standardized.project_id, null)
+                            }
+                        } else {
+                            projectStageMap.set(standardized.project_id, null)
+                        }
+                    } catch (e) {
+                        projectStageMap.set(standardized.project_id, null)
+                    }
+                }
+
+                // Upsert lead into database using Admin Client
+                const { data: inserted, error: dbError } = await supabaseAdmin
                     .from('leads')
                     .upsert({
                         name: standardized.name || 'Unknown',
                         phone: standardized.phone,
                         email: standardized.email,
                         project_id: standardized.project_id,
+                        organization_id: orgId, // CRITICAL: Explicitly set organization_id
+                        stage_id: stageId || null,
                         lead_source: standardized.lead_source || source,
                         external_lead_id: standardized.external_lead_id,
                         raw_data: standardized.raw_data || item,
@@ -146,9 +268,8 @@ export async function POST(req) {
                         errors.push({
                             index: i,
                             item: item,
-                            error: 'Invalid Project ID',
-                            message: `Project ID "${standardized.project_id}" does not exist`,
-                            hint: 'Verify the project_id exists in your database'
+                            error: 'Invalid Reference',
+                            message: 'Referenced project or organization does not exist'
                         })
                     } else if (dbError.code === '23505') {
                         // Duplicate - this is actually OK for upsert, but log it

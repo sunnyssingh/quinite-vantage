@@ -10,11 +10,11 @@ export function PropertyCard({ property }) {
         : '/placeholder-property.jpg'
 
     return (
-        <Card className="hover:shadow-lg transition-shadow overflow-hidden group">
-            <div className="relative h-48 w-full bg-slate-200">
+        <Card className="rounded-xl border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
+            <div className="relative h-48 w-full bg-muted/30">
                 {/* We use a simple div for now if no real image logic is setup, or normal img tag if external url */}
                 {imageUrl.startsWith('/') ? (
-                    <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-100">
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/20">
                         No Image
                     </div>
                 ) : (
@@ -25,24 +25,24 @@ export function PropertyCard({ property }) {
                     />
                 )}
                 <div className="absolute top-2 right-2">
-                    <Badge variant={property.status === 'available' ? 'success' : 'secondary'} className="uppercase text-[10px]">
+                    <Badge variant={property.status === 'available' ? 'default' : 'secondary'} className="uppercase text-[10px] font-medium tracking-wide">
                         {property.status}
                     </Badge>
                 </div>
                 <div className="absolute bottom-2 left-2">
-                    <Badge variant="outline" className="bg-black/50 text-white border-0 backdrop-blur-sm">
+                    <Badge variant="secondary" className="bg-background/80 text-foreground backdrop-blur-sm border-0 font-medium text-[10px]">
                         {property.type}
                     </Badge>
                 </div>
             </div>
 
-            <CardHeader className="p-4 pb-2">
+            <CardHeader className="p-4 pb-2 space-y-1">
                 <div className="flex justify-between items-start">
-                    <h3 className="font-semibold text-lg truncate" title={property.title}>{property.title}</h3>
-                    <span className="font-bold text-primary">₹{parseInt(property.price).toLocaleString('en-IN')}</span>
+                    <h3 className="font-medium text-lg leading-tight truncate text-foreground" title={property.title}>{property.title}</h3>
+                    <span className="font-bold text-foreground">₹{parseInt(property.price).toLocaleString('en-IN')}</span>
                 </div>
                 {property.address && (
-                    <div className="flex items-center text-xs text-slate-500 mt-1">
+                    <div className="flex items-center text-xs text-muted-foreground mt-0.5">
                         <MapPin className="w-3 h-3 mr-1" />
                         <span className="truncate">{property.address}</span>
                     </div>
@@ -50,17 +50,17 @@ export function PropertyCard({ property }) {
             </CardHeader>
 
             <CardContent className="p-4 pt-2">
-                <div className="flex items-center justify-between text-xs text-slate-600 border-t pt-3 mt-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3 mt-2">
                     <div className="flex items-center gap-1">
-                        <Bed className="w-4 h-4 text-slate-400" />
+                        <Bed className="w-3.5 h-3.5" />
                         <span>{property.bedrooms || 0} Beds</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <Bath className="w-4 h-4 text-slate-400" />
+                        <Bath className="w-3.5 h-3.5" />
                         <span>{property.bathrooms || 0} Baths</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <Layout className="w-4 h-4 text-slate-400" />
+                        <Layout className="w-3.5 h-3.5" />
                         <span>{property.size_sqft || 0} sqft</span>
                     </div>
                 </div>

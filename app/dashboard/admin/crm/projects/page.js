@@ -243,91 +243,117 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-screen">
+    <div className="flex flex-col h-full bg-muted/5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border bg-background shrink-0 shadow-sm z-10">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl">
-              <Building2 className="w-6 h-6 md:w-7 md:h-7 text-white" />
-            </div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <Building2 className="w-7 h-7 text-foreground" />
             My Projects
           </h1>
-          <p className="text-slate-600 mt-1 text-sm md:text-base">Manage your real estate projects and campaigns</p>
+          <p className="text-muted-foreground mt-1 text-sm">Manage your real estate projects and campaigns</p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* View Toggle */}
-          <div className="bg-white border rounded-lg p-1 flex items-center gap-1 shadow-sm">
+          <div className="bg-muted/50 p-1 rounded-lg flex items-center gap-1 border border-border/50">
             <Button
               variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
               size="sm"
-              className={`h-8 w-8 p-0 ${viewMode === 'grid' ? 'bg-blue-100 text-blue-700' : 'text-slate-500'}`}
+              className={`h-7 w-7 p-0 ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => setViewMode('grid')}
               title="Grid View"
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant={viewMode === 'list' ? 'secondary' : 'ghost'}
               size="sm"
-              className={`h-8 w-8 p-0 ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'text-slate-500'}`}
+              className={`h-7 w-7 p-0 ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
               onClick={() => setViewMode('list')}
               title="List View"
             >
-              <List className="w-4 h-4" />
+              <List className="w-3.5 h-3.5" />
             </Button>
           </div>
 
           <Button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30"
-            size="lg"
+            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
+            size="sm"
           >
-            <Plus className="w-5 h-5 mr-2" />
-            {showCreateForm ? 'Cancel Creation' : 'New Project'}
+            <Plus className="w-4 h-4" />
+            {showCreateForm ? 'Cancel' : 'New Project'}
           </Button>
         </div>
       </div>
 
-      {/* Create Form */}
-      {showCreateForm && (
-        <Card className="shadow-xl border-2 border-blue-100">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Sparkles className="w-5 h-5 text-blue-600" />
-              Create New Project
-            </CardTitle>
-            <CardDescription>Fill in the details to create a new real estate project</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            <ProjectForm
-              onSubmit={handleCreate}
-              onCancel={() => setShowCreateForm(false)}
-              isSubmitting={submitting}
-            />
-          </CardContent>
-        </Card>
-      )}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Create Form */}
+        {showCreateForm && (
+          <Card className="shadow-sm border border-border bg-card mb-6">
+            <CardHeader className="border-b border-border bg-muted/20">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                <Sparkles className="w-4 h-4 text-primary" />
+                Create New Project
+              </CardTitle>
+              <CardDescription>Fill in the details to create a new real estate project</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <ProjectForm
+                onSubmit={handleCreate}
+                onCancel={() => setShowCreateForm(false)}
+                isSubmitting={submitting}
+              />
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Projects Display */}
-      {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loading ? (
-            [...Array(6)].map((_, i) => (
-              <Card key={i} className="h-[400px] animate-pulse bg-slate-100" />
-            ))
-          ) : projects.length === 0 ? (
-            <div className="col-span-full text-center py-20 text-slate-500">
-              <Building2 className="w-16 h-16 mx-auto mb-4 opacity-30" />
-              <p className="text-xl font-medium">No projects found</p>
-              <p className="mt-2">Create your first project to get started</p>
-            </div>
-          ) : (
-            projects.map(project => (
-              <ProjectCard
-                key={project.id}
-                project={project}
+        {/* Projects Display */}
+        {viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading ? (
+              [...Array(6)].map((_, i) => (
+                <Card key={i} className="h-[400px] animate-pulse bg-muted/50" />
+              ))
+            ) : projects.length === 0 ? (
+              <div className="col-span-full text-center py-20 text-muted-foreground">
+                <Building2 className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium">No projects found</p>
+                <p className="mt-1 text-sm">Create your first project to get started</p>
+              </div>
+            ) : (
+              projects.map(project => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onEdit={(p) => {
+                    setEditingProject(p)
+                    setEditOpen(true)
+                  }}
+                  onDelete={handleDelete}
+                  onView={(p) => {
+                    setViewingProject(p)
+                    setViewOpen(true)
+                  }}
+                  onStartCampaign={(p) => {
+                    // Navigate to Campaigns page filtered by project
+                    router.push(`/dashboard/admin/crm/campaigns?project_id=${p.id}`)
+                  }}
+                  deleting={deletingId === project.id}
+                />
+              ))
+            )}
+          </div>
+        ) : (
+          <div>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <ProjectList
+                projects={projects}
                 onEdit={(p) => {
                   setEditingProject(p)
                   setEditOpen(true)
@@ -338,44 +364,18 @@ export default function ProjectsPage() {
                   setViewOpen(true)
                 }}
                 onStartCampaign={(p) => {
-                  // Navigate to Campaigns page filtered by project
                   router.push(`/dashboard/admin/crm/campaigns?project_id=${p.id}`)
                 }}
-                deleting={deletingId === project.id}
+                deletingId={deletingId}
               />
-            ))
-          )}
-        </div>
-      ) : (
-        <div className="mt-6">
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
-          ) : (
-            <ProjectList
-              projects={projects}
-              onEdit={(p) => {
-                setEditingProject(p)
-                setEditOpen(true)
-              }}
-              onDelete={handleDelete}
-              onView={(p) => {
-                setViewingProject(p)
-                setViewOpen(true)
-              }}
-              onStartCampaign={(p) => {
-                router.push(`/dashboard/admin/crm/campaigns?project_id=${p.id}`)
-              }}
-              deletingId={deletingId}
-            />
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Edit Modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:rounded-xl">
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
           </DialogHeader>

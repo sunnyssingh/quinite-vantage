@@ -2,9 +2,10 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Phone, Mail, User } from 'lucide-react'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Phone, Mail } from 'lucide-react'
 
 export function LeadCard({ lead }) {
     const {
@@ -28,29 +29,75 @@ export function LeadCard({ lead }) {
             style={style}
             {...attributes}
             {...listeners}
-            className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow ${isDragging ? 'shadow-lg border-primary/50 ring-1 ring-primary' : ''}`}
+            className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-all shadow-sm border-border bg-card group ${isDragging ? 'shadow-xl border-primary/50 ring-2 ring-primary z-50 rotate-2' : ''}`}
         >
-            <CardHeader className="p-3 pb-0 space-y-0">
-                <div className="flex justify-between items-start gap-2">
-                    <h4 className="font-semibold text-sm truncate" title={lead.name}>{lead.name}</h4>
-                    {lead.call_status && (
-                        <Badge variant={lead.call_status === 'completed' ? 'success' : 'secondary'} className="text-[10px] h-5 px-1.5">
-                            {lead.call_status}
-                        </Badge>
+            <CardContent className="p-4 space-y-3">
+                {/* Header with Avatar */}
+                <div className="flex items-start gap-3">
+                    <Avatar className="h-9 w-9 border border-border/50 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary font-medium text-xs">
+                            {lead.name ? lead.name.substring(0, 2).toUpperCase() : 'NA'}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm truncate text-foreground group-hover:text-primary transition-colors" title={lead.name}>
+                            {lead.name}
+                        </h4>
+                        {lead.project && (
+                            <Badge variant="secondary" className="text-[10px] font-normal text-muted-foreground bg-muted/50 border-0 h-4 px-1.5 mt-1">
+                                {lead.project.name}
+                            </Badge>
+                        )}
+                    </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                    {lead.phone && (
+                        <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 opacity-70 shrink-0" />
+                            <span className="truncate">{lead.phone}</span>
+                        </div>
+                    )}
+                    {lead.email && (
+                        <div className="flex items-center gap-2">
+                            <Mail className="w-3 h-3 opacity-70 shrink-0" />
+                            <span className="truncate">{lead.email}</span>
+                        </div>
                     )}
                 </div>
-            </CardHeader>
-            <CardContent className="p-3 space-y-2">
-                {lead.project && (
-                    <Badge variant="outline" className="text-[10px] font-normal text-slate-500 bg-slate-50">
-                        {lead.project.name}
+
+                {/* Status Badge & AI Stats */}
+                <div className="pt-2 border-t border-border/50 flex items-center justify-between">
+                    <Badge
+                        variant="outline"
+                        className={`text-[9px] h-5 px-2 font-medium ${lead.call_status === 'completed' || lead.call_status === 'transferred'
+                                ? 'text-green-600 bg-green-50/50 border-green-200'
+                                : 'text-muted-foreground bg-muted/20 border-border'
+                            }`}
+                    >
+                        {lead.call_status ? lead.call_status.replace('_', ' ').toUpperCase() : 'NEW'}
                     </Badge>
-                )}
-                <div className="space-y-1 pt-1">
-                    {lead.phone && (
-                        <div className="flex items-center text-xs text-slate-500">
-                            <Phone className="w-3 h-3 mr-1.5" />
-                            {lead.phone}
+
+                    {/* AI Score */}
+                    {(lead.score > 0 || lead.interest_level) && (
+                        <div className="flex items-center gap-1.5">
+                            {lead.interest_level === 'high' && (
+                                <span title="High Interest" className="text-xs animate-pulse">🔥</span>
+                            )}
+                            {lead.last_sentiment_score && (
+                                <span title={`Sentiment: ${lead.last_sentiment_score}`} className="text-xs">
+                                    {lead.last_sentiment_score > 0.3 ? '😊' : lead.last_sentiment_score < -0.3 ? '😟' : '😐'}
+                                </span>
+                            )}
+                            {lead.score > 0 && (
+                                <Badge variant="secondary" className={`h-5 text-[9px] px-1.5 border-0 ${lead.score >= 80 ? 'bg-green-100 text-green-700' :
+                                        lead.score >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-gray-100 text-gray-600'
+                                    }`}>
+                                    {lead.score}
+                                </Badge>
+                            )}
                         </div>
                     )}
                 </div>

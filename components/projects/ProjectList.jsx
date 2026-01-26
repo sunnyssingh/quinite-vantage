@@ -12,17 +12,17 @@ import { Edit, Trash2, Eye, Megaphone, Building2, MapPin } from "lucide-react"
 export default function ProjectList({ projects, onEdit, onDelete, onView, onStartCampaign, deletingId }) {
     if (!projects || projects.length === 0) {
         return (
-            <div className="text-center py-10 border-2 border-dashed rounded-lg">
-                <p className="text-slate-500">No projects to display.</p>
+            <div className="text-center py-10 border border-dashed border-border rounded-lg bg-muted/10">
+                <p className="text-muted-foreground text-sm">No projects to display.</p>
             </div>
         )
     }
 
     return (
-        <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+        <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden">
             <Table>
                 <TableHeader>
-                    <TableRow className="bg-slate-50">
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
                         <TableHead className="w-[100px]">Image</TableHead>
                         <TableHead>Project Info</TableHead>
                         <TableHead>Location</TableHead>
@@ -45,9 +45,9 @@ export default function ProjectList({ projects, onEdit, onDelete, onView, onStar
                         const loc = re.location || {}
 
                         return (
-                            <TableRow key={project.id} className="hover:bg-slate-50/50">
+                            <TableRow key={project.id} className="hover:bg-muted/30">
                                 <TableCell>
-                                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted border border-border">
                                         {project.image_url ? (
                                             <img
                                                 src={project.image_url}
@@ -55,69 +55,69 @@ export default function ProjectList({ projects, onEdit, onDelete, onView, onStar
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-300">
-                                                <Building2 className="w-6 h-6" />
+                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                                <Building2 className="w-6 h-6 opacity-30" />
                                             </div>
                                         )}
                                     </div>
                                 </TableCell>
                                 <TableCell>
                                     <div>
-                                        <div className="font-medium text-slate-900">{project.name}</div>
-                                        <div className="text-xs text-slate-500 truncate max-w-[200px]">{project.address}</div>
+                                        <div className="font-medium text-foreground">{project.name}</div>
+                                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">{project.address}</div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="text-sm text-slate-600 flex items-center gap-1">
-                                        <MapPin className="w-3 h-3 text-slate-400" />
+                                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                        <MapPin className="w-3 h-3 opacity-70" />
                                         {loc.city || 'N/A'}, {loc.locality || ''}
                                     </div>
                                 </TableCell>
                                 <TableCell>
                                     <div className="text-sm">
-                                        <span className="capitalize px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs font-medium">
+                                        <span className="capitalize px-2 py-1 bg-muted rounded text-muted-foreground text-xs font-medium border border-border/50">
                                             {prop.category || 'Project'}
                                         </span>
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
+                                    <div className="flex items-center justify-end gap-1">
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => onStartCampaign(project)}
-                                            className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                            className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
                                             title="Start Campaign"
                                         >
-                                            <Megaphone className="w-4 h-4" />
+                                            <Megaphone className="w-3.5 h-3.5" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => onView(project)}
-                                            className="h-8 w-8 p-0 text-slate-500 hover:text-slate-900"
+                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                                             title="View Details"
                                         >
-                                            <Eye className="w-4 h-4" />
+                                            <Eye className="w-3.5 h-3.5" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => onEdit(project)}
-                                            className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600"
+                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                                             title="Edit"
                                         >
-                                            <Edit className="w-4 h-4" />
+                                            <Edit className="w-3.5 h-3.5" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => onDelete(project)}
                                             disabled={deletingId === project.id}
-                                            className="h-8 w-8 p-0 text-slate-500 hover:text-red-600"
+                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-50/50"
                                             title="Delete"
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="w-3.5 h-3.5" />
                                         </Button>
                                     </div>
                                 </TableCell>

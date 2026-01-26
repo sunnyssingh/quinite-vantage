@@ -84,10 +84,6 @@ export default function AuthPage() {
 
     try {
       // Step 1: Create auth account
-
-
-
-
       const signupResponse = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,10 +92,7 @@ export default function AuthPage() {
 
       const signupData = await signupResponse.json()
 
-
       if (!signupResponse.ok) {
-
-
         throw new Error(signupData.error || 'Signup failed')
       }
 
@@ -113,8 +106,6 @@ export default function AuthPage() {
 
       // If no confirmation needed, proceed with auto-signin and onboarding
 
-      // toast.loading('Logging in to complete onboarding...', { id: 'signup' }) - removed as Shadcn toast doesn't support persistent loading with ID directly like sonner
-
       // Step 2: Sign in to get session
       const signinResponse = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -124,19 +115,11 @@ export default function AuthPage() {
 
       const signinData = await signinResponse.json()
 
-
       if (!signinResponse.ok) {
-
-
         throw new Error(signinData.error || 'Login after signup failed')
       }
 
-
-
       // Step 3: Run onboarding to create org and setup profile
-
-
-
       const onboardResponse = await fetch('/api/onboard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,23 +128,17 @@ export default function AuthPage() {
 
       const onboardData = await onboardResponse.json()
 
-
       if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
-
         toast.error(`${onboardData.error}. Setup incomplete. Try logging in again.`)
         setActiveTab('signin')
         setSubmitting(false)
         return
       }
 
-
-
       // Success! Redirect to onboarding wizard
-
       toast.success('Account created! Complete your onboarding to get started.')
       setTimeout(() => router.push('/onboarding'), 1500)
     } catch (err) {
-
       toast.error(err.message)
     } finally {
       setSubmitting(false)
@@ -177,10 +154,6 @@ export default function AuthPage() {
     const password = formData.get('password')
 
     try {
-
-
-
-
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,26 +162,15 @@ export default function AuthPage() {
 
       const data = await response.json()
 
-
       if (!response.ok) {
-
-
         throw new Error(data.error || 'Login failed')
       }
 
-
-
       // Check if user needs to complete onboarding
       if (data.needsOnboarding) {
-
-
-        // toast.loading('Setting up your organization...', { id: 'signin' }) - Shadcn toast replacement
-
         // Get user data from signin response
         const fullName = data.user?.user_metadata?.full_name || data.user?.email?.split('@')[0]
         const companyName = data.user?.user_metadata?.company_name || 'My Organization'
-
-
 
         // Call onboarding API to create organization
         const onboardResponse = await fetch('/api/onboard', {
@@ -219,21 +181,15 @@ export default function AuthPage() {
 
         const onboardData = await onboardResponse.json()
 
-
         if (!onboardResponse.ok && !onboardData.alreadyOnboarded) {
-
           toast.error(`${onboardData.error}. Please try again.`)
           setSubmitting(false)
           return
         }
 
-
-
         toast.success('Complete your onboarding to get started.')
         setTimeout(() => router.push('/onboarding'), 1000)
       } else {
-
-
         // Role-based redirect
         const role = data.user?.role || 'employee'
         const dashboardRoutes = {
@@ -245,12 +201,10 @@ export default function AuthPage() {
 
         const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
 
-
         toast.success('Welcome back! Redirecting to dashboard...')
         setTimeout(() => router.push(dashboardRoute), 1000)
       }
     } catch (err) {
-
       toast.error(err.message)
     } finally {
       setSubmitting(false)
@@ -288,270 +242,229 @@ export default function AuthPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="animate-pulse">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
+        <div className="animate-pulse text-sm text-muted-foreground">Loading application...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
-      <Card className="w-full max-w-md shadow-xl">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full">
-              <Building2 className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">Welcome to Quinite Vantage</CardTitle>
-          <CardDescription className="text-center">
-            AI-Powered Call Automation Platform
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 animate-in fade-in duration-500">
+
+      {/* Minimal Header/Logo Area */}
+      <div className="mb-8 text-center space-y-2">
+        <div className="inline-flex items-center justify-center p-3 rounded-xl bg-primary/5 mb-4 ring-1 ring-border">
+          <Building2 className="w-6 h-6 text-primary" />
+        </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Quinite Vantage</h1>
+        <p className="text-sm text-muted-foreground">AI-Powered Call Automation Platform</p>
+      </div>
+
+      <Card className="w-full max-w-sm shadow-sm border-border bg-card">
+        <CardHeader className="space-y-1 pb-4">
+          <CardTitle className="text-lg font-medium text-center">Welcome back</CardTitle>
+          <CardDescription className="text-center text-xs">
+            Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1">
+              <TabsTrigger value="signin" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign In</TabsTrigger>
+              <TabsTrigger value="signup" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign Up</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signin">
+            <TabsContent value="signin" className="mt-0">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+                  <Label htmlFor="signin-email" className="text-xs font-medium">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signin-email"
                       name="email"
                       type="email"
-                      placeholder="your.email@company.com"
-                      className="pl-10"
+                      placeholder="name@example.com"
+                      className="pl-9 h-9 text-sm bg-background/50"
                       required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password" className="text-xs font-medium">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-xs text-primary hover:text-primary/80 hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signin-password"
                       name="password"
                       type={showSigninPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      className="pl-10 pr-10"
+                      className="pl-9 pr-9 h-9 text-sm bg-background/50"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowSigninPassword(!showSigninPassword)}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {showSigninPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showSigninPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                     </button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={submitting}>
+                <Button type="submit" className="w-full h-9 text-sm font-medium" disabled={submitting}>
                   {submitting ? 'Signing in...' : 'Sign In'}
                 </Button>
-                <div className="text-center mt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotPassword(true)}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Forgot Password?
-                  </button>
-                </div>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
+            <TabsContent value="signup" className="mt-0">
+              <form onSubmit={handleSignUp} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="signup-name" className="text-xs font-medium">Full Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-name"
                       name="fullName"
                       type="text"
                       placeholder="John Doe"
-                      className="pl-10"
+                      className="pl-9 h-9 text-sm bg-background/50"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-company">Company Name</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="signup-company" className="text-xs font-medium">Company Name</Label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-company"
                       name="companyName"
                       type="text"
                       placeholder="Acme Inc."
-                      className="pl-10"
+                      className="pl-9 h-9 text-sm bg-background/50"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="signup-email" className="text-xs font-medium">Email</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-email"
                       name="email"
                       type="email"
-                      placeholder="your.email@company.com"
-                      className="pl-10"
+                      placeholder="name@example.com"
+                      className="pl-9 h-9 text-sm bg-background/50"
                       required
-                      title="Please enter a valid email address"
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="signup-password" className="text-xs font-medium">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-password"
                       name="password"
                       type={showSignupPassword ? "text" : "password"}
                       placeholder="••••••••"
-                      className="pl-10 pr-10"
+                      className="pl-9 pr-9 h-9 text-sm bg-background/50"
                       required
                       minLength={6}
                     />
                     <button
                       type="button"
                       onClick={() => setShowSignupPassword(!showSignupPassword)}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showSignupPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                     </button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={submitting}>
+                <Button type="submit" className="w-full h-9 text-sm font-medium mt-1" disabled={submitting}>
                   {submitting ? 'Creating account...' : 'Create Account'}
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
 
-          {/* Legal Links Footer */}
-          <div className="mt-6 pt-4 border-t border-gray-200 text-center text-xs text-gray-500 space-y-2">
-            <p>By signing up, you agree to our</p>
-            <div className="flex justify-center gap-3 flex-wrap">
-              <a
-                href="https://quinite.co/terms-conditions/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Terms & Conditions
-              </a>
+          {/* Minimal Footer */}
+          <div className="mt-6 pt-4 border-t border-dashed border-border text-center text-[10px] text-muted-foreground space-y-2">
+            <p>By continuing, you agree to our</p>
+            <div className="flex justify-center gap-3">
+              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
               <span>•</span>
-              <a
-                href="https://quinite.co/privacy-policy/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Privacy Policy
-              </a>
-              <span>•</span>
-              <a
-                href="https://quinite.co/refund-and-cancellation/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Refund & Cancellation
-              </a>
-            </div>
-            <div className="mt-4 text-xs text-gray-500">
-              Need help? <a href="https://quinite.co/contact/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Contact us</a>
+              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Forgot Password Modal - Modern Design */}
+      {/* Forgot Password Modal - Minimal */}
       {showForgotPassword && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
           onClick={() => {
             setShowForgotPassword(false)
             setForgotPasswordEmail('')
           }}
         >
           <Card
-            className="w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-md animate-in zoom-in-95 duration-200"
+            className="w-full max-w-sm shadow-lg border-border bg-card animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <CardHeader className="space-y-3 pb-4">
+            <CardHeader className="space-y-2 pb-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                    <Lock className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                      Reset Password
-                    </CardTitle>
-                    <CardDescription className="text-sm mt-0.5">
-                      We'll send you a reset link
-                    </CardDescription>
-                  </div>
-                </div>
+                <CardTitle className="text-base font-semibold">Reset Password</CardTitle>
                 <button
                   onClick={() => {
                     setShowForgotPassword(false)
                     setForgotPasswordEmail('')
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  disabled={forgotPasswordLoading}
+                  className="text-muted-foreground hover:text-foreground"
                 >
-                  {/* Removed AlertCircle, assuming a close icon or similar is intended */}
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400">
+                  <span className="sr-only">Close</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
+              <CardDescription className="text-xs">
+                Enter your email to receive a reset link
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="forgot-email" className="text-sm font-medium text-gray-700">
-                    Email Address
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="forgot-email"
-                      type="email"
-                      value={forgotPasswordEmail}
-                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                      placeholder="your.email@company.com"
-                      className="pl-10 h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                      required
-                      disabled={forgotPasswordLoading}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    Enter the email associated with your account
-                  </p>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className="h-9 text-sm"
+                    required
+                    disabled={forgotPasswordLoading}
+                  />
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-2 justify-end">
                   <Button
                     type="button"
                     variant="outline"
-                    className="flex-1 h-11 border-gray-200 hover:bg-gray-50"
+                    className="h-8 text-xs"
                     onClick={() => {
                       setShowForgotPassword(false)
                       setForgotPasswordEmail('')
@@ -562,17 +475,10 @@ export default function AuthPage() {
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30"
+                    className="h-8 text-xs"
                     disabled={forgotPasswordLoading}
                   >
-                    {forgotPasswordLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Sending...
-                      </div>
-                    ) : (
-                      'Send Reset Link'
-                    )}
+                    {forgotPasswordLoading ? 'Sending...' : 'Send Link'}
                   </Button>
                 </div>
               </form>

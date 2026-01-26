@@ -102,12 +102,14 @@ export default function AdminLayout({ children }) {
         pathname?.startsWith('/dashboard/admin/inventory')
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="h-screen bg-secondary/20 flex flex-col overflow-hidden">
             <AdminHeader user={user} profile={profile} />
 
             {/* Main Content */}
-            <main className={`flex-1 w-full ${isFullScreenModule ? '' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
-                {children}
+            <main className={`flex-1 w-full bg-background/50 relative overflow-hidden flex flex-col ${isFullScreenModule ? '' : 'max-w-7xl mx-auto'}`}>
+                <div className={`flex-1 h-full w-full ${isFullScreenModule ? '' : 'overflow-y-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
+                    {children}
+                </div>
             </main>
         </div>
     )

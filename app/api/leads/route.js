@@ -36,6 +36,7 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url)
         const status = searchParams.get('status')
         const projectId = searchParams.get('project_id')
+        const stageId = searchParams.get('stage_id') // [NEW]
         const search = searchParams.get('search')
 
         // Build query - fetch all columns including call_status and project
@@ -54,11 +55,14 @@ export async function GET(request) {
         }
 
         // Apply filters
-        if (status) {
+        if (status) { // Legacy / Fallback
             query = query.eq('status', status)
         }
         if (projectId) {
             query = query.eq('project_id', projectId)
+        }
+        if (stageId && stageId !== 'all') { // [NEW] Filter by Stage
+            query = query.eq('stage_id', stageId)
         }
         if (search) {
             query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
@@ -123,9 +127,9 @@ export async function POST(request) {
         console.log('✅ [Leads POST] Organization ID:', profile.organization_id)
 
         const body = await request.json()
-        const { name, email, phone, projectId, status, notes } = body
+        const { name, email, phone, projectId, status, notes, stageId } = body
 
-        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, status })
+        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, status, stageId })
 
         // Validation
         if (!name || name.trim() === '') {
@@ -133,20 +137,44 @@ export async function POST(request) {
             return corsJSON({ error: 'Name is required' }, { status: 400 })
         }
 
-        // Auto-assign to first stage if project is specified
-        let defaultStageId = null
-        if (projectId) {
+
+        let finalStageId = stageId || null
+        if (profile.organization_id && !finalStageId) {
             try {
-                const { data: stages } = await adminClient
-                    .from('pipeline_stages')
+                // 1. Get default pipeline
+                const { data: pipelines } = await adminClient
+                    .from('pipelines')
                     .select('id')
-                    .eq('project_id', projectId)
-                    .order('position', { ascending: true })
+                    .eq('organization_id', profile.organization_id)
+                    .eq('is_default', true)
                     .limit(1)
 
-                if (stages && stages.length > 0) {
-                    defaultStageId = stages[0].id
-                    console.log('✅ [Leads POST] Auto-assigned to first stage:', defaultStageId)
+                let pipelineId = pipelines?.[0]?.id
+
+                // Fallback: If no default, just take the first one
+                if (!pipelineId) {
+                    const { data: allPipelines } = await adminClient
+                        .from('pipelines')
+                        .select('id')
+                        .eq('organization_id', profile.organization_id)
+                        .limit(1)
+                    pipelineId = allPipelines?.[0]?.id
+                }
+
+                if (pipelineId) {
+                    // 2. Get first stage of that pipeline
+                    // Note: User schema says 'order_index', not 'position'
+                    const { data: stages } = await adminClient
+                        .from('pipeline_stages')
+                        .select('id')
+                        .eq('pipeline_id', pipelineId)
+                        .order('order_index', { ascending: true })
+                        .limit(1)
+
+                    if (stages && stages.length > 0) {
+                        finalStageId = stages[0].id
+                        console.log('✅ [Leads POST] Auto-assigned to first stage:', finalStageId)
+                    }
                 }
             } catch (err) {
                 console.warn('⚠️ [Leads POST] Could not fetch default stage:', err)
@@ -161,7 +189,7 @@ export async function POST(request) {
                 email: email?.trim() || null,
                 phone: phone?.trim() || null,
                 project_id: projectId || null,
-                stage_id: defaultStageId, // Auto-assign to first stage
+                stage_id: finalStageId, // Use provided or auto-assigned stage
                 status: status || 'new',
                 notes: notes?.trim() || null,
                 organization_id: profile.organization_id,

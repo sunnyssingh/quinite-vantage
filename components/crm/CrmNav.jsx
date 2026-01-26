@@ -40,19 +40,19 @@ export default function CrmNav({ projectId }) {
 
     return (
         <div className="flex items-center gap-2 mb-6">
-            <div className="flex p-1 bg-slate-100 rounded-lg border border-slate-200">
+            <div className="flex p-1 bg-muted/50 rounded-lg border border-border">
                 {navItems.map((item) => (
                     <Button
                         key={item.name}
                         variant="ghost"
                         size="sm"
                         onClick={() => handleNav(item.path)}
-                        className={`gap-2 text-sm font-medium transition-all ${item.active
-                            ? 'bg-white text-purple-600 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/50'
+                        className={`gap-2 text-xs font-medium transition-all h-8 ${item.active
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                             }`}
                     >
-                        <item.icon className="w-4 h-4" />
+                        <item.icon className="w-3.5 h-3.5" />
                         {item.name}
                     </Button>
                 ))}

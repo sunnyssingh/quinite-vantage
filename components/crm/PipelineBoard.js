@@ -137,8 +137,18 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
 
         if (!over) return
 
-        const leadId = active.id
+        let leadId = active.id
         const overId = over.id // Could be a stage ID or another lead ID
+
+        // Handling AI Watchlist Items (suffixed with -ai)
+        if (typeof leadId === 'string' && leadId.endsWith('-ai')) {
+            leadId = leadId.replace('-ai', '')
+        }
+
+        // Prevent dropping INTO the AI Watchlist
+        if (overId === 'ai-watchlist' || (typeof overId === 'string' && overId.endsWith('-ai'))) {
+            return
+        }
 
         // Find the stage we dropped onto
         let newStageId = null
@@ -209,14 +219,14 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
 
     if (!activePipeline) {
         return (
-            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                <h3 className="text-lg font-semibold text-slate-700">No Pipelines Found</h3>
-                <p className="text-slate-500 mb-6 max-w-md text-center">It looks like you haven't set up a sales pipeline yet. Create a default one to get started with your CRM.</p>
+            <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border rounded-xl bg-muted/20">
+                <h3 className="text-lg font-medium text-foreground">No Pipelines Found</h3>
+                <p className="text-muted-foreground text-sm mb-6 max-w-md text-center">It looks like you haven't set up a sales pipeline yet. Create a default one to get started.</p>
 
                 <div className="flex gap-4">
                     <button
                         onClick={handleSeed}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm flex items-center gap-2"
+                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm flex items-center gap-2"
                     >
                         Setup Default Pipeline
                     </button>
@@ -237,6 +247,21 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
             onDragEnd={handleDragEnd}
         >
             <div className="flex h-full gap-4 overflow-x-auto pb-2">
+                {/* 🤖 AI Watchlist Column */}
+                <PipelineColumn
+                    key="ai-watchlist"
+                    stage={{
+                        id: 'ai-watchlist',
+                        name: '🤖 AI Watchlist',
+                        color: '#6366f1' // Indigo
+                    }}
+                    leads={leads
+                        .filter(l => (l.score >= 50 || l.interest_level === 'high'))
+                        .map(l => ({ ...l, id: `${l.id}-ai`, originalId: l.id })) // Unique ID for DND
+                    }
+                    onAddLead={() => { }} // No adding directly
+                />
+
                 {activePipeline.stages.map(stage => {
                     const stageLeads = leads.filter(l =>
                         l.stage_id === stage.id ||

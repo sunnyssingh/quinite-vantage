@@ -101,7 +101,10 @@ export async function POST(request, { params }) {
         const { searchParams } = new URL(request.url)
         const batchSize = parseInt(searchParams.get('batchSize') || '50')
 
-        console.log(`🚀 Starting campaign batch: ${batchSize} leads`)
+        console.log(`🚀 [Campaign Start] Starting campaign batch...`)
+        console.log(`   Batch Size: ${batchSize}`)
+        console.log(`   Enable Real Calling: ${process.env.ENABLE_REAL_CALLING}`)
+        console.log(`   Plivo Configured: ${isPlivoConfigured()}`)
 
         // Get leads for this campaign's project (Batch Processing)
         // Only fetch leads that haven't been called successfully yet

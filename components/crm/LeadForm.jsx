@@ -42,6 +42,60 @@ export default function LeadForm({
         onSubmit(payload)
     }
 
+    const [fetchedStages, setFetchedStages] = useState(stages)
+    const [loadingStages, setLoadingStages] = useState(false)
+
+    const [selectedStageId, setSelectedStageId] = useState(initialStageId || initialData?.stage_id || '')
+
+    // Fetch stages when project changes
+    const fetchStages = async (pid) => {
+        setLoadingStages(true)
+        try {
+            // Retrieve stages for specific project or all organization stages if none selected
+            const url = (!pid || pid === 'none')
+                ? '/api/pipeline/stages'
+                : `/api/pipeline/stages?projectId=${pid}`
+
+            const res = await fetch(url)
+            if (res.ok) {
+                const data = await res.json()
+                const newStages = data.stages || []
+                setFetchedStages(newStages)
+
+                // Auto-select first stage if none selected or current selection is invalid
+                // But preserve existing selection if it exists in new list
+                if (newStages.length > 0) {
+                    // Check if current selection is in the new list
+                    const currentExists = newStages.find(s => s.id === selectedStageId)
+                    if (!currentExists && !initialData?.stage_id) {
+                        setSelectedStageId(newStages[0].id)
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch stages', e)
+            setFetchedStages([])
+        } finally {
+            setLoadingStages(false)
+        }
+    }
+
+    // Initial fetch if no stages provided
+    React.useEffect(() => {
+        if (stages.length === 0) {
+            fetchStages(initialData?.project_id || 'none')
+        } else {
+            // If stages provided via props, ensure one is selected
+            if (!selectedStageId && stages.length > 0) {
+                setSelectedStageId(stages[0].id)
+            }
+        }
+    }, [])
+
+    const handleProjectChange = (val) => {
+        fetchStages(val)
+    }
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -63,7 +117,11 @@ export default function LeadForm({
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label>Project</Label>
-                    <Select name="projectId" defaultValue={initialData?.project_id || 'none'}>
+                    <Select
+                        name="projectId"
+                        defaultValue={initialData?.project_id || 'none'}
+                        onValueChange={handleProjectChange}
+                    >
                         <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="none">None</SelectItem>
@@ -74,15 +132,20 @@ export default function LeadForm({
                     </Select>
                 </div>
 
-                {stages.length > 0 ? (
+                {fetchedStages.length > 0 || loadingStages ? (
                     <div className="space-y-2">
                         <Label>Pipeline Stage</Label>
-                        <Select name="stageId" defaultValue={initialStageId || initialData?.stage_id || stages[0]?.id}>
+                        <Select
+                            name="stageId"
+                            value={selectedStageId}
+                            onValueChange={setSelectedStageId}
+                            disabled={loadingStages}
+                        >
                             <SelectTrigger>
-                                <SelectValue placeholder="Select stage" />
+                                <SelectValue placeholder={loadingStages ? "Loading..." : "Select stage"} />
                             </SelectTrigger>
                             <SelectContent>
-                                {stages.map(stage => (
+                                {fetchedStages.map(stage => (
                                     <SelectItem key={stage.id} value={stage.id}>
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />

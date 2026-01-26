@@ -13,15 +13,20 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's organization
+    // Get user's organization and role
     const admin = createAdminClient()
     const { data: profile } = await admin
       .from('profiles')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('id', user.id)
       .single()
 
-    if (!profile?.organization_id) {
+    // Platform admins can view all logs, others restricted to their org
+    // Check for 'platform_admin' or 'super_admin' to be safe
+    const isPlatformAdmin = profile?.role === 'platform_admin' || profile?.role === 'super_admin';
+
+    // If not a platform admin, they MUST have an organization_id
+    if (!profile?.organization_id && !isPlatformAdmin) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
     }
 
@@ -37,14 +42,24 @@ export async function GET(request) {
     const endDate = searchParams.get('end_date')
     const isImpersonated = searchParams.get('is_impersonated')
 
-    let query = supabase
+    // DEBUG LOGGING
+    console.log(`🔍 [Audit API] User: ${user.email} | Role: ${profile?.role} | Org: ${profile?.organization_id}`);
+
+    // Use ADMIN client to query logs (Bypass RLS)
+    let query = admin
       .from('audit_logs')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
 
-    // Strict Organization Filter: All users can only see their own organization's logs
-    // unless explicit platform admin logic is implemented in profile which we assume implies org_id anyway
-    query = query.eq('organization_id', profile.organization_id)
+    // Apply Org Filter if not platform admin
+    if (!isPlatformAdmin && profile?.organization_id) {
+      query = query.eq('organization_id', profile.organization_id)
+    } else if (isPlatformAdmin) {
+      // Platform admins see all, UNLESS they specifically ask for an org
+      if (searchParams.get('organization_id')) {
+        query = query.eq('organization_id', searchParams.get('organization_id'))
+      }
+    }
 
     // Apply filters
     if (search) {

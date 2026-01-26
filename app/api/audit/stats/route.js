@@ -14,25 +14,31 @@ export async function GET() {
         }
 
         // Get user's organization
+        // Get user's organization and role
         const admin = createAdminClient()
         const { data: profile } = await admin
             .from('profiles')
-            .select('organization_id')
+            .select('organization_id, role')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id) {
+        // Platform admins can view all logs, others restricted to their org
+        const isPlatformAdmin = profile?.role === 'platform_admin' || profile?.role === 'super_admin';
+
+        if (!profile?.organization_id && !isPlatformAdmin) {
             return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
         }
 
-        let query = supabase
+        let query = admin
             .from('audit_logs')
             .select('action, entity_type, created_at, is_impersonated')
             .order('created_at', { ascending: false })
             .limit(5000)
 
-        // Strict Organization Filter
-        query = query.eq('organization_id', profile.organization_id)
+        // Strict Organization Filter Implementation
+        if (!isPlatformAdmin && profile?.organization_id) {
+            query = query.eq('organization_id', profile.organization_id)
+        }
 
         const { data } = await query
         const logs = data || []

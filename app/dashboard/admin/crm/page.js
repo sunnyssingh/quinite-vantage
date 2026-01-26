@@ -1,18 +1,22 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Filter, Plus, List, Megaphone, KanbanSquare, RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw } from 'lucide-react'
 import PipelineBoard from '@/components/crm/PipelineBoard'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
-
 import { useState, useEffect, useRef } from 'react'
 import LeadSourceDialog from '@/components/crm/LeadSourceDialog'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 export default function CrmPipelinePage() {
     const searchParams = useSearchParams()
-    const router = useRouter() // [NEW]
+    const router = useRouter()
     const projectId = searchParams.get('project_id')
     const [isDealInitOpen, setIsDealInitOpen] = useState(false)
     const [projects, setProjects] = useState([])
@@ -28,71 +32,71 @@ export default function CrmPipelinePage() {
     const projectName = projects.find(p => p.id === projectId)?.name || 'Project'
 
     return (
-        <div className="flex flex-col h-[calc(100vh-4rem)]">
-            {/* Header */}
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 border-b bg-white">
+        <div className="flex flex-col h-full bg-muted/5">
+            {/* Fixed Header */}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 border-b border-border bg-background shrink-0 shadow-sm z-10">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-foreground tracking-tight">
                         {projectId ? `${projectName} Pipeline` : 'CRM Pipeline'}
                     </h1>
                     <div className="flex items-center gap-3 mt-1">
-                        <p className="text-slate-600 text-sm">
-                            {projectId ? `Manage deals for ${projectName}` : 'Manage pipelines, leads, and AI campaigns.'}
+                        <p className="text-muted-foreground text-sm">
+                            {projectId ? `Manage deals for ${projectName}` : 'Manage pipelines, leads, and campaigns.'}
                         </p>
                         {!projectId ? (
-                            <select
-                                className="text-sm border-slate-300 rounded-md px-2 py-1 bg-white focus:ring-purple-500 focus:border-purple-500 ml-2"
-                                onChange={(e) => {
-                                    const val = e.target.value
+                            <Select
+                                value={projectId || ""}
+                                onValueChange={(val) => {
                                     if (val) router.push(`/dashboard/admin/crm?project_id=${val}`)
                                 }}
                             >
-                                <option value="">Select Project to View</option>
-                                {projects.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                                <SelectTrigger className="w-[200px] h-7 text-xs bg-background border-border/50">
+                                    <SelectValue placeholder="Filter by Project" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {projects.map(p => (
+                                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         ) : (
                             <Button
-                                variant="ghost"
+                                variant="link"
                                 size="sm"
                                 onClick={() => router.push('/dashboard/admin/crm')}
-                                className="ml-2 text-slate-500 hover:text-slate-900 h-7 text-xs"
+                                className="h-auto p-0 text-primary"
                             >
-                                ← Back to All
+                                ← Show All
                             </Button>
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-
-
+                <div className="flex items-center gap-3">
                     <Button
                         onClick={() => {
-                            console.log('🔄 [CRM Page] Refresh button clicked')
                             pipelineBoardRef.current?.refresh()
                         }}
                         variant="outline"
                         size="sm"
-                        className="gap-2"
+                        className="gap-2 h-9 border-dashed"
                     >
                         <RefreshCw className="w-4 h-4" />
-                        Refresh
+                        Sync
                     </Button>
 
                     <Button
-                        onClick={() => setIsDealInitOpen(true)} // [MOD] Open dialog
-                        className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
+                        onClick={() => setIsDealInitOpen(true)}
+                        className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
                         size="sm"
                     >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-4 h-4" />
                         New Deal
                     </Button>
                 </div>
             </div>
 
-            {/* Module Navigation (Tabs Removed) */}
-            <div className="flex-1 min-h-0 bg-slate-50/50 p-4">
+            {/* Scrollable Board */}
+            <div className="flex-1 overflow-hidden p-6">
                 <PipelineBoard ref={pipelineBoardRef} projectId={projectId} />
             </div>
 

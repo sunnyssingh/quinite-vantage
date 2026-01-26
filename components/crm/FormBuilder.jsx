@@ -1,27 +1,36 @@
 import { useState } from 'react'
 import { DndContext, useDraggable, useDroppable, DragOverlay } from '@dnd-kit/core'
-import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { GripVertical, Trash2, Smartphone, Type, Mail, CheckSquare, AlignLeft } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { GripVertical, Trash2, Smartphone, Type, Mail, CheckSquare, AlignLeft, Calendar, Hash, Link as LinkIcon, List, Disc, Heading, Plus, X } from 'lucide-react'
 import { nanoid } from 'nanoid'
 
-// Field Types
+// Expanded Field Types
 const FIELD_TYPES = [
     { type: 'text', label: 'Short Text', icon: Type },
     { type: 'textarea', label: 'Long Text', icon: AlignLeft },
     { type: 'email', label: 'Email', icon: Mail },
     { type: 'phone', label: 'Phone', icon: Smartphone },
+    { type: 'number', label: 'Number', icon: Hash },
+    { type: 'date', label: 'Date', icon: Calendar },
+    { type: 'url', label: 'Website', icon: LinkIcon },
+    { type: 'select', label: 'Dropdown', icon: List, hasOptions: true },
+    { type: 'radio', label: 'Radio Group', icon: Disc, hasOptions: true },
     { type: 'checkbox', label: 'Checkbox', icon: CheckSquare },
+    { type: 'header', label: 'Section Header', icon: Heading, isStatic: true },
 ]
 
-export default function FormBuilder() {
+export default function FormBuilder({ projectId }) {
     const [fields, setFields] = useState([])
     const [activeDragItem, setActiveDragItem] = useState(null)
     const [selectedField, setSelectedField] = useState(null)
+    const [formName, setFormName] = useState('New Lead Form')
+    const [saving, setSaving] = useState(false)
+    const [shareUrl, setShareUrl] = useState(null)
 
     // DND Handlers
     const handleDragStart = (e) => {
@@ -38,19 +47,19 @@ export default function FormBuilder() {
         if (active.data.current.isToolboxItem) {
             // Adding new item
             if (over.id === 'canvas' || fields.find(f => f.id === over.id)) {
+                const typeData = active.data.current
                 const newField = {
                     id: nanoid(),
-                    type: active.data.current.type,
-                    label: `New ${active.data.current.label}`,
+                    type: typeData.type,
+                    label: `New ${typeData.label}`,
                     placeholder: '',
-                    required: false
+                    required: false,
+                    isStatic: typeData.isStatic || false,
+                    options: typeData.hasOptions ? ['Option 1', 'Option 2', 'Option 3'] : undefined
                 }
                 setFields([...fields, newField])
                 setSelectedField(newField)
             }
-        } else {
-            // Reordering logic (simplified for now - just append if dropped on canvas)
-            // Real reordering requires arrayMove from dnd-kit/sortable which is imported
         }
     }
 
@@ -66,70 +75,176 @@ export default function FormBuilder() {
         }
     }
 
+    const handleAddOption = () => {
+        if (!selectedField?.options) return
+        const newOptions = [...selectedField.options, `Option ${selectedField.options.length + 1}`]
+        updateField(selectedField.id, 'options', newOptions)
+    }
+
+    const handleRemoveOption = (index) => {
+        if (!selectedField?.options) return
+        const newOptions = selectedField.options.filter((_, i) => i !== index)
+        updateField(selectedField.id, 'options', newOptions)
+    }
+
+    const handleOptionChange = (index, value) => {
+        if (!selectedField?.options) return
+        const newOptions = [...selectedField.options]
+        newOptions[index] = value
+        updateField(selectedField.id, 'options', newOptions)
+    }
+
+    const handleSave = async () => {
+        if (fields.length === 0) {
+            return
+        }
+        setSaving(true)
+        try {
+            const res = await fetch('/api/forms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formName,
+                    schema: fields,
+                    projectId: projectId || 'none'
+                })
+            })
+
+            const data = await res.json()
+            if (res.ok) {
+                const url = `${window.location.origin}/forms/${data.form.id}`
+                setShareUrl(url)
+            }
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setSaving(false)
+        }
+    }
+
     return (
         <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex h-full border rounded-lg overflow-hidden bg-white">
-                {/* 1. Toolbox (Left) */}
-                <div className="w-64 border-r bg-slate-50 p-4 flex flex-col gap-3">
-                    <h3 className="font-semibold text-sm text-slate-500 mb-2">Form Elements</h3>
-                    {FIELD_TYPES.map(ft => (
-                        <DraggableToolboxItem key={ft.type} type={ft} />
-                    ))}
+            <div className="flex flex-col h-full gap-4">
+                {/* Header Controls */}
+                <div className="flex items-center justify-between bg-white p-4 border rounded-lg shadow-sm">
+                    <div className="flex items-center gap-4 flex-1">
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Form Name</Label>
+                            <Input
+                                value={formName}
+                                onChange={(e) => setFormName(e.target.value)}
+                                className="h-8 w-64 font-medium"
+                            />
+                        </div>
+                        {shareUrl && (
+                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded text-xs border border-green-200">
+                                <span>Public Link:</span>
+                                <a href={shareUrl} target="_blank" className="underline font-medium hover:text-green-800">{shareUrl}</a>
+                            </div>
+                        )}
+                    </div>
+                    <Button onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save & Get Link'}
+                    </Button>
                 </div>
 
-                {/* 2. Canvas (Center) */}
-                <div className="flex-1 bg-slate-100 p-8 overflow-y-auto">
-                    <FormCanvas fields={fields} onSelect={setSelectedField} selectedId={selectedField?.id} onRemove={removeField} />
-                </div>
-
-                {/* 3. Properties (Right) */}
-                {selectedField ? (
-                    <div className="w-72 border-l bg-white p-4">
-                        <h3 className="font-semibold text-lg mb-4">Properties</h3>
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Label</Label>
-                                <Input
-                                    value={selectedField.label}
-                                    onChange={e => updateField(selectedField.id, 'label', e.target.value)}
-                                />
-                            </div>
-                            {selectedField.type !== 'checkbox' && (
-                                <div className="space-y-2">
-                                    <Label>Placeholder</Label>
-                                    <Input
-                                        value={selectedField.placeholder}
-                                        onChange={e => updateField(selectedField.id, 'placeholder', e.target.value)}
-                                    />
-                                </div>
-                            )}
-                            <div className="flex items-center justify-between pt-2">
-                                <Label>Required</Label>
-                                <Switch
-                                    checked={selectedField.required}
-                                    onCheckedChange={c => updateField(selectedField.id, 'required', c)}
-                                />
-                            </div>
-                            <Button variant="destructive" className="w-full mt-8" onClick={() => removeField(selectedField.id)}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete Field
-                            </Button>
+                <div className="flex flex-1 border rounded-lg overflow-hidden bg-white min-h-0">
+                    {/* 1. Toolbox (Left) */}
+                    <div className="w-64 border-r bg-slate-50 p-4 flex flex-col gap-3 overflow-y-auto">
+                        <h3 className="font-semibold text-sm text-slate-500 mb-2">Form Elements</h3>
+                        <div className="grid grid-cols-2 gap-2">
+                            {FIELD_TYPES.map(ft => (
+                                <DraggableToolboxItem key={ft.type} type={ft} />
+                            ))}
                         </div>
                     </div>
-                ) : (
-                    <div className="w-72 border-l bg-white p-4 flex items-center justify-center text-slate-400 text-sm">
-                        Select a field to edit properties
-                    </div>
-                )}
-            </div>
 
-            <DragOverlay>
-                {activeDragItem ? (
-                    <div className="p-3 bg-white border rounded shadow flex items-center gap-2 w-48">
-                        <activeDragItem.icon className="w-4 h-4" />
-                        {activeDragItem.label}
+                    {/* 2. Canvas (Center) */}
+                    <div className="flex-1 bg-slate-100 p-8 overflow-y-auto">
+                        <FormCanvas fields={fields} onSelect={setSelectedField} selectedId={selectedField?.id} onRemove={removeField} />
                     </div>
-                ) : null}
-            </DragOverlay>
+
+                    {/* 3. Properties (Right) */}
+                    {selectedField ? (
+                        <div className="w-80 border-l bg-white p-4 overflow-y-auto">
+                            <h3 className="font-semibold text-lg mb-4">Properties</h3>
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label>Label / Heading</Label>
+                                    <Input
+                                        value={selectedField.label}
+                                        onChange={e => updateField(selectedField.id, 'label', e.target.value)}
+                                    />
+                                </div>
+
+                                {!selectedField.isStatic && selectedField.type !== 'checkbox' && selectedField.type !== 'select' && selectedField.type !== 'radio' && (
+                                    <div className="space-y-2">
+                                        <Label>Placeholder</Label>
+                                        <Input
+                                            value={selectedField.placeholder}
+                                            onChange={e => updateField(selectedField.id, 'placeholder', e.target.value)}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Options Editor */}
+                                {(selectedField.type === 'select' || selectedField.type === 'radio') && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <Label>Options</Label>
+                                            <Button variant="ghost" size="sm" onClick={handleAddOption} className="h-6 text-xs gap-1">
+                                                <Plus className="w-3 h-3" /> Add
+                                            </Button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {selectedField.options?.map((opt, i) => (
+                                                <div key={i} className="flex items-center gap-2">
+                                                    <div className="w-4 h-4 flex items-center justify-center bg-slate-100 rounded-full text-[10px] text-slate-500">{i + 1}</div>
+                                                    <Input
+                                                        value={opt}
+                                                        onChange={(e) => handleOptionChange(i, e.target.value)}
+                                                        className="h-8 text-sm"
+                                                    />
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500" onClick={() => handleRemoveOption(i)}>
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {!selectedField.isStatic && (
+                                    <div className="flex items-center justify-between pt-2 border-t">
+                                        <Label>Required Field</Label>
+                                        <Switch
+                                            checked={selectedField.required}
+                                            onCheckedChange={c => updateField(selectedField.id, 'required', c)}
+                                        />
+                                    </div>
+                                )}
+
+                                <Button variant="destructive" className="w-full mt-8" onClick={() => removeField(selectedField.id)}>
+                                    <Trash2 className="w-4 h-4 mr-2" /> Delete Field
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="w-80 border-l bg-white p-4 flex items-center justify-center text-slate-400 text-sm">
+                            Select a field to edit properties
+                        </div>
+                    )}
+                </div>
+
+                <DragOverlay>
+                    {activeDragItem ? (
+                        <div className="p-3 bg-white border rounded shadow flex items-center gap-2 w-48 font-medium text-sm">
+                            <activeDragItem.icon className="w-4 h-4" />
+                            {activeDragItem.label}
+                        </div>
+                    ) : null}
+                </DragOverlay>
+            </div>
         </DndContext>
     )
 }
@@ -145,10 +260,10 @@ function DraggableToolboxItem({ type }) {
             ref={setNodeRef}
             {...listeners}
             {...attributes}
-            className="p-3 bg-white border rounded shadow-sm hover:shadow-md cursor-grab flex items-center gap-2 transition-all"
+            className="p-3 bg-white border rounded shadow-sm hover:shadow-md cursor-grab flex flex-col items-center gap-2 transition-all text-center h-24 justify-center"
         >
-            <type.icon className="w-4 h-4 text-slate-500" />
-            <span className="text-sm font-medium">{type.label}</span>
+            <type.icon className="w-6 h-6 text-slate-500" />
+            <span className="text-xs font-medium text-slate-700">{type.label}</span>
         </div>
     )
 }
@@ -159,31 +274,51 @@ function FormCanvas({ fields, onSelect, selectedId, onRemove }) {
     })
 
     return (
-        <div ref={setNodeRef} className="max-w-md mx-auto min-h-[500px] bg-white rounded-xl shadow-sm border p-6 space-y-4">
+        <div ref={setNodeRef} className="max-w-xl mx-auto min-h-[600px] bg-white rounded-xl shadow-sm border p-8 space-y-6">
             {fields.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed rounded-lg p-10">
-                    <p>Drag elements here</p>
+                <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed rounded-lg p-20">
+                    <p>Drag form elements here</p>
                 </div>
             ) : (
                 fields.map((field) => (
                     <div
                         key={field.id}
                         onClick={() => onSelect(field)}
-                        className={`group relative p-3 rounded border-2 border-transparent hover:border-blue-100 cursor-pointer ${selectedId === field.id ? 'border-blue-500 bg-blue-50/50' : ''}`}
+                        className={`group relative p-4 rounded border-2 border-transparent hover:border-blue-100 cursor-pointer transition-all ${selectedId === field.id ? 'border-blue-500 bg-blue-50/50' : ''}`}
                     >
-                        <div className="space-y-1.5 pointer-events-none">
-                            <Label className="pointer-events-none">
-                                {field.label} {field.required && <span className="text-red-500">*</span>}
-                            </Label>
+                        <div className="space-y-2 pointer-events-none">
+                            {field.type === 'header' ? (
+                                <h2 className="text-xl font-bold text-slate-800 border-b pb-2">{field.label}</h2>
+                            ) : (
+                                <Label className="text-sm font-medium text-slate-700">
+                                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                                </Label>
+                            )}
+
+                            {/* Previews */}
                             {field.type === 'textarea' ? (
-                                <div className="h-20 w-full bg-slate-50 border rounded p-2 text-xs text-slate-400">Long Text Area</div>
+                                <div className="h-24 w-full bg-slate-50 border rounded-md p-3 text-sm text-slate-400">Long text input area...</div>
                             ) : field.type === 'checkbox' ? (
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 border rounded bg-slate-50" />
-                                    <span className="text-sm text-slate-500">Option</span>
+                                    <span className="text-sm text-slate-500">I agree / Confirm selection</span>
                                 </div>
-                            ) : (
-                                <div className="h-9 w-full bg-slate-50 border rounded px-3 py-2 text-xs text-slate-400">
+                            ) : field.type === 'select' ? (
+                                <div className="h-10 w-full bg-slate-50 border rounded-md px-3 flex items-center justify-between text-sm text-slate-500">
+                                    <span>Select an option</span>
+                                    <List className="w-4 h-4 opacity-50" />
+                                </div>
+                            ) : field.type === 'radio' ? (
+                                <div className="space-y-2">
+                                    {field.options?.map((opt, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <div className="w-4 h-4 rounded-full border bg-slate-50" />
+                                            <span className="text-sm text-slate-600">{opt}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : field.type !== 'header' && (
+                                <div className="h-10 w-full bg-slate-50 border rounded-md px-3 flex items-center text-sm text-slate-400">
                                     {field.placeholder || `Enter ${field.label}`}
                                 </div>
                             )}

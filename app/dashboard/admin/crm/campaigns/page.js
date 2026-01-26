@@ -36,23 +36,23 @@ import {
 const StatusBadge = ({ status }) => {
   const statusConfig = {
     scheduled: {
-      color: 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100',
+      color: 'bg-blue-500/10 text-blue-600 border-blue-200',
       icon: <Clock className="w-3 h-3" />
     },
     active: {
-      color: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-100',
+      color: 'bg-green-500/10 text-green-600 border-green-200',
       icon: <PlayCircle className="w-3 h-3" />
     },
     paused: {
-      color: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100',
+      color: 'bg-yellow-500/10 text-yellow-600 border-yellow-200',
       icon: <PauseCircle className="w-3 h-3" />
     },
     completed: {
-      color: 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-100',
+      color: 'bg-purple-500/10 text-purple-600 border-purple-200',
       icon: <CheckCircle2 className="w-3 h-3" />
     },
     cancelled: {
-      color: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-100',
+      color: 'bg-red-500/10 text-red-600 border-red-200',
       icon: <XCircle className="w-3 h-3" />
     }
   }
@@ -60,7 +60,7 @@ const StatusBadge = ({ status }) => {
   const config = statusConfig[status] || statusConfig.scheduled
 
   return (
-    <Badge className={`${config.color} border font-medium flex items-center gap-1.5 w-fit`}>
+    <Badge variant="outline" className={`${config.color} border font-medium flex items-center gap-1.5 w-fit px-2 py-0.5 h-5 text-[10px] uppercase tracking-wider`}>
       {config.icon}
       {status?.toUpperCase()}
     </Badge>
@@ -71,7 +71,7 @@ import { toast } from 'react-hot-toast'
 
 export default function CampaignsPage() {
   const supabase = createClient()
-  const router = useRouter() // [NEW]
+  const router = useRouter()
 
   const [campaigns, setCampaigns] = useState([])
   const [projects, setProjects] = useState([])
@@ -87,7 +87,7 @@ export default function CampaignsPage() {
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false)
   const [campaignResults, setCampaignResults] = useState(null)
 
-  const [selectedProjectId, setSelectedProjectId] = useState('') // [NEW] Filter State
+  const [selectedProjectId, setSelectedProjectId] = useState('')
 
   // Create form states
   const [projectId, setProjectId] = useState('')
@@ -327,25 +327,23 @@ export default function CampaignsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50 min-h-screen">
+    <div className="flex flex-col h-full bg-muted/5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border bg-background shrink-0 shadow-sm z-10">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl">
-              <Megaphone className="w-6 h-6 md:w-7 md:h-7 text-white" />
-            </div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <Megaphone className="w-7 h-7 text-foreground" />
             {selectedProjectId ? `${getProjectName(selectedProjectId)} Campaigns` : 'All Campaigns'}
           </h1>
-          <div className="flex items-center gap-3 mt-2">
-            <p className="text-slate-600 text-sm md:text-base">
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-muted-foreground text-sm">
               {selectedProjectId ? 'Manage outbound campaigns for this project' : 'Create and manage your outbound call campaigns'}
             </p>
 
             {/* Project Filter */}
             {!selectedProjectId ? (
               <select
-                className="ml-2 text-sm border-slate-300 rounded-md px-2 py-1 bg-white focus:ring-purple-500 focus:border-purple-500"
+                className="ml-2 text-xs border-border rounded-md px-2 py-1 bg-background text-foreground focus:ring-primary focus:border-primary"
                 value={selectedProjectId || ''}
                 onChange={(e) => {
                   const val = e.target.value
@@ -363,18 +361,18 @@ export default function CampaignsPage() {
               </select>
             ) : (
               <Button
-                variant="ghost"
+                variant="link"
                 size="sm"
                 onClick={() => router.push('/dashboard/admin/crm/campaigns')}
-                className="ml-2 text-slate-500 hover:text-slate-900 h-7 text-xs"
+                className="h-auto p-0 text-primary"
               >
-                ← Back to All
+                ← Show All
               </Button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Button
             onClick={() => {
               // Pre-fill project ID if we are filtered
@@ -384,313 +382,307 @@ export default function CampaignsPage() {
 
               setShowCreateForm(!showCreateForm)
             }}
-            className="w-full md:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-lg shadow-purple-500/30 text-white"
-            size="lg"
+            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
+            size="sm"
           >
-            <Plus className="w-5 h-5 mr-2" />
+            <Plus className="w-4 h-4" />
             New Campaign
           </Button>
         </div>
       </div>
 
-      {/* Create Form */}
-      {showCreateForm && (
-        <Card className="shadow-xl border-2 border-purple-100">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Radio className="w-5 h-5 text-purple-600" />
-              Create New Campaign
-            </CardTitle>
-            <CardDescription>Schedule a new outbound call campaign for your project</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-purple-600" />
-                  Project *
-                </label>
-                <select
-                  value={projectId}
-                  onChange={e => setProjectId(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 bg-white"
-                >
-                  <option value="">Select a project</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
-                  <Megaphone className="w-4 h-4 text-purple-600" />
-                  Campaign Name *
-                </label>
-                <Input
-                  placeholder="e.g., Summer Promotion"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="border-slate-300"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1.5 block">
-                Description
-              </label>
-              <Textarea
-                placeholder="Describe the purpose of this campaign..."
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={3}
-                className="border-slate-300"
-              />
-            </div>
-
-            <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200">
-              <h4 className="font-medium text-slate-900 mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-purple-600" />
-                Campaign Schedule
-              </h4>
-
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Create Form */}
+        {showCreateForm && (
+          <Card className="shadow-sm border border-border bg-card">
+            <CardHeader className="border-b border-border bg-muted/20">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                <Radio className="w-4 h-4 text-primary" />
+                Create New Campaign
+              </CardTitle>
+              <CardDescription>Schedule a new outbound call campaign for your project</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">Start Date *</label>
-                  <Input
-                    type="date"
-                    value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
-                    className="border-slate-300"
-                  />
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-2">
+                    <Building2 className="w-3.5 h-3.5 opacity-70" />
+                    Project *
+                  </label>
+                  <select
+                    value={projectId}
+                    onChange={e => setProjectId(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <option value="">Select a project</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 block">End Date *</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-2">
+                    <Megaphone className="w-3.5 h-3.5 opacity-70" />
+                    Campaign Name *
+                  </label>
                   <Input
-                    type="date"
-                    value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
-                    className="border-slate-300"
+                    placeholder="e.g., Summer Promotion"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
                   />
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 mt-3">
-                <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-purple-600" />
-                    Start Time *
-                  </label>
-                  <Input
-                    type="time"
-                    value={timeStart}
-                    onChange={e => setTimeStart(e.target.value)}
-                    className="border-slate-300"
-                  />
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  Description
+                </label>
+                <Textarea
+                  placeholder="Describe the purpose of this campaign..."
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                <h4 className="font-medium text-foreground mb-3 flex items-center gap-2 text-sm">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                  Campaign Schedule
+                </h4>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Start Date *</label>
+                    <Input
+                      type="date"
+                      value={startDate}
+                      onChange={e => setStartDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">End Date *</label>
+                    <Input
+                      type="date"
+                      value={endDate}
+                      onChange={e => setEndDate(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium text-slate-700 mb-1.5 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-purple-600" />
-                    End Time *
-                  </label>
-                  <Input
-                    type="time"
-                    value={timeEnd}
-                    onChange={e => setTimeEnd(e.target.value)}
-                    className="border-slate-300"
-                  />
+                <div className="grid gap-4 md:grid-cols-2 mt-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 opacity-70" />
+                      Start Time *
+                    </label>
+                    <Input
+                      type="time"
+                      value={timeStart}
+                      onChange={e => setTimeStart(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 opacity-70" />
+                      End Time *
+                    </label>
+                    <Input
+                      type="time"
+                      value={timeEnd}
+                      onChange={e => setTimeEnd(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col-reverse md:flex-row gap-3 mt-6 pt-6 border-t">
+              <div className="flex flex-col-reverse md:flex-row gap-3 mt-6 pt-6 border-t border-border">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCreateForm(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={createCampaign}
+                  className="flex-1"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Campaign
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Campaigns Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground">Loading campaigns...</span>
+          </div>
+        ) : campaigns.length === 0 ? (
+          <Card className="py-20 border-border bg-card shadow-sm">
+            <CardContent className="text-center">
+              <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                <Radio className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">No campaigns yet</h3>
+              <p className="text-muted-foreground mb-4">Create your first campaign to start scheduling calls</p>
               <Button
-                variant="outline"
-                onClick={() => setShowCreateForm(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={createCampaign}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                onClick={() => setShowCreateForm(true)}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Campaign
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Campaigns Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-          <span className="ml-3 text-slate-600">Loading campaigns...</span>
-        </div>
-      ) : campaigns.length === 0 ? (
-        <Card className="py-20">
-          <CardContent className="text-center">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center mb-4">
-              <Radio className="w-8 h-8 text-purple-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">No campaigns yet</h3>
-            <p className="text-slate-600 mb-4">Create your first campaign to start scheduling calls</p>
-            <Button
-              onClick={() => setShowCreateForm(true)}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Campaign
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {campaigns.map(campaign => (
-            <Card key={campaign.id} className="overflow-hidden group hover:shadow-2xl transition-all duration-300 border-2 hover:border-purple-200">
-              <div className="relative bg-gradient-to-br from-purple-500 to-pink-500 p-6 cursor-pointer hover:opacity-95 transition-opacity"
-                onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
-                title="Click to Open Pipeline"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                    <Phone className="w-6 h-6 text-white" />
-                  </div>
-
-                  {/* Action Buttons - Always visible on mobile, hover on desktop */}
-                  <div className="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => openEditModal(campaign)}
-                      className="shadow-lg bg-white/90 backdrop-blur-sm hover:bg-white h-8 w-8 p-0"
-                    >
-                      <Edit className="w-4 h-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(campaign)}
-                      disabled={deleting}
-                      className="shadow-lg h-8 w-8 p-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <CardContent className="p-5 space-y-3 cursor-pointer" onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 mb-1 truncate hover:text-purple-600 transition-colors">
-                    {campaign.name}
-                  </h3>
-                  <p className="text-sm text-slate-600 flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{getProjectName(campaign.project_id)}</span>
-                  </p>
-                </div>
-
-                {campaign.description && (
-                  <p className="text-sm text-slate-700 line-clamp-2">{campaign.description}</p>
-                )}
-
-                {/* Status */}
-                <div className="pt-2">
-                  <StatusBadge status={campaign.status || 'scheduled'} />
-                </div>
-
-                {/* Campaign Schedule */}
-                <div className="pt-3 border-t space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      Duration
-                    </span>
-                    <span className="text-slate-900 font-medium text-right">
-                      {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
-                      {' - '}
-                      {campaign.end_date ? new Date(campaign.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" />
-                      Time Window
-                    </span>
-                    <span className="text-slate-900 font-medium">
-                      {campaign.time_start || '—'} - {campaign.time_end || '—'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Stats & Actions */}
-                <div className="pt-3 border-t space-y-3">
-                  {campaign.total_calls > 0 && (
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <div className="text-slate-500">Total Calls</div>
-                        <div className="font-semibold text-slate-900">{campaign.total_calls}</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-500">Transferred</div>
-                        <div className="font-semibold text-green-600">{campaign.transferred_calls || 0}</div>
-                      </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {campaigns.map(campaign => (
+              <Card key={campaign.id} className="overflow-hidden group hover:shadow-md transition-all duration-300 border-border bg-card rounded-xl">
+                <div className="relative bg-muted/30 p-4 border-b border-border/50 cursor-pointer"
+                  onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
+                  title="Click to Open Pipeline"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="p-2 bg-background rounded-lg border border-border shadow-sm">
+                      <Phone className="w-5 h-5 text-foreground" />
                     </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditModal(campaign)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(campaign)}
+                        disabled={deleting}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="sr-only">Delete</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <CardContent className="p-5 space-y-3 cursor-pointer" onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}>
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground mb-1 truncate hover:text-primary transition-colors">
+                      {campaign.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Building2 className="w-3 h-3 flex-shrink-0 opacity-70" />
+                      <span className="truncate">{getProjectName(campaign.project_id)}</span>
+                    </p>
+                  </div>
+
+                  {campaign.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-2">{campaign.description}</p>
                   )}
 
-                  <Button
-                    onClick={() => handleStartCampaign(campaign)}
-                    disabled={starting || campaign.status === 'completed'}
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                    size="sm"
-                  >
-                    {starting && startingCampaignId === campaign.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Calling...
-                      </>
-                    ) : campaign.status === 'completed' ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Completed
-                      </>
-                    ) : (
-                      <>
-                        <PlayCircle className="w-4 h-4 mr-2" />
-                        Start Campaign
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
-                    className="w-full"
-                    size="sm"
-                  >
-                    <KanbanSquare className="w-4 h-4 mr-2" />
-                    Open Pipeline
-                  </Button>
-
-                  <div className="text-xs text-slate-500">
-                    Created {campaign.created_at ? new Date(campaign.created_at).toLocaleDateString() : 'N/A'}
+                  {/* Status */}
+                  <div className="pt-2">
+                    <StatusBadge status={campaign.status || 'scheduled'} />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )
-      }
+
+                  {/* Campaign Schedule */}
+                  <div className="pt-3 border-t border-border/50 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Calendar className="w-3 h-3 opacity-70" />
+                        Duration
+                      </span>
+                      <span className="text-foreground font-medium text-right">
+                        {campaign.start_date ? new Date(campaign.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                        {' - '}
+                        {campaign.end_date ? new Date(campaign.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3 opacity-70" />
+                        Time Window
+                      </span>
+                      <span className="text-foreground font-medium">
+                        {campaign.time_start || '—'} - {campaign.time_end || '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stats & Actions */}
+                  <div className="pt-3 border-t border-border/50 space-y-3">
+                    {campaign.total_calls > 0 && (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <div className="text-muted-foreground">Total Calls</div>
+                          <div className="font-semibold text-foreground">{campaign.total_calls}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Transferred</div>
+                          <div className="font-semibold text-green-600">{campaign.transferred_calls || 0}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={() => handleStartCampaign(campaign)}
+                      disabled={starting || campaign.status === 'completed'}
+                      className="w-full text-xs h-8"
+                      size="sm"
+                      variant={campaign.status === 'completed' ? "secondary" : "default"}
+                    >
+                      {starting && startingCampaignId === campaign.id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                          Calling...
+                        </>
+                      ) : campaign.status === 'completed' ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                          Completed
+                        </>
+                      ) : (
+                        <>
+                          <PlayCircle className="w-3.5 h-3.5 mr-2" />
+                          Start Campaign
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
+                      className="w-full h-8 text-xs border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                      size="sm"
+                    >
+                      <KanbanSquare className="w-3.5 h-3.5 mr-2" />
+                      Open Pipeline
+                    </Button>
+                    <div className="text-[10px] text-muted-foreground text-center pt-1">
+                      Created {campaign.created_at ? new Date(campaign.created_at).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Edit Modal */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
