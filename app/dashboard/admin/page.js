@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
     }
 
     return (
-        <div className="p-8 space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
+        <div className="p-6 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -184,30 +184,30 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="flex flex-col lg:flex-row gap-8">
                 {/* Quick Links Column */}
-                <div className="lg:col-span-2 space-y-6">
+                <div className="flex-1 lg:flex-[2] flex flex-col gap-6">
                     <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {quickActions.map((action, index) => {
                             const Icon = action.icon
                             return (
-                                <Link key={index} href={action.href}>
-                                    <Card className="group hover:bg-secondary/40 transition-all cursor-pointer h-full border-border">
+                                <Link key={index} href={action.href} className="block h-full">
+                                    <Card className="group hover:bg-secondary/40 transition-all cursor-pointer h-full border-border min-h-[140px] flex flex-col justify-center">
                                         <CardContent className="p-6 flex items-start gap-4">
                                             <div className="text-muted-foreground group-hover:text-primary transition-colors">
-                                                <div className="p-2 rounded-md bg-secondary border border-border">
-                                                    <Icon className="w-5 h-5" />
+                                                <div className="p-3 rounded-md bg-secondary border border-border">
+                                                    <Icon className="w-6 h-6" />
                                                 </div>
                                             </div>
                                             <div className="flex-1">
-                                                <div className="flex items-center justify-between">
-                                                    <h3 className="font-medium text-foreground text-sm group-hover:text-primary transition-colors">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <h3 className="font-semibold text-foreground text-base group-hover:text-primary transition-colors">
                                                         {action.title}
                                                     </h3>
-                                                    <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                                                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                                                 </div>
-                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                                <p className="text-sm text-muted-foreground line-clamp-2">
                                                     {action.description}
                                                 </p>
                                             </div>
@@ -220,17 +220,17 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Report Column */}
-                <div className="space-y-6">
+                <div className="flex-1 flex flex-col gap-6">
                     <h2 className="text-lg font-semibold text-foreground">Reports</h2>
-                    <Card className="h-full border-border bg-gradient-to-br from-card to-secondary/30">
+                    <Card className="flex-1 flex flex-col border-border bg-gradient-to-br from-card to-secondary/30">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base font-medium">
                                 <FileText className="w-4 h-4 text-primary" />
                                 Performance Insight
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="h-48 border border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-card/50 p-6 text-center">
+                        <CardContent className="flex-1 min-h-0 pb-6">
+                            <div className="h-full border border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-card/50 p-6 text-center">
                                 <div className="p-3 bg-secondary rounded-full mb-3">
                                     <BarChart3 className="w-5 h-5 text-muted-foreground" />
                                 </div>

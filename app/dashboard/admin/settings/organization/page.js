@@ -10,6 +10,7 @@ import { Building2, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Image from 'next/image'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function OrganizationSettingsPage() {
     const supabase = createClient()
@@ -153,8 +154,29 @@ export default function OrganizationSettingsPage() {
 
     if (loading && !organization) {
         return (
-            <div className="flex w-full items-center justify-center min-h-[80vh]">
-                <LoadingSpinner />
+            <div className="p-8 max-w-4xl space-y-6">
+                <Skeleton className="h-10 w-64 rounded-md mb-8" />
+                <div className="border rounded-xl bg-card p-6 space-y-8">
+                    <div className="space-y-2 mb-6">
+                        <Skeleton className="h-7 w-48 rounded" />
+                        <Skeleton className="h-4 w-full max-w-md rounded" />
+                    </div>
+                    <div className="space-y-6">
+                        <div className="flex gap-6 items-center">
+                            <Skeleton className="h-24 w-24 rounded-lg" />
+                            <div className="space-y-3">
+                                <Skeleton className="h-10 w-32 rounded-md" />
+                                <Skeleton className="h-3 w-24 rounded" />
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <Skeleton className="h-10 w-full rounded-md" />
+                            <Skeleton className="h-10 w-full rounded-md" />
+                            <Skeleton className="h-10 w-full rounded-md" />
+                            <Skeleton className="h-24 w-full rounded-md" />
+                        </div>
+                    </div>
+                </div>
             </div>
         )
     }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function DebugPage() {
   const [data, setData] = useState(null)
@@ -12,7 +13,7 @@ export default function DebugPage() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       const response = await fetch('/api/auth/user')
       const userData = await response.json()
 
@@ -27,7 +28,18 @@ export default function DebugPage() {
   }, [])
 
   if (loading) {
-    return <div className="p-6">Loading...</div>
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-48" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-48 w-full bg-slate-100 rounded" />
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

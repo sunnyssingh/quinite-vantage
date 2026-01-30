@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Shield, Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -84,8 +85,19 @@ export default function AdminLoginPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="animate-pulse text-white">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+        <div className="w-full max-w-md bg-stone-900/50 backdrop-blur-md rounded-xl border border-purple-500/20 p-6 space-y-8">
+          <div className="flex flex-col items-center space-y-4">
+            <Skeleton className="h-16 w-16 rounded-full bg-purple-500/20" />
+            <Skeleton className="h-8 w-48 rounded bg-slate-700/50" />
+            <Skeleton className="h-4 w-64 rounded bg-slate-700/50" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-full rounded bg-slate-700/50" />
+            <Skeleton className="h-10 w-full rounded bg-slate-700/50" />
+            <Skeleton className="h-11 w-full rounded bg-purple-600/20" />
+          </div>
+        </div>
       </div>
     )
   }

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectForm from '@/components/projects/ProjectForm'
 import ProjectList from '@/components/projects/ProjectList'
@@ -314,7 +315,24 @@ export default function ProjectsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
               [...Array(6)].map((_, i) => (
-                <Card key={i} className="h-[400px] animate-pulse bg-muted/50" />
+                <div key={i} className="rounded-xl border border-border bg-card overflow-hidden">
+                  <Skeleton className="h-48 w-full bg-slate-200" />
+                  <div className="p-5 space-y-4">
+                    <Skeleton className="h-6 w-3/4 rounded-md" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full rounded" />
+                      <Skeleton className="h-4 w-2/3 rounded" />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </div>
+                    <div className="flex justify-between pt-4">
+                      <Skeleton className="h-9 w-24 rounded-md" />
+                      <Skeleton className="h-9 w-24 rounded-md" />
+                    </div>
+                  </div>
+                </div>
               ))
             ) : projects.length === 0 ? (
               <div className="col-span-full text-center py-20 text-muted-foreground">
@@ -348,8 +366,26 @@ export default function ProjectsPage() {
         ) : (
           <div>
             {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-12 w-16 rounded-md" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-5 w-48 rounded" />
+                        <Skeleton className="h-3 w-32 rounded" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <Skeleton className="h-4 w-24 rounded" />
+                      <Skeleton className="h-4 w-32 rounded" />
+                      <div className="flex gap-2">
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <ProjectList

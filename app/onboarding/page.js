@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'react-hot-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const STEPS = [
   { id: 1, title: 'Sector', icon: Briefcase },
@@ -464,8 +465,31 @@ export default function OnboardingPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <div className="animate-pulse">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="flex flex-col items-center space-y-4">
+            <Skeleton className="h-14 w-14 rounded-full" />
+            <Skeleton className="h-10 w-64 rounded" />
+            <Skeleton className="h-5 w-48 rounded" />
+          </div>
+
+          <div className="flex justify-between items-center gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-xl p-6 space-y-6">
+            <Skeleton className="h-8 w-1/3 mb-6" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Skeleton className="h-48 rounded-lg" />
+              <Skeleton className="h-48 rounded-lg" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

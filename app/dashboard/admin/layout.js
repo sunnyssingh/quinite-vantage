@@ -98,7 +98,8 @@ export default function AdminLayout({ children }) {
         return null
     }
 
-    const isFullScreenModule = pathname?.startsWith('/dashboard/admin/crm') ||
+    const isFullScreenModule = pathname === '/dashboard/admin' ||
+        pathname?.startsWith('/dashboard/admin/crm') ||
         pathname?.startsWith('/dashboard/admin/inventory')
 
     return (
@@ -107,7 +108,7 @@ export default function AdminLayout({ children }) {
 
             {/* Main Content */}
             <main className={`flex-1 w-full bg-background/50 relative overflow-hidden flex flex-col ${isFullScreenModule ? '' : 'max-w-7xl mx-auto'}`}>
-                <div className={`flex-1 h-full w-full ${isFullScreenModule ? '' : 'overflow-y-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
+                <div className={`flex-1 h-full w-full ${isFullScreenModule ? (pathname === '/dashboard/admin' ? 'overflow-y-auto no-scrollbar' : '') : 'overflow-y-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
                     {children}
                 </div>
             </main>

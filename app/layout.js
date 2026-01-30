@@ -1,5 +1,21 @@
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
+import localFont from 'next/font/local'
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
+
+// Google Sans substitute (Premium Body Font)
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
+
+// Outfit (Modern Minimal Heading Font)
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-jakarta',
+  display: 'swap',
+})
 
 export const metadata = {
   title: {
@@ -50,7 +66,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
+      <body className={`${inter.variable} ${jakarta.variable} font-sans`}>
         {children}
         <Toaster position="top-right" />
       </body>

@@ -488,8 +488,28 @@ export default function LeadsPage() {
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {loading ? (
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden p-4">
+            <div className="flex items-center justify-between mb-4 px-2">
+              <Skeleton className="h-6 w-1/4 rounded-md" />
+              <Skeleton className="h-6 w-24 rounded-md" />
+            </div>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                <div key={i} className="flex items-center gap-4 py-2 border-b border-border/40 last:border-0">
+                  <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-1/3 rounded" />
+                    <Skeleton className="h-3 w-1/4 rounded" />
+                  </div>
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : leads.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">

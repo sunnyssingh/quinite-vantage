@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DollarSign, TrendingUp, Users, CreditCard, MoreHorizontal, CheckCircle, XCircle, Clock, Plus, Edit, Archive } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function PlatformSubscriptionsPage() {
     const [activeTab, setActiveTab] = useState('subscriptions')
@@ -279,59 +280,73 @@ export default function PlatformSubscriptionsPage() {
                 <TabsContent value="subscriptions" className="space-y-6">
                     {/* Metrics Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <Card className="border-l-4 border-l-blue-500">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                    <Users className="w-4 h-4" />
-                                    Total Subscriptions
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900">{metrics.total || 0}</div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    {metrics.active || 0} active, {metrics.trialing || 0} trialing
-                                </p>
-                            </CardContent>
-                        </Card>
+                        {loading ? [1, 2, 3, 4].map(i => (
+                            <Card key={i} className="border-l-4 border-l-slate-200">
+                                <CardHeader className="pb-3">
+                                    <Skeleton className="h-4 w-32" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-8 w-16 mb-2" />
+                                    <Skeleton className="h-3 w-24" />
+                                </CardContent>
+                            </Card>
+                        )) : (
+                            <>
+                                <Card className="border-l-4 border-l-blue-500">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                            <Users className="w-4 h-4" />
+                                            Total Subscriptions
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-3xl font-bold text-gray-900">{metrics.total || 0}</div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {metrics.active || 0} active, {metrics.trialing || 0} trialing
+                                        </p>
+                                    </CardContent>
+                                </Card>
 
-                        <Card className="border-l-4 border-l-green-500">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4" />
-                                    Monthly Recurring Revenue
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.mrr || 0)}</div>
-                                <p className="text-xs text-gray-500 mt-1">Per month</p>
-                            </CardContent>
-                        </Card>
+                                <Card className="border-l-4 border-l-green-500">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                            <DollarSign className="w-4 h-4" />
+                                            Monthly Recurring Revenue
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.mrr || 0)}</div>
+                                        <p className="text-xs text-gray-500 mt-1">Per month</p>
+                                    </CardContent>
+                                </Card>
 
-                        <Card className="border-l-4 border-l-purple-500">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                    <TrendingUp className="w-4 h-4" />
-                                    Annual Recurring Revenue
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.arr || 0)}</div>
-                                <p className="text-xs text-gray-500 mt-1">Per year</p>
-                            </CardContent>
-                        </Card>
+                                <Card className="border-l-4 border-l-purple-500">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                            <TrendingUp className="w-4 h-4" />
+                                            Annual Recurring Revenue
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.arr || 0)}</div>
+                                        <p className="text-xs text-gray-500 mt-1">Per year</p>
+                                    </CardContent>
+                                </Card>
 
-                        <Card className="border-l-4 border-l-orange-500">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                    <CreditCard className="w-4 h-4" />
-                                    Cancelled
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900">{metrics.cancelled || 0}</div>
-                                <p className="text-xs text-gray-500 mt-1">Churn rate: {metrics.total > 0 ? ((metrics.cancelled / metrics.total) * 100).toFixed(1) : 0}%</p>
-                            </CardContent>
-                        </Card>
+                                <Card className="border-l-4 border-l-orange-500">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                            <CreditCard className="w-4 h-4" />
+                                            Cancelled
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-3xl font-bold text-gray-900">{metrics.cancelled || 0}</div>
+                                        <p className="text-xs text-gray-500 mt-1">Churn rate: {metrics.total > 0 ? ((metrics.cancelled / metrics.total) * 100).toFixed(1) : 0}%</p>
+                                    </CardContent>
+                                </Card>
+                            </>
+                        )}
                     </div>
 
                     {/* Filters and Table */}
@@ -371,9 +386,7 @@ export default function PlatformSubscriptionsPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {loading ? (
-                                <div className="text-center py-8">Loading...</div>
-                            ) : subscriptions.length === 0 ? (
+                            {subscriptions.length === 0 && !loading ? (
                                 <div className="text-center py-12 text-gray-500">
                                     <CreditCard className="w-16 h-16 mx-auto mb-4 opacity-50" />
                                     <p className="text-lg font-medium">No subscriptions found</p>
@@ -392,57 +405,70 @@ export default function PlatformSubscriptionsPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {subscriptions.map((sub) => (
-                                                <TableRow key={sub.id}>
-                                                    <TableCell className="font-medium">
-                                                        {sub.organization?.company_name || sub.organization?.name || 'Unknown'}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline">{sub.plan?.name}</Badge>
-                                                    </TableCell>
-                                                    <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                                                    <TableCell className="capitalize">{sub.billing_cycle}</TableCell>
-                                                    <TableCell className="text-sm text-gray-500">
-                                                        {formatDate(sub.current_period_end)}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon">
-                                                                    <MoreHorizontal className="w-4 h-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                                <DropdownMenuSeparator />
-                                                                {sub.status === 'trialing' && (
-                                                                    <DropdownMenuItem onClick={() => handleAction(sub.id, 'extend_trial')}>
-                                                                        <Clock className="w-4 h-4 mr-2" />
-                                                                        Extend Trial (7 days)
+                                            {loading ? (
+                                                [1, 2, 3, 4, 5].map(i => (
+                                                    <TableRow key={i}>
+                                                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                                                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                                                        <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                                                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                                                        <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                                                        <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
+                                                    </TableRow>
+                                                ))
+                                            ) : (
+                                                subscriptions.map((sub) => (
+                                                    <TableRow key={sub.id}>
+                                                        <TableCell className="font-medium">
+                                                            {sub.organization?.company_name || sub.organization?.name || 'Unknown'}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline">{sub.plan?.name}</Badge>
+                                                        </TableCell>
+                                                        <TableCell>{getStatusBadge(sub.status)}</TableCell>
+                                                        <TableCell className="capitalize">{sub.billing_cycle}</TableCell>
+                                                        <TableCell className="text-sm text-gray-500">
+                                                            {formatDate(sub.current_period_end)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="icon">
+                                                                        <MoreHorizontal className="w-4 h-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                    <DropdownMenuSeparator />
+                                                                    {sub.status === 'trialing' && (
+                                                                        <DropdownMenuItem onClick={() => handleAction(sub.id, 'extend_trial')}>
+                                                                            <Clock className="w-4 h-4 mr-2" />
+                                                                            Extend Trial (7 days)
+                                                                        </DropdownMenuItem>
+                                                                    )}
+                                                                    {sub.status === 'active' && (
+                                                                        <DropdownMenuItem onClick={() => handleAction(sub.id, 'cancel')}>
+                                                                            <XCircle className="w-4 h-4 mr-2" />
+                                                                            Cancel Subscription
+                                                                        </DropdownMenuItem>
+                                                                    )}
+                                                                    {sub.status === 'cancelled' && (
+                                                                        <DropdownMenuItem onClick={() => handleAction(sub.id, 'activate')}>
+                                                                            <CheckCircle className="w-4 h-4 mr-2" />
+                                                                            Reactivate
+                                                                        </DropdownMenuItem>
+                                                                    )}
+                                                                    <DropdownMenuSeparator />
+                                                                    <DropdownMenuItem onClick={() => openChangePlan(sub)}>
+                                                                        <CreditCard className="w-4 h-4 mr-2" />
+                                                                        Assign Plan
                                                                     </DropdownMenuItem>
-                                                                )}
-                                                                {sub.status === 'active' && (
-                                                                    <DropdownMenuItem onClick={() => handleAction(sub.id, 'cancel')}>
-                                                                        <XCircle className="w-4 h-4 mr-2" />
-                                                                        Cancel Subscription
-                                                                    </DropdownMenuItem>
-                                                                )}
-                                                                {sub.status === 'cancelled' && (
-                                                                    <DropdownMenuItem onClick={() => handleAction(sub.id, 'activate')}>
-                                                                        <CheckCircle className="w-4 h-4 mr-2" />
-                                                                        Reactivate
-                                                                    </DropdownMenuItem>
-                                                                )}
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={() => openChangePlan(sub)}>
-                                                                    <CreditCard className="w-4 h-4 mr-2" />
-                                                                    Assign Plan
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
                                         </TableBody>
                                     </Table>
                                 </div>
@@ -459,7 +485,22 @@ export default function PlatformSubscriptionsPage() {
                         </CardHeader>
                         <CardContent>
                             {plansLoading ? (
-                                <div className="text-center py-8">Loading plans...</div>
+                                <div className="space-y-4">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-5 w-32" />
+                                                <Skeleton className="h-3 w-20" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-24" />
+                                                <Skeleton className="h-3 w-16" />
+                                            </div>
+                                            <Skeleton className="h-6 w-16 rounded-full" />
+                                            <Skeleton className="h-8 w-8 rounded-md" />
+                                        </div>
+                                    ))}
+                                </div>
                             ) : plans.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">
                                     <Archive className="w-16 h-16 mx-auto mb-4 opacity-50" />

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Users, Activity, Shield, Database } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function PlatformDashboard() {
   const [stats, setStats] = useState({
@@ -127,7 +128,13 @@ export default function PlatformDashboard() {
                 </div>
               ))}
               {!stats.tableStatus && [1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-16 bg-gray-100 animate-pulse rounded-lg"></div>
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50/50">
+                  <div className="space-y-2 w-full">
+                    <Skeleton className="h-4 w-24 mb-1" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-5 w-8 rounded-full ml-2" />
+                </div>
               ))}
             </div>
           </CardContent>

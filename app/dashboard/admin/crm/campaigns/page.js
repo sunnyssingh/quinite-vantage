@@ -15,6 +15,7 @@ import {
   DialogHeader
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2,
   Megaphone,
@@ -521,9 +522,40 @@ export default function CampaignsPage() {
 
         {/* Campaigns Grid */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">Loading campaigns...</span>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                    <Skeleton className="h-8 w-8 rounded-md" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <div className="pt-2">
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+                <div className="pt-3 border-t border-border/50 space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <div className="flex justify-between">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+                <div className="pt-3 space-y-2">
+                  <Skeleton className="h-8 w-full rounded-md" />
+                  <Skeleton className="h-8 w-full rounded-md" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : campaigns.length === 0 ? (
           <Card className="py-20 border-border bg-card shadow-sm">

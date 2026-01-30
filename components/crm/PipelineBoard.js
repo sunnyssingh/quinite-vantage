@@ -15,7 +15,7 @@ import { PipelineColumn } from './PipelineColumn'
 import { LeadCard } from './LeadCard'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
     Dialog,
     DialogContent,
@@ -215,7 +215,23 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
         }
     }
 
-    if (loading) return <div className="h-full flex items-center justify-center"><LoadingSpinner /></div>
+    if (loading) return (
+        <div className="flex h-full gap-4 overflow-x-auto pb-2">
+            {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex-shrink-0 w-[300px] h-full rounded-xl bg-muted/30 border border-border/50 p-4 space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <Skeleton className="h-6 w-32 rounded-md" />
+                        <Skeleton className="h-6 w-8 rounded-full" />
+                    </div>
+                    <div className="space-y-3">
+                        <Skeleton className="h-40 w-full rounded-lg bg-card border border-border/50" />
+                        <Skeleton className="h-40 w-full rounded-lg bg-card border border-border/50" />
+                        <Skeleton className="h-40 w-full rounded-lg bg-card border border-border/50" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
 
     if (!activePipeline) {
         return (

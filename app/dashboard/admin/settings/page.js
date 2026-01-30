@@ -1,4 +1,4 @@
-import { Building2, CreditCard, Plug2 } from 'lucide-react'
+import { Building2, CreditCard, Plug2, Users } from 'lucide-react'
 import Link from 'next/link'
 
 export default function SettingsPage() {
@@ -43,6 +43,19 @@ export default function SettingsPage() {
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">Integrations</h3>
                     <p className="text-gray-600">
                         Connect with third-party services and tools
+                    </p>
+                </Link>
+
+                <Link
+                    href="/dashboard/admin/users"
+                    className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+                >
+                    <div className="mb-4">
+                        <Users className="w-10 h-10 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">User Management</h3>
+                    <p className="text-gray-600">
+                        Manage users, roles, and access permissions
                     </p>
                 </Link>
             </div>

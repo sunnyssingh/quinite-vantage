@@ -4,11 +4,57 @@
 
 body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-        "Helvetica Neue", sans-serif;
+    font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-jakarta), sans-serif;
+    letter-spacing: -0.01em;
+}
+
+@layer utilities {
+    .animation-delay-2000 {
+        animation-delay: 2s;
+    }
+
+    .animation-delay-4000 {
+        animation-delay: 4s;
+    }
+
+    .animation-delay-6000 {
+        animation-delay: 6s;
+    }
+
+    .animate-blob {
+        animation: blob 25s infinite ease-in-out;
+    }
+}
+
+@keyframes blob {
+
+    0%,
+    100% {
+        transform: translate(0px, 0px) scale(1);
+    }
+
+    25% {
+        transform: translate(40px, -60px) scale(1.15);
+    }
+
+    50% {
+        transform: translate(-30px, 40px) scale(0.95);
+    }
+
+    75% {
+        transform: translate(30px, 30px) scale(1.05);
+    }
 }
 
 code {
@@ -50,6 +96,7 @@ code {
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -58,98 +105,133 @@ code {
 
 
 @layer base {
-  :root {
-    /* Minimal Zinc Theme Light */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    :root {
+        /* Sober Modern Light - Crisp & Clean */
+        --background: 210 40% 98%;
+        --foreground: 222 47% 11%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
 
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
+        --primary: 221 83% 53%;
+        /* Modern Blue */
+        --primary-foreground: 210 40% 98%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222 47% 11%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215 16% 47%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222 47% 11%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 221 83% 53%;
 
-    --radius: 0.5rem;
+        --radius: 0.6rem;
 
-    /* Sidebar - keeping consistent with minimal */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+        /* Sidebar - Light Glass */
+        --sidebar-background: 0 0% 98%;
+        --sidebar-foreground: 240 5.3% 26.1%;
+        --sidebar-primary: 240 5.9% 10%;
+        --sidebar-primary-foreground: 0 0% 98%;
+        --sidebar-accent: 240 4.8% 95.9%;
+        --sidebar-accent-foreground: 240 5.9% 10%;
+        --sidebar-border: 220 13% 91%;
+        --sidebar-ring: 217.2 91.2% 59.8%;
+    }
 
-  .dark {
-    /* Minimal Zinc Theme Dark */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    .dark {
+        /* Sober Modern Dark - Deep Slate / Midnight */
+        --background: 224 71% 4%;
+        /* Deepest Navy/Black */
+        --foreground: 210 40% 98%;
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+        --card: 222 47% 11%;
+        /* Deep Slate Card */
+        --card-foreground: 210 40% 98%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+        --popover: 222 47% 11%;
+        --popover-foreground: 210 40% 98%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
+        --primary: 217 91% 60%;
+        /* Vibrant Blue/Indigo */
+        --primary-foreground: 222 47% 11%;
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+        --secondary: 217 33% 17%;
+        --secondary-foreground: 210 40% 98%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+        --muted: 217 33% 17%;
+        --muted-foreground: 215 20% 65%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+        --accent: 217 33% 17%;
+        --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+        --border: 217 33% 17%;
+        --input: 217 33% 17%;
+        --ring: 224 76% 48%;
 
-    /* Sidebar Dark */
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+        /* Sidebar - Dark Glass */
+        --sidebar-background: 224 71% 4%;
+        /* Matches body for seamless look */
+        --sidebar-foreground: 240 4.8% 95.9%;
+        --sidebar-primary: 224.3 76.3% 48%;
+        --sidebar-primary-foreground: 0 0% 100%;
+        --sidebar-accent: 217 33% 17%;
+        --sidebar-accent-foreground: 240 4.8% 95.9%;
+        --sidebar-border: 217 33% 17%;
+        --sidebar-ring: 217.2 91.2% 59.8%;
+    }
+}
+
+/* Glassmorphism Utilities & Gradients */
+@layer utilities {
+    .bg-gradient-brand {
+        @apply bg-gradient-to-r from-blue-600 to-indigo-600;
+    }
+
+    .text-gradient {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400;
+    }
+
+    .glass-card {
+        @apply bg-card/60 backdrop-blur-xl border border-white/10 shadow-xl;
+    }
+
+    /* Hide scrollbar for Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Hide scrollbar for IE, Edge and Firefox */
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        /* IE and Edge */
+        scrollbar-width: none;
+        /* Firefox */
+    }
 }
 
 
 
+
 @layer base {
-  * {
-    @apply border-border;
+    * {
+        @apply border-border;
     }
-  body {
-    @apply bg-background text-foreground;
+
+    body {
+        @apply bg-background text-foreground;
     }
 }

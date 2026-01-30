@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Building2, Users, MoreHorizontal, UserCheck, Ban, CheckCircle, Trash2, Phone } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function PlatformOrganizationsPage() {
   const router = useRouter()
@@ -132,8 +133,22 @@ export default function PlatformOrganizationsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <Skeleton className="h-8 w-64 rounded-md" />
+                <Skeleton className="h-8 w-32 rounded-md" />
+              </div>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4 py-3 border-b border-border/50">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-grow">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-48" />
+                  </div>
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                </div>
+              ))}
             </div>
           ) : organizations.length === 0 ? (
             /* ... empty state ... */

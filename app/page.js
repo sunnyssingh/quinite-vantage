@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building2, Mail, Lock, User, Eye, EyeOff } from 'lucide-react'
+import { Building2, Mail, Lock, User, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function AuthPage() {
   const router = useRouter()
@@ -242,187 +244,311 @@ export default function AuthPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
-        <div className="animate-pulse text-sm text-muted-foreground">Loading application...</div>
+      <div className="min-h-screen w-full relative flex flex-col lg:flex-row bg-slate-50 overflow-hidden font-sans">
+        {/* Left Column Skeleton */}
+        <div className="hidden lg:flex flex-col justify-between p-16 xl:p-24 relative w-full lg:w-1/2 z-10">
+          <Skeleton className="w-48 h-12 rounded-lg bg-slate-200" />
+          <div className="space-y-10 max-w-xl">
+            <div className="space-y-3">
+              <Skeleton className="h-14 w-full rounded-lg bg-slate-200" />
+              <Skeleton className="h-14 w-3/4 rounded-lg bg-slate-200" />
+            </div>
+            <div className="space-y-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="w-10 h-10 rounded-full bg-slate-200" />
+                  <Skeleton className="h-6 w-48 rounded bg-slate-200" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <Skeleton className="h-4 w-64 rounded bg-slate-200" />
+        </div>
+
+        {/* Right Column Skeleton */}
+        <div className="w-full lg:w-1/2 h-full flex flex-col items-center justify-center p-6 lg:p-12 relative z-10">
+          <Skeleton className="lg:hidden mb-8 w-40 h-10 rounded bg-slate-200" />
+          <div className="w-full max-w-[440px] bg-white/80 backdrop-blur-xl rounded-xl border border-white/60 shadow-xl p-8 space-y-8">
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-1/2 rounded bg-slate-200" />
+              <Skeleton className="h-4 w-3/4 rounded bg-slate-200" />
+            </div>
+            <Skeleton className="w-full h-12 rounded-lg bg-slate-200" />
+            <div className="space-y-5">
+              <Skeleton className="h-10 w-full rounded-lg bg-slate-200" />
+              <Skeleton className="h-10 w-full rounded-lg bg-slate-200" />
+              <Skeleton className="h-10 w-full rounded-lg bg-slate-200" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 animate-in fade-in duration-500">
+    <div className="min-h-screen w-full relative flex flex-col lg:flex-row bg-slate-50 overflow-hidden font-sans selection:bg-blue-500/30">
 
-      {/* Minimal Header/Logo Area */}
-      <div className="mb-8 text-center space-y-2">
-        <div className="inline-flex items-center justify-center p-3 rounded-xl bg-primary/5 mb-4 ring-1 ring-border">
-          <Building2 className="w-6 h-6 text-primary" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Quinite Vantage</h1>
-        <p className="text-sm text-muted-foreground">AI-Powered Call Automation Platform</p>
+      {/* Light Animated Gradient Background */}
+      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none overflow-hidden">
+        {/* White overlay for softening */}
+        <div className="absolute inset-0 bg-white/30 z-10 backdrop-blur-[1px]"></div>
+
+        {/* Animated Pastel Orbs - Mix Blend Multiply for Subtractive Color on Light BG */}
+        <div className="absolute top-0 left-1/4 w-[50vw] h-[50vw] bg-purple-300/40 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob"></div>
+        <div className="absolute top-0 right-1/4 w-[50vw] h-[50vw] bg-cyan-300/40 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob animation-delay-2000"></div>
+        <div className="absolute -bottom-32 left-1/4 w-[50vw] h-[50vw] bg-pink-300/40 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob animation-delay-4000"></div>
+        <div className="absolute bottom-0 right-1/4 w-[40vw] h-[40vw] bg-blue-300/40 rounded-full mix-blend-multiply filter blur-[80px] opacity-70 animate-blob animation-delay-6000"></div>
       </div>
 
-      <Card className="w-full max-w-sm shadow-sm border-border bg-card">
-        <CardHeader className="space-y-1 pb-4">
-          <CardTitle className="text-lg font-medium text-center">Welcome back</CardTitle>
-          <CardDescription className="text-center text-xs">
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted/50 p-1">
-              <TabsTrigger value="signin" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign In</TabsTrigger>
-              <TabsTrigger value="signup" className="text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm">Sign Up</TabsTrigger>
-            </TabsList>
+      {/* Grid Layout Implementation */}
+      <div className="relative z-10 w-full min-h-screen grid lg:grid-cols-2">
 
-            <TabsContent value="signin" className="mt-0">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email" className="text-xs font-medium">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signin-email"
-                      name="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      className="pl-9 h-9 text-sm bg-background/50"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="signin-password" className="text-xs font-medium">Password</Label>
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotPassword(true)}
-                      className="text-xs text-primary hover:text-primary/80 hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signin-password"
-                      name="password"
-                      type={showSigninPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      className="pl-9 pr-9 h-9 text-sm bg-background/50"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSigninPassword(!showSigninPassword)}
-                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showSigninPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full h-9 text-sm font-medium" disabled={submitting}>
-                  {submitting ? 'Signing in...' : 'Sign In'}
-                </Button>
-              </form>
-            </TabsContent>
+        {/* Left Column: Hero Content */}
+        <div className="hidden lg:flex flex-col justify-between p-16 xl:p-24 relative">
 
-            <TabsContent value="signup" className="mt-0">
-              <form onSubmit={handleSignUp} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-name" className="text-xs font-medium">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-name"
-                      name="fullName"
-                      type="text"
-                      placeholder="John Doe"
-                      className="pl-9 h-9 text-sm bg-background/50"
-                    />
-                  </div>
-                </div>
+          {/* Logo Top Left - Dark text logo works on light bg */}
+          <div className="relative w-48 h-12">
+            <Image
+              src="/assets/logo.svg"
+              alt="Quinite Vantage"
+              fill
+              className="object-contain object-left"
+              priority
+            />
+          </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-company" className="text-xs font-medium">Company Name</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-company"
-                      name="companyName"
-                      type="text"
-                      placeholder="Acme Inc."
-                      className="pl-9 h-9 text-sm bg-background/50"
-                      required
-                    />
-                  </div>
-                </div>
+          {/* Hero Branding - Dark Text */}
+          <div className="space-y-10 max-w-xl">
+            <h1 className="text-5xl font-bold tracking-tight text-slate-900 leading-[1.1] font-outfit">
+              Join Industry Leaders that Trust Quinite to Automate their Conversations
+            </h1>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-email" className="text-xs font-medium">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-email"
-                      name="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      className="pl-9 h-9 text-sm bg-background/50"
-                      required
-                    />
-                  </div>
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 group">
+                <div className="p-2 rounded-full bg-blue-600/5 border border-blue-600/10 group-hover:bg-blue-600/10 transition-colors">
+                  <ShieldCheck className="w-6 h-6 text-blue-600" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-password" className="text-xs font-medium">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="signup-password"
-                      name="password"
-                      type={showSignupPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      className="pl-9 pr-9 h-9 text-sm bg-background/50"
-                      required
-                      minLength={6}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSignupPassword(!showSignupPassword)}
-                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showSignupPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full h-9 text-sm font-medium mt-1" disabled={submitting}>
-                  {submitting ? 'Creating account...' : 'Create Account'}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+                <span className="text-lg text-slate-600 font-medium">TRAI Compliant Calling</span>
+              </div>
 
-          {/* Minimal Footer */}
-          <div className="mt-6 pt-4 border-t border-dashed border-border text-center text-[10px] text-muted-foreground space-y-2">
-            <p>By continuing, you agree to our</p>
-            <div className="flex justify-center gap-3">
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <span>•</span>
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
+              <div className="flex items-center gap-4 group">
+                <div className="p-2 rounded-full bg-blue-600/5 border border-blue-600/10 group-hover:bg-blue-600/10 transition-colors">
+                  <ShieldCheck className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="text-lg text-slate-600 font-medium">Human-like AI Voice Agents</span>
+              </div>
+
+              <div className="flex items-center gap-4 group">
+                <div className="p-2 rounded-full bg-blue-600/5 border border-blue-600/10 group-hover:bg-blue-600/10 transition-colors">
+                  <ShieldCheck className="w-6 h-6 text-blue-600" />
+                </div>
+                <span className="text-lg text-slate-600 font-medium">Real-time Call Analytics</span>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Copyright/Footer Text */}
+          <div className="text-slate-500 text-sm font-medium">
+            © 2024 Quinite Technologies. All rights reserved.
+          </div>
+        </div>
+
+        {/* Right Column: Login Form */}
+        <div className="w-full h-full flex flex-col items-center justify-center p-6 lg:p-12 relative">
+          {/* Mobile Logo (Visible only on small screens) */}
+          <div className="lg:hidden mb-8 relative w-40 h-10">
+            <Image
+              src="/assets/logo.svg"
+              alt="Quinite Vantage"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+
+          <Card className="w-full max-w-[440px] shadow-2xl shadow-slate-200/50 border-white/60 bg-white/80 backdrop-blur-xl">
+            <CardContent className="p-8 md:p-10">
+              <div className="mb-8 space-y-2">
+                <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+                  Welcome to Quinite
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Get started with your email or company account
+                </p>
+              </div>
+
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 p-1 h-11 rounded-lg">
+                  <TabsTrigger
+                    value="signin"
+                    className="text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm rounded-md transition-all"
+                  >
+                    Sign In
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="signup"
+                    className="text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm rounded-md transition-all"
+                  >
+                    Sign Up
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="signin" className="mt-0">
+                  <form onSubmit={handleSignIn} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-email" className="text-sm font-medium text-gray-700">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-3 h-[18px] w-[18px] text-gray-400" />
+                        <Input
+                          id="signin-email"
+                          name="email"
+                          type="email"
+                          placeholder="name@example.com"
+                          className="pl-11 h-11 text-[15px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="signin-password" className="text-sm font-medium text-gray-700">Password</Label>
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotPassword(true)}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-3 h-[18px] w-[18px] text-gray-400" />
+                        <Input
+                          id="signin-password"
+                          name="password"
+                          type={showSigninPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          className="pl-11 pr-11 h-11 text-[15px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSigninPassword(!showSigninPassword)}
+                          className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showSigninPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+                        </button>
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full h-11 text-[15px] font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-all hover:shadow-md mt-6"
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Signing in...' : 'Sign In'}
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="signup" className="mt-0">
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name" className="text-sm font-medium text-gray-700">Full Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-3 h-[18px] w-[18px] text-gray-400" />
+                        <Input
+                          id="signup-name"
+                          name="fullName"
+                          type="text"
+                          placeholder="John Doe"
+                          className="pl-11 h-11 text-[15px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-company" className="text-sm font-medium text-gray-700">Company Name</Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3.5 top-3 h-[18px] w-[18px] text-gray-400" />
+                        <Input
+                          id="signup-company"
+                          name="companyName"
+                          type="text"
+                          placeholder="Acme Inc."
+                          className="pl-11 h-11 text-[15px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email" className="text-sm font-medium text-gray-700">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-3 h-[18px] w-[18px] text-gray-400" />
+                        <Input
+                          id="signup-email"
+                          name="email"
+                          type="email"
+                          placeholder="name@example.com"
+                          className="pl-11 h-11 text-[15px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password" className="text-sm font-medium text-gray-700">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-3 h-[18px] w-[18px] text-gray-400" />
+                        <Input
+                          id="signup-password"
+                          name="password"
+                          type={showSignupPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          className="pl-11 pr-11 h-11 text-[15px] border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                          required
+                          minLength={6}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignupPassword(!showSignupPassword)}
+                          className="absolute right-3.5 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showSignupPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+                        </button>
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full h-11 text-[15px] font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm transition-all hover:shadow-md mt-4"
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Creating account...' : 'Create Account'}
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Footer Links - Now below card */}
+          <div className="mt-8 flex gap-6 text-xs text-slate-500 font-medium z-10">
+            <a href="https://quinite.co/terms-conditions/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Terms & Conditions</a>
+            <a href="https://quinite.co/refund-and-cancellation/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Refund Policy</a>
+            <a href="https://quinite.co/privacy-policy/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">Privacy Policy</a>
+          </div>
+        </div>
+      </div>
 
       {/* Forgot Password Modal - Minimal */}
       {showForgotPassword && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
           onClick={() => {
             setShowForgotPassword(false)
             setForgotPasswordEmail('')
           }}
         >
           <Card
-            className="w-full max-w-sm shadow-lg border-border bg-card animate-in zoom-in-95 duration-200"
+            className="w-full max-w-sm shadow-lg border-border bg-card"
             onClick={(e) => e.stopPropagation()}
           >
             <CardHeader className="space-y-2 pb-4">

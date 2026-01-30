@@ -11,7 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Loader2, CheckCircle } from 'lucide-react'
+
 import { toast, Toaster } from 'react-hot-toast'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function PublicFormPage() {
     const params = useParams()
@@ -78,7 +80,24 @@ export default function PublicFormPage() {
         }
     }
 
-    if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+    if (loading) return (
+        <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-xl mx-auto bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div className="px-8 py-6 border-b bg-slate-50">
+                    <Skeleton className="h-8 w-1/2" />
+                </div>
+                <div className="p-8 space-y-6">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="space-y-2">
+                            <Skeleton className="h-4 w-1/3" />
+                            <Skeleton className="h-10 w-full rounded-md" />
+                        </div>
+                    ))}
+                    <Skeleton className="h-11 w-full rounded-md mt-6" />
+                </div>
+            </div>
+        </div>
+    )
 
     if (error) return (
         <div className="h-screen flex flex-col items-center justify-center p-4 bg-slate-50">

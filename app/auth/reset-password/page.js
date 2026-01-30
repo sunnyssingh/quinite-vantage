@@ -10,12 +10,24 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, KeyRound } from 'lucide-react'
 
+import { Skeleton } from '@/components/ui/skeleton'
+
 // Main component with Suspense boundary
 export default function ResetPasswordPage() {
     return (
         <React.Suspense fallback={
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-                <div className="animate-pulse text-gray-600">Loading...</div>
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+                <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-6 space-y-6">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-2/3 rounded-md" />
+                        <Skeleton className="h-4 w-full rounded" />
+                    </div>
+                    <div className="space-y-4">
+                        <Skeleton className="h-10 w-full rounded" />
+                        <Skeleton className="h-10 w-full rounded" />
+                        <Skeleton className="h-11 w-full rounded-md" />
+                    </div>
+                </div>
             </div>
         }>
             <ResetPasswordContent />
@@ -107,8 +119,18 @@ function ResetPasswordContent() {
 
     if (validating) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-                <div className="animate-pulse text-gray-600">Validating reset link...</div>
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
+                <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-6 space-y-6">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-2/3 rounded-md" />
+                        <Skeleton className="h-4 w-full rounded" />
+                    </div>
+                    <div className="space-y-4">
+                        <Skeleton className="h-10 w-full rounded" />
+                        <Skeleton className="h-10 w-full rounded" />
+                        <Skeleton className="h-11 w-full rounded-md" />
+                    </div>
+                </div>
             </div>
         )
     }
