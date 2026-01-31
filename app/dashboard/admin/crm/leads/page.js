@@ -31,7 +31,7 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, UserPlus, Mail, Phone, Edit, Search, Volume2, Trash2, FileDown, RefreshCw } from 'lucide-react'
+import { Plus, UserPlus, Mail, Phone, Edit, Search, Volume2, Trash2, FileDown, RefreshCw, User } from 'lucide-react'
 import CallRecordingPlayer from '@/components/CallRecordingPlayer'
 import {
   AlertDialog,
@@ -627,6 +627,15 @@ export default function LeadsPage() {
                       <TableCell className="pr-6 text-right">
                         <div className="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           {lead.call_log_id && <Button variant="ghost" size="sm" onClick={() => toggleRow(lead.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"><Volume2 className="w-4 h-4" /></Button>}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            onClick={() => router.push(`/dashboard/admin/crm/leads/${lead.id}`)}
+                            title="View Profile"
+                          >
+                            <User className="w-4 h-4" />
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"

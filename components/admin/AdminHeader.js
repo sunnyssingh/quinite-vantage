@@ -53,13 +53,14 @@ export default function AdminHeader({ user, profile }) {
 
     const navItems = [
         { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
-        { label: 'CRM', href: '/dashboard/admin/crm', icon: KanbanSquare },
+        { label: 'CRM', href: '/dashboard/admin/crm/dashboard', icon: KanbanSquare },
         { label: 'Inventory', href: '/dashboard/admin/inventory', icon: Building },
         { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 }
 
     ]
 
     const crmNavItems = [
+        { label: 'Dashboard', href: '/dashboard/admin/crm/dashboard', icon: LayoutDashboard },
         { label: 'Projects', href: '/dashboard/admin/crm/projects', icon: FolderKanban },
         { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone },
         { label: 'Leads', href: '/dashboard/admin/crm/leads', icon: Users },

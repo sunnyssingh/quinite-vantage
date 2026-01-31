@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { FileText, UserPlus, Upload, Database, LayoutTemplate, Megaphone, Smartphone, Building2 } from 'lucide-react'
+import { FileText, UserPlus, Upload, Database, LayoutTemplate, Megaphone, Smartphone, Building2, Globe, Zap, MessageSquare, Mail, Webhook, Code, Linkedin, Facebook } from 'lucide-react'
 import LeadForm from './LeadForm'
 import { toast } from 'react-hot-toast'
 import FormBuilder from './FormBuilder' // [NEW] moved up
@@ -22,10 +22,18 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
     const [previewData, setPreviewData] = useState(null) // [NEW] Preview State
 
     const connectorCards = [
-        { id: 'mb', name: 'MagicBricks', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-muted/50' },
-        { id: '99', name: '99Acres', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-muted/50' },
-        { id: 'meta', name: 'Meta Ads', icon: Megaphone, color: 'text-foreground', bg: 'bg-muted/50' },
-        { id: 'google', name: 'Google Ads', icon: SearchIcon, color: 'text-foreground', bg: 'bg-muted/50' },
+        { id: 'mb', name: 'MagicBricks', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
+        { id: '99', name: '99Acres', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
+        { id: 'meta', name: 'Meta Ads', icon: Megaphone, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
+        { id: 'google', name: 'Google Ads', icon: SearchIcon, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
+        { id: 'gforms', name: 'Google Forms', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', status: 'coming' },
+        { id: 'typeform', name: 'Typeform', icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50', status: 'coming' },
+        { id: 'zapier', name: 'Zapier', icon: Zap, color: 'text-orange-600', bg: 'bg-orange-50', status: 'coming' },
+        { id: 'webhook', name: 'Webhooks', icon: Webhook, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
+        { id: 'fb', name: 'Facebook Leads', icon: Facebook, color: 'text-blue-700', bg: 'bg-blue-50', status: 'coming' },
+        { id: 'linkedin', name: 'LinkedIn Lead Gen', icon: Linkedin, color: 'text-blue-800', bg: 'bg-blue-50', status: 'coming' },
+        { id: 'whatsapp', name: 'WhatsApp Business', icon: MessageSquare, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
+        { id: 'api', name: 'Custom API', icon: Code, color: 'text-slate-600', bg: 'bg-slate-50', status: 'coming' },
     ]
 
     const downloadSampleCSV = () => {
@@ -133,8 +141,8 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 gap-0 overflow-hidden sm:rounded-xl">
-                <div className="p-6 border-b border-border flex items-center justify-between bg-background">
+            <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden sm:rounded-xl">
+                <div className="p-4 border-b border-border flex items-center justify-between bg-background">
                     <div>
                         <DialogTitle className="text-lg font-semibold tracking-tight">Add New Leads</DialogTitle>
                         <DialogDescription className="text-muted-foreground mt-1">Choose a method to bring leads into your pipeline.</DialogDescription>
@@ -142,7 +150,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                 </div>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                    <div className="px-6 pt-4 bg-background">
+                    <div className="px-4 pb-2 bg-background">
                         <TabsList className="grid grid-cols-4 w-full max-w-2xl bg-muted/50 p-1">
                             <TabsTrigger value="manual" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-xs">
                                 <UserPlus className="w-3.5 h-3.5 mr-2" /> Manual
@@ -159,7 +167,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                         </TabsList>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 bg-muted/10">
+                    <div className="flex-1 overflow-y-auto bg-muted/10" style={{ padding: '1rem' }}>
                         <TabsContent value="manual" className="mt-0 h-full">
                             <Card className="max-w-2xl mx-auto border-0 shadow-none bg-transparent">
                                 <CardHeader className="px-0 pt-0">
@@ -197,7 +205,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                             <FormBuilder />
                         </TabsContent>
 
-                        <TabsContent value="import" className="mt-0 h-full flex flex-col min-h-0">
+                        <TabsContent value="import" className="mt-0 h-full">
                             {!previewData ? (
                                 <div className="flex flex-col items-center justify-center h-full text-center space-y-4 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 m-1">
                                     <div className="p-4 bg-white rounded-full shadow-sm">
@@ -308,19 +316,28 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                             )}
                         </TabsContent>
 
-                        <TabsContent value="connect" className="mt-0 h-full">
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                                {connectorCards.map(c => (
-                                    <Card key={c.id} className="cursor-pointer hover:border-primary transition-all group border-border bg-card shadow-sm">
-                                        <CardHeader className="p-4">
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${c.bg}`}>
-                                                <c.icon className={`w-5 h-5 ${c.color}`} />
-                                            </div>
-                                            <CardTitle className="text-sm font-medium">{c.name}</CardTitle>
-                                            <CardDescription className="text-xs">Auto-sync leads</CardDescription>
-                                        </CardHeader>
-                                    </Card>
-                                ))}
+                        <TabsContent value="connect" className="mt-0 h-full relative">
+                            <div className="absolute inset-0 overflow-y-auto p-4">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {connectorCards.map(c => (
+                                        <Card key={c.id} className="cursor-pointer hover:border-primary transition-all group border-border bg-card shadow-sm relative">
+                                            {c.status === 'coming' && (
+                                                <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                                                    Coming Soon
+                                                </div>
+                                            )}
+                                            <CardHeader className="p-3">
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${c.bg}`}>
+                                                    <c.icon className={`w-5 h-5 ${c.color}`} />
+                                                </div>
+                                                <CardTitle className="text-sm font-medium">{c.name}</CardTitle>
+                                                <CardDescription className="text-xs">
+                                                    {c.status === 'active' ? 'Auto-sync leads' : 'Coming soon'}
+                                                </CardDescription>
+                                            </CardHeader>
+                                        </Card>
+                                    ))}
+                                </div>
                             </div>
                         </TabsContent>
                     </div>

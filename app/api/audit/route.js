@@ -21,11 +21,10 @@ export async function GET(request) {
       .eq('id', user.id)
       .single()
 
-    // Platform admins can view all logs, others restricted to their org
-    // Check for 'platform_admin' or 'super_admin' to be safe
-    const isPlatformAdmin = profile?.role === 'platform_admin' || profile?.role === 'super_admin';
+    // Get user role - ONLY platform_admin can view all logs
+    const isPlatformAdmin = profile?.role === 'platform_admin';
 
-    // If not a platform admin, they MUST have an organization_id
+    // Regular users MUST have an organization_id
     if (!profile?.organization_id && !isPlatformAdmin) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
     }
@@ -43,7 +42,7 @@ export async function GET(request) {
     const isImpersonated = searchParams.get('is_impersonated')
 
     // DEBUG LOGGING
-    console.log(`🔍 [Audit API] User: ${user.email} | Role: ${profile?.role} | Org: ${profile?.organization_id}`);
+    console.log(`🔍 [Audit API] User: ${user.email} | Role: ${profile?.role} | IsPlatformAdmin: ${isPlatformAdmin} | Org: ${profile?.organization_id}`);
 
     // Use ADMIN client to query logs (Bypass RLS)
     let query = admin
@@ -51,10 +50,12 @@ export async function GET(request) {
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
 
-    // Apply Org Filter if not platform admin
-    if (!isPlatformAdmin && profile?.organization_id) {
+    // STRICT: Regular users can ONLY see their organization's logs
+    if (!isPlatformAdmin) {
+      console.log(`🔒 [Audit API] Filtering to organization: ${profile.organization_id}`);
       query = query.eq('organization_id', profile.organization_id)
-    } else if (isPlatformAdmin) {
+    } else {
+      console.log(`🔓 [Audit API] Platform admin - showing all logs`);
       // Platform admins see all, UNLESS they specifically ask for an org
       if (searchParams.get('organization_id')) {
         query = query.eq('organization_id', searchParams.get('organization_id'))

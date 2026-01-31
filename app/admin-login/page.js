@@ -52,6 +52,8 @@ export default function AdminLoginPage() {
     const email = formData.get('email')
     const password = formData.get('password')
 
+    console.log('[AdminLogin] Attempting login for:', email)
+
     try {
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -59,25 +61,34 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ email, password, isPlatformAdmin: true })
       })
 
+      console.log('[AdminLogin] Response status:', response.status)
+
       let data
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('application/json')) {
         data = await response.json()
+        console.log('[AdminLogin] Response data:', data)
       } else {
         const text = await response.text()
-        console.error('Non-JSON response:', text)
+        console.error('[AdminLogin] Non-JSON response:', text)
         throw new Error(`Server returned ${response.status} ${response.statusText}`)
       }
 
       if (!response.ok) {
+        console.error('[AdminLogin] Login failed:', data.error)
         throw new Error(data.error || 'Login failed')
       }
 
+      console.log('[AdminLogin] Login successful, redirecting...')
       toast.success('Login successful! Redirecting to platform dashboard...')
       setTimeout(() => router.push('/dashboard/platform'), 1000)
     } catch (err) {
-      console.error('Login error:', err)
-      toast.error(err.message)
+      console.error('[AdminLogin] Login error:', err)
+      console.error('[AdminLogin] Error details:', {
+        message: err.message,
+        stack: err.stack
+      })
+      toast.error(err.message || 'An unexpected error occurred. Please try again.')
     } finally {
       setSubmitting(false)
     }

@@ -22,12 +22,14 @@ export async function GET() {
             .eq('id', user.id)
             .single()
 
-        // Platform admins can view all logs, others restricted to their org
-        const isPlatformAdmin = profile?.role === 'platform_admin' || profile?.role === 'super_admin';
+        // ONLY platform_admin can view all logs
+        const isPlatformAdmin = profile?.role === 'platform_admin';
 
         if (!profile?.organization_id && !isPlatformAdmin) {
             return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
         }
+
+        console.log(`📊 [Audit Stats] User: ${user.email} | Role: ${profile?.role} | IsPlatformAdmin: ${isPlatformAdmin} | Org: ${profile?.organization_id}`);
 
         let query = admin
             .from('audit_logs')
@@ -35,9 +37,12 @@ export async function GET() {
             .order('created_at', { ascending: false })
             .limit(5000)
 
-        // Strict Organization Filter Implementation
-        if (!isPlatformAdmin && profile?.organization_id) {
+        // STRICT: Regular users can ONLY see their organization's stats
+        if (!isPlatformAdmin) {
+            console.log(`🔒 [Audit Stats] Filtering to organization: ${profile.organization_id}`);
             query = query.eq('organization_id', profile.organization_id)
+        } else {
+            console.log(`🔓 [Audit Stats] Platform admin - showing all stats`);
         }
 
         const { data } = await query

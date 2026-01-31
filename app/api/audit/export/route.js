@@ -8,17 +8,22 @@ export async function GET(request) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        // Get user's organization
+        // Get user's organization and role
         const admin = createAdminClient()
         const { data: profile } = await admin
             .from('profiles')
-            .select('organization_id, is_platform_admin')
+            .select('organization_id, role')
             .eq('id', user.id)
             .single()
 
-        if (!profile?.organization_id && !profile?.is_platform_admin) {
+        // ONLY platform_admin can export all logs
+        const isPlatformAdmin = profile?.role === 'platform_admin';
+
+        if (!profile?.organization_id && !isPlatformAdmin) {
             return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
         }
+
+        console.log(`📥 [Audit Export] User: ${user.email} | Role: ${profile?.role} | IsPlatformAdmin: ${isPlatformAdmin} | Org: ${profile?.organization_id}`);
 
         const { searchParams } = new URL(request.url)
         const format = searchParams.get('format')
@@ -35,8 +40,13 @@ export async function GET(request) {
             .order('created_at', { ascending: false })
             .limit(10000)
 
-        // Strict Organization Filter
-        query = query.eq('organization_id', profile.organization_id)
+        // STRICT: Regular users can ONLY export their organization's logs
+        if (!isPlatformAdmin) {
+            console.log(`🔒 [Audit Export] Filtering to organization: ${profile.organization_id}`);
+            query = query.eq('organization_id', profile.organization_id)
+        } else {
+            console.log(`🔓 [Audit Export] Platform admin - exporting all logs`);
+        }
 
         // Apply filters
         if (search) {

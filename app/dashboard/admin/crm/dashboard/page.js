@@ -1,0 +1,375 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import {
+    TrendingUp,
+    TrendingDown,
+    Users,
+    Target,
+    DollarSign,
+    Activity,
+    ArrowUpRight,
+    Plus,
+    Calendar,
+    Phone,
+    Mail,
+    CheckCircle2,
+    Clock,
+    AlertCircle
+} from 'lucide-react'
+import Link from 'next/link'
+import { Skeleton } from '@/components/ui/skeleton'
+
+export default function CRMDashboardPage() {
+    const [stats, setStats] = useState(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const res = await fetch('/api/crm/dashboard')
+                if (res.ok) {
+                    const data = await res.json()
+                    setStats(data)
+                }
+            } catch (error) {
+                console.error('Failed to fetch CRM dashboard data:', error)
+            } finally {
+                setLoading(false)
+            }
+        }
+        fetchDashboardData()
+    }, [])
+
+    const metrics = [
+        {
+            title: 'Total Leads',
+            value: loading ? '...' : stats?.totalLeads || 0,
+            change: loading ? '...' : stats?.leadsChange || '+12%',
+            trend: 'up',
+            icon: Users,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50',
+        },
+        {
+            title: 'Active Deals',
+            value: loading ? '...' : stats?.activeDeals || 0,
+            change: loading ? '...' : stats?.dealsChange || '+8%',
+            trend: 'up',
+            icon: Target,
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-50',
+        },
+        {
+            title: 'Conversion Rate',
+            value: loading ? '...' : stats?.conversionRate || '0%',
+            change: loading ? '...' : stats?.conversionChange || '+3%',
+            trend: 'up',
+            icon: TrendingUp,
+            color: 'text-green-600',
+            bgColor: 'bg-green-50',
+        },
+        {
+            title: 'Revenue (MTD)',
+            value: loading ? '...' : stats?.revenue || '$0',
+            change: loading ? '...' : stats?.revenueChange || '+15%',
+            trend: 'up',
+            icon: DollarSign,
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+        },
+    ]
+
+    const recentActivities = loading ? [] : stats?.recentActivities || [
+        { id: 1, type: 'call', title: 'Call with John Doe', time: '10 minutes ago', status: 'completed' },
+        { id: 2, type: 'email', title: 'Follow-up email sent to Jane Smith', time: '1 hour ago', status: 'sent' },
+        { id: 3, type: 'meeting', title: 'Demo scheduled with Acme Corp', time: '2 hours ago', status: 'scheduled' },
+        { id: 4, type: 'deal', title: 'Deal moved to negotiation stage', time: '3 hours ago', status: 'updated' },
+    ]
+
+    const quickActions = [
+        { label: 'Add Lead', href: '/dashboard/admin/crm/leads', icon: Plus, color: 'bg-blue-600 hover:bg-blue-700' },
+        { label: 'View Pipeline', href: '/dashboard/admin/crm', icon: Target, color: 'bg-purple-600 hover:bg-purple-700' },
+        { label: 'New Campaign', href: '/dashboard/admin/crm/campaigns', icon: Activity, color: 'bg-green-600 hover:bg-green-700' },
+        { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: TrendingUp, color: 'bg-orange-600 hover:bg-orange-700' },
+    ]
+
+    const getActivityIcon = (type) => {
+        switch (type) {
+            case 'call': return Phone
+            case 'email': return Mail
+            case 'meeting': return Calendar
+            case 'deal': return Target
+            default: return Activity
+        }
+    }
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'completed': return 'text-green-600 bg-green-50'
+            case 'sent': return 'text-blue-600 bg-blue-50'
+            case 'scheduled': return 'text-purple-600 bg-purple-50'
+            case 'updated': return 'text-orange-600 bg-orange-50'
+            default: return 'text-gray-600 bg-gray-50'
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="p-6 space-y-6 max-w-7xl mx-auto">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Skeleton className="h-8 w-48 mb-2" />
+                        <Skeleton className="h-4 w-64" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Card key={i}>
+                            <CardContent className="p-6">
+                                <Skeleton className="h-12 w-12 rounded-lg mb-4" />
+                                <Skeleton className="h-4 w-24 mb-2" />
+                                <Skeleton className="h-8 w-16 mb-2" />
+                                <Skeleton className="h-3 w-20" />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2">
+                        <Card>
+                            <CardHeader>
+                                <Skeleton className="h-6 w-32" />
+                            </CardHeader>
+                            <CardContent>
+                                <Skeleton className="h-64 w-full" />
+                            </CardContent>
+                        </Card>
+                    </div>
+                    <Card>
+                        <CardHeader>
+                            <Skeleton className="h-6 w-32" />
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {[1, 2, 3, 4].map((i) => (
+                                <Skeleton key={i} className="h-16 w-full" />
+                            ))}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="p-6 space-y-6 max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-semibold tracking-tight text-foreground">CRM Dashboard</h1>
+                    <p className="text-muted-foreground mt-1">Overview of your sales pipeline and activities</p>
+                </div>
+                <div className="flex gap-3">
+                    <Button variant="outline" className="gap-2">
+                        <Calendar className="w-4 h-4" />
+                        This Month
+                    </Button>
+                    <Link href="/dashboard/admin/crm/leads">
+                        <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+                            <Plus className="w-4 h-4" />
+                            Add Lead
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Metrics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {metrics.map((metric, index) => {
+                    const Icon = metric.icon
+                    const TrendIcon = metric.trend === 'up' ? TrendingUp : TrendingDown
+
+                    return (
+                        <Card key={index} className="overflow-hidden border-border hover:shadow-md transition-all duration-200">
+                            <CardContent className="p-6">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className={`p-3 rounded-lg ${metric.bgColor}`}>
+                                        <Icon className={`w-6 h-6 ${metric.color}`} />
+                                    </div>
+                                    <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${metric.trend === 'up' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                                        <TrendIcon className="w-3 h-3" />
+                                        {metric.change}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
+                                    <h3 className="text-3xl font-bold text-foreground mt-1">{metric.value}</h3>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Pipeline Overview & Quick Actions */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Quick Actions */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Quick Actions</CardTitle>
+                            <CardDescription>Common tasks and shortcuts</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {quickActions.map((action, index) => {
+                                    const Icon = action.icon
+                                    return (
+                                        <Link key={index} href={action.href}>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full h-auto flex-col gap-3 p-6 hover:bg-secondary/50 transition-all group"
+                                            >
+                                                <div className={`p-3 rounded-lg ${action.color} text-white group-hover:scale-110 transition-transform`}>
+                                                    <Icon className="w-5 h-5" />
+                                                </div>
+                                                <span className="text-sm font-medium">{action.label}</span>
+                                            </Button>
+                                        </Link>
+                                    )
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Pipeline Stages */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">Pipeline Overview</CardTitle>
+                            <CardDescription>Deals by stage</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {[
+                                    { stage: 'Prospecting', count: 12, value: '$45,000', color: 'bg-blue-500' },
+                                    { stage: 'Qualification', count: 8, value: '$32,000', color: 'bg-purple-500' },
+                                    { stage: 'Proposal', count: 5, value: '$28,000', color: 'bg-orange-500' },
+                                    { stage: 'Negotiation', count: 3, value: '$15,000', color: 'bg-green-500' },
+                                ].map((stage, index) => (
+                                    <div key={index} className="flex items-center gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-medium text-foreground">{stage.stage}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm text-muted-foreground">{stage.count} deals</span>
+                                                    <span className="text-sm font-semibold text-foreground">{stage.value}</span>
+                                                </div>
+                                            </div>
+                                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full ${stage.color} transition-all duration-500`}
+                                                    style={{ width: `${(stage.count / 12) * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <Link href="/dashboard/admin/crm">
+                                <Button variant="ghost" className="w-full mt-4 gap-2">
+                                    View Full Pipeline
+                                    <ArrowUpRight className="w-4 h-4" />
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Recent Activities */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Recent Activities</CardTitle>
+                        <CardDescription>Latest updates and actions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {recentActivities.map((activity) => {
+                                const Icon = getActivityIcon(activity.type)
+                                return (
+                                    <div key={activity.id} className="flex gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors">
+                                        <div className={`p-2 rounded-lg ${getStatusColor(activity.status)} flex-shrink-0`}>
+                                            <Icon className="w-4 h-4" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-foreground line-clamp-1">
+                                                {activity.title}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                {activity.time}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                        <Link href="/dashboard/admin/crm/auditlog">
+                            <Button variant="ghost" className="w-full mt-4 gap-2">
+                                View All Activities
+                                <ArrowUpRight className="w-4 h-4" />
+                            </Button>
+                        </Link>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Bottom Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-lg bg-blue-50">
+                                <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Tasks Completed</p>
+                                <p className="text-2xl font-bold text-foreground">24</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-lg bg-orange-50">
+                                <Clock className="w-6 h-6 text-orange-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Pending Follow-ups</p>
+                                <p className="text-2xl font-bold text-foreground">8</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-lg bg-red-50">
+                                <AlertCircle className="w-6 h-6 text-red-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Overdue Tasks</p>
+                                <p className="text-2xl font-bold text-foreground">3</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    )
+}

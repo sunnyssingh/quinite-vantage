@@ -97,25 +97,25 @@ export default function LeadForm({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+        <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1.5">
                 <Label>Name *</Label>
                 <Input name="name" defaultValue={initialData?.name} required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                     <Label>Email</Label>
                     <Input name="email" type="email" defaultValue={initialData?.email} />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                     <Label>Phone</Label>
                     <Input name="phone" defaultValue={initialData?.phone} />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                     <Label>Project</Label>
                     <Select
                         name="projectId"
@@ -133,7 +133,7 @@ export default function LeadForm({
                 </div>
 
                 {fetchedStages.length > 0 || loadingStages ? (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                         <Label>Pipeline Stage</Label>
                         <Select
                             name="stageId"
@@ -159,7 +159,7 @@ export default function LeadForm({
                         <input type="hidden" name="status" value="new" />
                     </div>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                         <Label>Status</Label>
                         <Select name="status" defaultValue={initialStatus || initialData?.status || 'new'}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -175,7 +175,7 @@ export default function LeadForm({
                 )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
                 <Label>Notes</Label>
                 <Textarea name="notes" defaultValue={initialData?.notes} rows={3} />
             </div>

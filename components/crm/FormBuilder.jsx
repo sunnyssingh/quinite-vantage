@@ -149,26 +149,26 @@ export default function FormBuilder({ projectId }) {
                 </div>
 
                 <div className="flex flex-1 border rounded-lg overflow-hidden bg-white min-h-0">
-                    {/* 1. Toolbox (Left) */}
-                    <div className="w-64 border-r bg-slate-50 p-4 flex flex-col gap-3 overflow-y-auto">
-                        <h3 className="font-semibold text-sm text-slate-500 mb-2">Form Elements</h3>
-                        <div className="grid grid-cols-2 gap-2">
+                    {/* 1. Toolbox (Left) - Narrower */}
+                    <div className="w-48 border-r bg-slate-50 p-3 flex flex-col gap-2 overflow-y-auto">
+                        <h3 className="font-semibold text-xs text-slate-500 mb-1">Form Elements</h3>
+                        <div className="grid grid-cols-2 gap-1.5">
                             {FIELD_TYPES.map(ft => (
                                 <DraggableToolboxItem key={ft.type} type={ft} />
                             ))}
                         </div>
                     </div>
 
-                    {/* 2. Canvas (Center) */}
-                    <div className="flex-1 bg-slate-100 p-8 overflow-y-auto">
+                    {/* 2. Canvas (Center) - More space */}
+                    <div className="flex-1 bg-slate-100 p-4 overflow-y-auto">
                         <FormCanvas fields={fields} onSelect={setSelectedField} selectedId={selectedField?.id} onRemove={removeField} />
                     </div>
 
-                    {/* 3. Properties (Right) */}
+                    {/* 3. Properties (Right) - Narrower */}
                     {selectedField ? (
-                        <div className="w-80 border-l bg-white p-4 overflow-y-auto">
-                            <h3 className="font-semibold text-lg mb-4">Properties</h3>
-                            <div className="space-y-6">
+                        <div className="w-64 border-l bg-white p-3 overflow-y-auto">
+                            <h3 className="font-semibold text-base mb-3">Properties</h3>
+                            <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>Label / Heading</Label>
                                     <Input
@@ -260,10 +260,10 @@ function DraggableToolboxItem({ type }) {
             ref={setNodeRef}
             {...listeners}
             {...attributes}
-            className="p-3 bg-white border rounded shadow-sm hover:shadow-md cursor-grab flex flex-col items-center gap-2 transition-all text-center h-24 justify-center"
+            className="p-2 bg-white border rounded shadow-sm hover:shadow-md cursor-grab flex flex-col items-center gap-1.5 transition-all text-center h-20 justify-center"
         >
-            <type.icon className="w-6 h-6 text-slate-500" />
-            <span className="text-xs font-medium text-slate-700">{type.label}</span>
+            <type.icon className="w-5 h-5 text-slate-500" />
+            <span className="text-[10px] font-medium text-slate-700 leading-tight">{type.label}</span>
         </div>
     )
 }
@@ -274,9 +274,9 @@ function FormCanvas({ fields, onSelect, selectedId, onRemove }) {
     })
 
     return (
-        <div ref={setNodeRef} className="max-w-xl mx-auto min-h-[600px] bg-white rounded-xl shadow-sm border p-8 space-y-6">
+        <div ref={setNodeRef} className="max-w-xl mx-auto min-h-[600px] bg-white rounded-xl shadow-sm border p-6 space-y-4">
             {fields.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed rounded-lg p-20">
+                <div className="h-full flex flex-col items-center justify-center text-slate-300 border-2 border-dashed rounded-lg p-16">
                     <p>Drag form elements here</p>
                 </div>
             ) : (
@@ -284,7 +284,7 @@ function FormCanvas({ fields, onSelect, selectedId, onRemove }) {
                     <div
                         key={field.id}
                         onClick={() => onSelect(field)}
-                        className={`group relative p-4 rounded border-2 border-transparent hover:border-blue-100 cursor-pointer transition-all ${selectedId === field.id ? 'border-blue-500 bg-blue-50/50' : ''}`}
+                        className={`group relative p-3 rounded border-2 border-transparent hover:border-blue-100 cursor-pointer transition-all ${selectedId === field.id ? 'border-blue-500 bg-blue-50/50' : ''}`}
                     >
                         <div className="space-y-2 pointer-events-none">
                             {field.type === 'header' ? (
