@@ -59,14 +59,49 @@ export async function POST(request) {
 
                     if (error) throw new Error(error.message)
 
-                    // If call was successful, update lead status to 'contacted'
+                    // If call was successful, update lead status to 'contacted' and move to Contacted stage
                     if (data?.lead_id && (hangupCause === 'NORMAL_CLEARING')) {
+                        // First, get the lead to find their project/pipeline
+                        const { data: leadData } = await adminClient
+                            .from('leads')
+                            .select('project_id, stage_id')
+                            .eq('id', data.lead_id)
+                            .single()
+
+                        let contactedStageId = null
+
+                        // If lead has a project, find the "Contacted" stage in that project's pipeline
+                        if (leadData?.project_id) {
+                            const { data: stages } = await adminClient
+                                .from('pipeline_stages')
+                                .select('id, name, pipeline_id, pipelines!inner(project_id)')
+                                .eq('pipelines.project_id', leadData.project_id)
+                                .order('order_index', { ascending: true })
+
+                            // Find a stage that matches "contacted", "contact", "qualified", etc.
+                            const contactedStage = stages?.find(s => {
+                                const name = s.name.toLowerCase()
+                                return name.includes('contact') || name.includes('qualif') || name.includes('engaged')
+                            })
+
+                            contactedStageId = contactedStage?.id
+                        }
+
+                        // Update lead with status and stage
+                        const updateData = {
+                            status: 'contacted',
+                            call_status: 'called'
+                        }
+
+                        // Only update stage if we found a contacted stage
+                        if (contactedStageId) {
+                            updateData.stage_id = contactedStageId
+                            console.log(`✅ Moving lead ${data.lead_id} to Contacted stage: ${contactedStageId}`)
+                        }
+
                         await adminClient
                             .from('leads')
-                            .update({
-                                status: 'contacted',
-                                call_status: 'called'
-                            })
+                            .update(updateData)
                             .eq('id', data.lead_id)
                             .neq('status', 'transferred')
                             .neq('status', 'converted')

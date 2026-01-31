@@ -32,9 +32,9 @@ export default function CrmPipelinePage() {
     const projectName = projects.find(p => p.id === projectId)?.name || 'Project'
 
     return (
-        <div className="flex flex-col h-full bg-muted/5">
-            {/* Fixed Header */}
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 border-b border-border bg-background shrink-0 shadow-sm z-10">
+        <div className="min-h-screen bg-muted/5">
+            {/* Header */}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-6 border-b border-border bg-background shadow-sm">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground tracking-tight">
                         {projectId ? `${projectName} Pipeline` : 'CRM Pipeline'}
@@ -95,8 +95,8 @@ export default function CrmPipelinePage() {
                 </div>
             </div>
 
-            {/* Scrollable Board */}
-            <div className="flex-1 overflow-hidden p-6">
+            {/* Board */}
+            <div className="p-6">
                 <PipelineBoard ref={pipelineBoardRef} projectId={projectId} />
             </div>
 

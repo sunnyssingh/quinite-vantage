@@ -49,6 +49,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from 'react-hot-toast'
 
 export default function LeadsPage() {
@@ -71,6 +72,10 @@ export default function LeadsPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [leadToDelete, setLeadToDelete] = useState(null)
+
+  // Bulk Selection
+  const [selectedLeads, setSelectedLeads] = useState(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   // Stages for the edit form
   const [stages, setStages] = useState([])
@@ -283,6 +288,51 @@ export default function LeadsPage() {
     }
   }
 
+  // Bulk Actions
+  const toggleSelection = (id) => {
+    const newSelected = new Set(selectedLeads)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedLeads(newSelected)
+  }
+
+  const toggleAll = (checked) => {
+    if (checked) {
+      setSelectedLeads(new Set(leads.map(l => l.id)))
+    } else {
+      setSelectedLeads(new Set())
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedLeads.size === 0 || !confirm(`Are you sure you want to delete ${selectedLeads.size} leads?`)) return
+
+    setBulkDeleting(true)
+    try {
+      // Execute deletes in parallel (or use a bulk delete API if available)
+      const promises = Array.from(selectedLeads).map(id =>
+        fetch(`/api/leads/${id}`, { method: 'DELETE' }).then(res => {
+          if (!res.ok) throw new Error(`Failed to delete lead ${id}`)
+          return id
+        })
+      )
+
+      await Promise.allSettled(promises)
+
+      // Refresh data
+      setLeads(prev => prev.filter(l => !selectedLeads.has(l.id)))
+      setSelectedLeads(new Set())
+      toast.success("Selected leads deleted")
+    } catch (err) {
+      toast.error("Some leads failed to delete")
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   const getStatusBadgeColor = (status) => {
     const colors = {
       'new': 'bg-blue-100 text-blue-800',
@@ -330,9 +380,9 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full animate-in fade-in duration-500 bg-muted/5">
+    <div className="min-h-screen animate-in fade-in duration-500 bg-muted/5">
       {/* Header & Stats */}
-      <div className="flex flex-col gap-6 p-6 border-b border-border bg-background shrink-0 shadow-sm z-10">
+      <div className="flex flex-col gap-6 p-6 border-b border-border bg-background shadow-sm">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
@@ -402,6 +452,30 @@ export default function LeadsPage() {
           </Select>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedLeads.size > 0 && (
+        <div className="mx-6 mt-4 p-2 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-2 px-2">
+            <Badge variant="secondary" className="bg-primary/20 text-primary hover:bg-primary/30">
+              {selectedLeads.size} Selected
+            </Badge>
+            <span className="text-sm text-muted-foreground">Select all {leads.length} leads?</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="h-8"
+            >
+              {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
+            </Button>
+          </div>
+        </div>
+      )
+      }
 
       {/* Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -486,7 +560,7 @@ export default function LeadsPage() {
 
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="p-6">
         {loading ? (
           <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden p-4">
             <div className="flex items-center justify-between mb-4 px-2">
@@ -524,7 +598,14 @@ export default function LeadsPage() {
             <Table>
               <TableHeader className="bg-muted/30">
                 <TableRow>
-                  <TableHead className="w-[280px] pl-6">Lead Details</TableHead>
+                  <TableHead className="w-[50px] pl-6">
+                    <Checkbox
+                      checked={leads.length > 0 && selectedLeads.size === leads.length}
+                      onCheckedChange={toggleAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[280px]">Lead Details</TableHead>
                   <TableHead>Contact Info</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Project</TableHead>
@@ -535,9 +616,18 @@ export default function LeadsPage() {
               <TableBody>
                 {leads.map((lead) => (
                   <React.Fragment key={lead.id}>
-                    <TableRow className="group hover:bg-muted/30 transition-colors">
-                      {/* Avatar & Name */}
+                    <TableRow className={`group hover:bg-muted/30 transition-colors ${selectedLeads.has(lead.id) ? 'bg-muted/40' : ''}`}>
+                      {/* Checkbox */}
                       <TableCell className="pl-6 py-4">
+                        <Checkbox
+                          checked={selectedLeads.has(lead.id)}
+                          onCheckedChange={() => toggleSelection(lead.id)}
+                          aria-label={`Select ${lead.name}`}
+                        />
+                      </TableCell>
+
+                      {/* Avatar & Name */}
+                      <TableCell className="py-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-border/50">
                             <AvatarImage src="" />
@@ -623,9 +713,9 @@ export default function LeadsPage() {
                         </div>
                       </TableCell>
 
-                      {/* Hover Actions */}
+                      {/* Actions */}
                       <TableCell className="pr-6 text-right">
-                        <div className="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end items-center gap-2">
                           {lead.call_log_id && <Button variant="ghost" size="sm" onClick={() => toggleRow(lead.id)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"><Volume2 className="w-4 h-4" /></Button>}
                           <Button
                             size="icon"
@@ -700,6 +790,6 @@ export default function LeadsPage() {
         projectId={projectId}
         projects={projects}
       />
-    </div>
+    </div >
   )
 }

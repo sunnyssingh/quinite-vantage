@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useRouter } from 'next/navigation'
 import {
     DndContext,
     closestCorners,
@@ -39,6 +40,7 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
     const [submitting, setSubmitting] = useState(false)
 
     const supabase = createClient()
+    const router = useRouter()
 
     // Sensors for drag detection
     const sensors = useSensors(
@@ -140,15 +142,7 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
         let leadId = active.id
         const overId = over.id // Could be a stage ID or another lead ID
 
-        // Handling AI Watchlist Items (suffixed with -ai)
-        if (typeof leadId === 'string' && leadId.endsWith('-ai')) {
-            leadId = leadId.replace('-ai', '')
-        }
-
-        // Prevent dropping INTO the AI Watchlist
-        if (overId === 'ai-watchlist' || (typeof overId === 'string' && overId.endsWith('-ai'))) {
-            return
-        }
+        // No special handling needed anymore
 
         // Find the stage we dropped onto
         let newStageId = null
@@ -193,12 +187,18 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
                 })
             })
 
-            if (!res.ok) throw new Error('Update failed')
+            if (!res.ok) {
+                const errorData = await res.json()
+                throw new Error(errorData.error || 'Update failed')
+            }
+
+            console.log(`✅ Lead ${leadId} moved to stage ${newStageId}`)
 
         } catch (error) {
             // Revert on failure
+            console.error('Failed to move lead:', error)
             setLeads(originalLeads)
-            toast.error('Failed to move lead')
+            toast.error(`Failed to move lead: ${error.message}`)
         }
     }, [leads])
 
@@ -215,8 +215,13 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
         }
     }
 
+    const handleLeadClick = (lead) => {
+        // Navigate to lead profile page
+        router.push(`/dashboard/admin/crm/leads/${lead.id}`)
+    }
+
     if (loading) return (
-        <div className="flex h-full gap-4 overflow-x-auto pb-2">
+        <div className="flex min-h-[calc(100vh-300px)] gap-4 overflow-x-auto pb-2">
             {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="flex-shrink-0 w-[300px] h-full rounded-xl bg-muted/30 border border-border/50 p-4 space-y-4">
                     <div className="flex items-center justify-between mb-4">
@@ -256,86 +261,75 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
     // For now, let's assume we put unassigned leads in the first stage if not set.
 
     return (
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-        >
-            <div className="flex h-full gap-4 overflow-x-auto pb-2">
-                {/* 🤖 AI Watchlist Column */}
-                <PipelineColumn
-                    key="ai-watchlist"
-                    stage={{
-                        id: 'ai-watchlist',
-                        name: '🤖 AI Watchlist',
-                        color: '#6366f1' // Indigo
-                    }}
-                    leads={leads
-                        .filter(l => (l.score >= 50 || l.interest_level === 'high'))
-                        .map(l => ({ ...l, id: `${l.id}-ai`, originalId: l.id })) // Unique ID for DND
-                    }
-                    onAddLead={() => { }} // No adding directly
-                />
+        <>
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+            >
+                <div className="flex min-h-[calc(100vh-300px)] gap-4 overflow-x-auto pb-2">
+                    {/* AI Watchlist removed - leads now only appear in their assigned stages */}
 
-                {activePipeline.stages.map(stage => {
-                    const stageLeads = leads.filter(l =>
-                        l.stage_id === stage.id ||
-                        (!l.stage_id && stage.order_index === 0) // Default to first stage
-                    )
+                    {activePipeline.stages.map(stage => {
+                        const stageLeads = leads.filter(l =>
+                            l.stage_id === stage.id ||
+                            (!l.stage_id && stage.order_index === 0) // Default to first stage
+                        )
 
-                    console.log(`📊 [PipelineBoard] Stage "${stage.name}" (${stage.id}):`, stageLeads.length, 'leads')
+                        console.log(`📊 [PipelineBoard] Stage "${stage.name}" (${stage.id}):`, stageLeads.length, 'leads')
 
 
-                    return (
-                        <PipelineColumn
-                            key={stage.id}
-                            stage={stage}
-                            leads={stageLeads}
-                            onAddLead={handleAddLead}
-                        />
-                    )
-                })}
-            </div>
+                        return (
+                            <PipelineColumn
+                                key={stage.id}
+                                stage={stage}
+                                leads={stageLeads.map(l => ({ ...l, onClick: handleLeadClick }))}
+                                onAddLead={handleAddLead}
+                            />
+                        )
+                    })}
+                </div>
 
-            <DragOverlay>
-                {activeDragItem ? <LeadCard lead={activeDragItem} /> : null}
-            </DragOverlay>
+                <DragOverlay>
+                    {activeDragItem ? <LeadCard lead={activeDragItem} /> : null}
+                </DragOverlay>
 
-            {/* Quick Add Lead Dialog */}
-            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Quick Add Deal</DialogTitle>
-                        <DialogDescription>
-                            Create a new lead directly in this stage.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {targetStageId && (
-                        <LeadForm
-                            projects={projects}
-                            stages={activePipeline?.stages || []} // Pass stages
-                            initialStageId={targetStageId}
-                            // Initial status is fallback
-                            initialStatus={(() => {
-                                const stage = activePipeline?.stages.find(s => s.id === targetStageId)
-                                if (!stage) return 'new'
-                                const name = stage.name.toLowerCase()
-                                if (name.includes('contact')) return 'contacted'
-                                if (name.includes('qualif')) return 'qualified'
-                                if (name.includes('negotiat')) return 'contacted'
-                                if (name.includes('won') || name.includes('convert')) return 'converted'
-                                if (name.includes('lost')) return 'lost'
-                                return 'new'
-                            })()}
-                            onSubmit={handleCreateLead}
-                            onCancel={() => setAddDialogOpen(false)}
-                            isSubmitting={submitting}
-                        />
-                    )}
-                </DialogContent>
-            </Dialog>
-        </DndContext>
+                {/* Quick Add Lead Dialog */}
+                <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Quick Add Deal</DialogTitle>
+                            <DialogDescription>
+                                Create a new lead directly in this stage.
+                            </DialogDescription>
+                        </DialogHeader>
+                        {targetStageId && (
+                            <LeadForm
+                                projects={projects}
+                                stages={activePipeline?.stages || []} // Pass stages
+                                initialStageId={targetStageId}
+                                // Initial status is fallback
+                                initialStatus={(() => {
+                                    const stage = activePipeline?.stages.find(s => s.id === targetStageId)
+                                    if (!stage) return 'new'
+                                    const name = stage.name.toLowerCase()
+                                    if (name.includes('contact')) return 'contacted'
+                                    if (name.includes('qualif')) return 'qualified'
+                                    if (name.includes('negotiat')) return 'contacted'
+                                    if (name.includes('won') || name.includes('convert')) return 'converted'
+                                    if (name.includes('lost')) return 'lost'
+                                    return 'new'
+                                })()}
+                                onSubmit={handleCreateLead}
+                                onCancel={() => setAddDialogOpen(false)}
+                                isSubmitting={submitting}
+                            />
+                        )}
+                    </DialogContent>
+                </Dialog>
+            </DndContext>
+        </>
     )
 })
 

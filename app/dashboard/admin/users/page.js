@@ -59,8 +59,18 @@ export default function UsersPage() {
             })
 
             if (!response.ok) {
-                const data = await response.json()
-                throw new Error(data.error || 'Failed to delete user')
+                const text = await response.text()
+                let errorMessage = 'Failed to delete user'
+                try {
+                    const data = JSON.parse(text)
+                    if (data.error) errorMessage = data.error
+                } catch (e) {
+                    // response is not JSON
+                    if (response.status === 404) errorMessage = 'User not found'
+                    else if (response.status === 403) errorMessage = 'Unauthorized'
+                    else if (text) errorMessage = text
+                }
+                throw new Error(errorMessage)
             }
 
             toast.success('User deleted successfully')

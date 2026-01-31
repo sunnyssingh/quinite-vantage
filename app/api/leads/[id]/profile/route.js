@@ -86,7 +86,17 @@ export async function PUT(request, { params }) {
                 preferred_contact_method: body.preferred_contact_method,
                 best_contact_time: body.best_contact_time,
                 preferences: body.preferences,
-                custom_fields: body.custom_fields
+                preferences: body.preferences,
+                custom_fields: body.custom_fields,
+                mailing_street: body.mailing_street,
+                mailing_city: body.mailing_city,
+                mailing_state: body.mailing_state,
+                mailing_zip: body.mailing_zip,
+                mailing_country: body.mailing_country,
+                min_budget: body.min_budget,
+                max_budget: body.max_budget,
+                property_type_interest: body.property_type_interest,
+                sub_category_interest: body.sub_category_interest
             })
             .eq('lead_id', id)
             .select()

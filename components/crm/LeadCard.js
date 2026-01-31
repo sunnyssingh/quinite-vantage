@@ -23,13 +23,23 @@ export function LeadCard({ lead }) {
         opacity: isDragging ? 0.5 : 1,
     }
 
+
+    const handleClick = (e) => {
+        // Only trigger click if we're not dragging
+        if (!isDragging && lead.onClick) {
+            lead.onClick(lead)
+        }
+    }
+
     return (
         <Card
             ref={setNodeRef}
             style={style}
             {...attributes}
             {...listeners}
-            className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-all shadow-sm border-border bg-card group ${isDragging ? 'shadow-xl border-primary/50 ring-2 ring-primary z-50 rotate-2' : ''}`}
+            onClickCapture={handleClick}
+            className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-all shadow-sm border-border bg-card group 
+                ${isDragging ? 'shadow-xl border-primary/50 ring-2 ring-primary z-50 rotate-2 cursor-grabbing' : ''}`}
         >
             <CardContent className="p-4 space-y-3">
                 {/* Header with Avatar */}
@@ -72,8 +82,8 @@ export function LeadCard({ lead }) {
                     <Badge
                         variant="outline"
                         className={`text-[9px] h-5 px-2 font-medium ${lead.call_status === 'completed' || lead.call_status === 'transferred'
-                                ? 'text-green-600 bg-green-50/50 border-green-200'
-                                : 'text-muted-foreground bg-muted/20 border-border'
+                            ? 'text-green-600 bg-green-50/50 border-green-200'
+                            : 'text-muted-foreground bg-muted/20 border-border'
                             }`}
                     >
                         {lead.call_status ? lead.call_status.replace('_', ' ').toUpperCase() : 'NEW'}
@@ -85,15 +95,11 @@ export function LeadCard({ lead }) {
                             {lead.interest_level === 'high' && (
                                 <span title="High Interest" className="text-xs animate-pulse">🔥</span>
                             )}
-                            {lead.last_sentiment_score && (
-                                <span title={`Sentiment: ${lead.last_sentiment_score}`} className="text-xs">
-                                    {lead.last_sentiment_score > 0.3 ? '😊' : lead.last_sentiment_score < -0.3 ? '😟' : '😐'}
-                                </span>
-                            )}
+                            {/* Sentiment removed - now shown on profile page */}
                             {lead.score > 0 && (
                                 <Badge variant="secondary" className={`h-5 text-[9px] px-1.5 border-0 ${lead.score >= 80 ? 'bg-green-100 text-green-700' :
-                                        lead.score >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-gray-100 text-gray-600'
+                                    lead.score >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-gray-100 text-gray-600'
                                     }`}>
                                     {lead.score}
                                 </Badge>

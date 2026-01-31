@@ -16,7 +16,7 @@ export function PipelineColumn({ stage, leads, onAddLead }) {
     const count = leads.length
 
     return (
-        <div className="flex flex-col w-80 flex-shrink-0 h-full">
+        <div className="flex flex-col w-80 flex-shrink-0 min-h-[calc(100vh-300px)]">
             {/* Column Header */}
             <div className="flex items-center justify-between px-3 py-2 mb-3 bg-card border border-border rounded-lg shadow-sm">
                 <div className="flex items-center gap-2.5">

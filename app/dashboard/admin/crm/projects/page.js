@@ -244,9 +244,9 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-muted/5">
+    <div className="min-h-screen bg-muted/5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border bg-background shrink-0 shadow-sm z-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border bg-background shadow-sm">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
             <Building2 className="w-7 h-7 text-foreground" />
@@ -289,7 +289,7 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="p-6 space-y-6">
         {/* Create Form */}
         {showCreateForm && (
           <Card className="shadow-sm border border-border bg-card mb-6">
