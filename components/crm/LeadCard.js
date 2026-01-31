@@ -4,8 +4,9 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Phone, Mail } from 'lucide-react'
+import { getDefaultAvatar } from '@/lib/avatar-utils'
 
 export function LeadCard({ lead }) {
     const {
@@ -45,6 +46,7 @@ export function LeadCard({ lead }) {
                 {/* Header with Avatar */}
                 <div className="flex items-start gap-3">
                     <Avatar className="h-9 w-9 border border-border/50 shrink-0">
+                        <AvatarImage src={lead.avatar_url || getDefaultAvatar(lead.email || lead.name)} />
                         <AvatarFallback className="bg-primary/10 text-primary font-medium text-xs">
                             {lead.name ? lead.name.substring(0, 2).toUpperCase() : 'NA'}
                         </AvatarFallback>

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Mail, Phone, MessageSquare, FileText, Plus, Clock } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const INTERACTION_TYPES = {
     email: { icon: Mail, label: 'Email', color: 'bg-blue-100 text-blue-700' },
@@ -92,11 +93,14 @@ export default function LeadActivityTimeline({ leadId }) {
     if (loading) {
         return (
             <Card>
-                <CardContent className="py-12">
-                    <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                        <p className="text-muted-foreground text-sm">Loading activity...</p>
-                    </div>
+                <CardHeader>
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-64 mt-2" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
                 </CardContent>
             </Card>
         )
@@ -104,14 +108,14 @@ export default function LeadActivityTimeline({ leadId }) {
 
     return (
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
                     <CardTitle>Activity Timeline</CardTitle>
                     <CardDescription>All interactions and communications</CardDescription>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button size="sm">
+                        <Button size="sm" className="w-full sm:w-auto">
                             <Plus className="w-4 h-4 mr-2" />
                             Add Activity
                         </Button>

@@ -3,6 +3,9 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasPermission, logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
+import { getDefaultAvatar } from '@/lib/avatar-utils'
+
+console.log('[Leads API] Avatar utility loaded:', typeof getDefaultAvatar)
 
 /**
  * GET /api/leads
@@ -181,7 +184,7 @@ export async function POST(request) {
             }
         }
 
-        // Create the lead
+        // Create the lead with auto-assigned avatar
         const { data: lead, error } = await adminClient
             .from('leads')
             .insert({
@@ -194,7 +197,8 @@ export async function POST(request) {
                 notes: notes?.trim() || null,
                 organization_id: profile.organization_id,
                 created_by: user.id,
-                source: 'manual'
+                source: 'manual',
+                avatar_url: getDefaultAvatar(email || name) // Auto-assign avatar based on email or name
             })
             .select()
             .single()

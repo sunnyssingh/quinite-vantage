@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
@@ -20,7 +21,6 @@ import {
     Megaphone,
     Search,
     Zap,
-    Bell,
     HelpCircle
 } from 'lucide-react'
 import {
@@ -40,10 +40,13 @@ import {
 } from "@/components/ui/sheet" // [NEW]
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { GlobalSearch } from './GlobalSearch'
+import { NotificationBell } from './NotificationBell'
 
 export default function AdminHeader({ user, profile }) {
     const router = useRouter()
     const pathname = usePathname()
+    const [open, setOpen] = React.useState(false) // [NEW] State for mobile menu
 
     const handleSignOut = async () => {
         const supabase = createClientSupabaseClient()
@@ -55,7 +58,8 @@ export default function AdminHeader({ user, profile }) {
         { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
         { label: 'CRM', href: '/dashboard/admin/crm/dashboard', icon: KanbanSquare },
         { label: 'Inventory', href: '/dashboard/admin/inventory', icon: Building },
-        { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 }
+        { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 },
+        { label: 'Broadcasts', href: '/dashboard/admin/platform/notifications', icon: Megaphone }
 
     ]
 
@@ -80,7 +84,7 @@ export default function AdminHeader({ user, profile }) {
                     <div className="flex items-center gap-6">
                         {/* Mobile Menu */}
                         <div className="md:hidden">
-                            <Sheet>
+                            <Sheet open={open} onOpenChange={setOpen}>
                                 <SheetTrigger asChild>
                                     <Button variant="ghost" size="icon">
                                         <Menu className="w-5 h-5" />
@@ -108,6 +112,7 @@ export default function AdminHeader({ user, profile }) {
                                                 <Link
                                                     key={item.href}
                                                     href={item.href}
+                                                    onClick={() => setOpen(false)}
                                                     className={`
                                                         flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
                                                         ${isActive
@@ -134,6 +139,7 @@ export default function AdminHeader({ user, profile }) {
                                                         <Link
                                                             key={item.href}
                                                             href={item.href}
+                                                            onClick={() => setOpen(false)}
                                                             className={`
                                                                 flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
                                                                 ${isActive
@@ -196,17 +202,9 @@ export default function AdminHeader({ user, profile }) {
 
                     {/* Right Section: Search & Actions */}
                     <div className="flex items-center gap-4">
-                        {/* Search Bar */}
-                        <div className="relative hidden lg:block w-72">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search leads, projects..."
-                                className="w-full h-9 pl-9 pr-4 text-sm bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-shadow"
-                            />
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-                                <span className="text-[10px] bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-400 font-medium">/</span>
-                            </div>
+                        {/* Global Search */}
+                        <div className="hidden lg:block">
+                            <GlobalSearch />
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -216,10 +214,7 @@ export default function AdminHeader({ user, profile }) {
                             </Button>
 
                             {/* Notifications */}
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-blue-50 hover:text-blue-600 w-8 h-8 rounded relative">
-                                <Bell className="w-4 h-4" />
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                            </Button>
+                            <NotificationBell />
 
                             {/* Help / QL */}
                             <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-blue-50 hover:text-blue-600 w-8 h-8 rounded hidden sm:flex">
