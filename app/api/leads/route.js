@@ -48,7 +48,8 @@ export async function GET(request) {
             .select(`
                 *,
                 project:projects(id, name),
-                stage:pipeline_stages(id, name, color)
+                stage:pipeline_stages(id, name, color),
+                deals(id, amount, status)
             `)
             .order('created_at', { ascending: false })
 
@@ -130,9 +131,9 @@ export async function POST(request) {
         console.log('✅ [Leads POST] Organization ID:', profile.organization_id)
 
         const body = await request.json()
-        const { name, email, phone, projectId, status, notes, stageId } = body
+        const { name, email, phone, projectId, status, notes, stageId, dealValue } = body
 
-        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, status, stageId })
+        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, status, stageId, dealValue })
 
         // Validation
         if (!name || name.trim() === '') {
@@ -210,6 +211,26 @@ export async function POST(request) {
 
         console.log('✅ [Leads POST] Lead created successfully:', lead.id)
 
+        // [Schema Alignment] Create Deal if value is provided
+        if (dealValue && !isNaN(parseFloat(dealValue))) {
+            const { error: dealError } = await adminClient
+                .from('deals')
+                .insert({
+                    lead_id: lead.id,
+                    amount: parseFloat(dealValue),
+                    status: 'active', // Default status
+                    organization_id: profile.organization_id,
+                    // Optional: sync stage name if available, but staying minimal for now
+                })
+
+            if (dealError) {
+                console.error('⚠️ [Leads POST] Failed to create deal:', dealError)
+                // Don't fail the whole request, but log it
+            } else {
+                console.log('💰 [Leads POST] Deal created with value:', dealValue)
+            }
+        }
+
         // Audit log
         try {
             await logAudit(
@@ -219,7 +240,7 @@ export async function POST(request) {
                 'lead.create',
                 'lead',
                 lead.id,
-                { lead_name: lead.name }
+                { lead_name: lead.name, value: dealValue }
             )
         } catch (auditError) {
             console.error('Audit log error:', auditError)

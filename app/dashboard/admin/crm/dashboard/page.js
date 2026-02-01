@@ -256,30 +256,40 @@ export default function CRMDashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {[
-                                    { stage: 'Prospecting', count: 12, value: '$45,000', color: 'bg-blue-500' },
-                                    { stage: 'Qualification', count: 8, value: '$32,000', color: 'bg-purple-500' },
-                                    { stage: 'Proposal', count: 5, value: '$28,000', color: 'bg-orange-500' },
-                                    { stage: 'Negotiation', count: 3, value: '$15,000', color: 'bg-green-500' },
-                                ].map((stage, index) => (
-                                    <div key={index} className="flex items-center gap-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm font-medium text-foreground">{stage.stage}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-sm text-muted-foreground">{stage.count} deals</span>
-                                                    <span className="text-sm font-semibold text-foreground">{stage.value}</span>
+                                {(stats?.pipelineOverview || []).length > 0 ? (
+                                    stats.pipelineOverview.map((stage, index) => {
+                                        // Calculate percentage relative to max or total
+                                        const total = stats?.totalLeads || 1
+                                        const percentage = (stage.count / total) * 100
+
+                                        return (
+                                            <div key={index} className="flex items-center gap-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-sm font-medium text-foreground">{stage.stage}</span>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-sm text-muted-foreground">{stage.count} deals</span>
+                                                            <span className="text-sm font-semibold text-foreground">{stage.value !== '$0' ? stage.value : ''}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full transition-all duration-500`}
+                                                            style={{
+                                                                width: `${percentage}%`,
+                                                                backgroundColor: stage.color || '#3b82f6'
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full ${stage.color} transition-all duration-500`}
-                                                    style={{ width: `${(stage.count / 12) * 100}%` }}
-                                                />
-                                            </div>
-                                        </div>
+                                        )
+                                    })
+                                ) : (
+                                    <div className="text-center py-6 text-muted-foreground text-sm">
+                                        No pipeline data available.
                                     </div>
-                                ))}
+                                )}
                             </div>
                             <Link href="/dashboard/admin/crm">
                                 <Button variant="ghost" className="w-full mt-4 gap-2">

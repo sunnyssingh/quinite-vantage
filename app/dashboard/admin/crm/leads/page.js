@@ -224,6 +224,7 @@ export default function LeadsPage() {
       projectId: projectIdValue === 'none' ? null : projectIdValue,
       status: formData.get('status'),
       stageId: formData.get('stageId') === 'none' ? null : formData.get('stageId'),
+      dealValue: formData.get('dealValue'),
       notes: formData.get('notes')
     }
 
@@ -531,6 +532,22 @@ export default function LeadsPage() {
                 </Select>
               )}
               <input type="hidden" name="projectId" value={projectId || (editingLead?.project_id || 'none')} />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Forecast Value</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                <Input
+                  name="dealValue"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={editingLead?.deals?.[0]?.amount || ''}
+                  placeholder="0.00"
+                  className="pl-7"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

@@ -578,7 +578,7 @@ export default function CampaignsPage() {
             {campaigns.map(campaign => (
               <Card key={campaign.id} className="overflow-hidden group hover:shadow-md transition-all duration-300 border-border bg-card rounded-xl">
                 <div className="relative bg-muted/30 p-4 border-b border-border/50 cursor-pointer"
-                  onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
+                  onClick={() => router.push(`/dashboard/admin/crm/campaigns/${campaign.id}/pipeline`)}
                   title="Click to Open Pipeline"
                 >
                   <div className="flex items-start justify-between">
@@ -611,7 +611,7 @@ export default function CampaignsPage() {
                   </div>
                 </div>
 
-                <CardContent className="p-5 space-y-3 cursor-pointer" onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}>
+                <CardContent className="p-5 space-y-3 cursor-pointer" onClick={() => router.push(`/dashboard/admin/crm/campaigns/${campaign.id}/pipeline`)}>
                   <div>
                     <h3 className="text-base font-semibold text-foreground mb-1 truncate hover:text-primary transition-colors">
                       {campaign.name}
@@ -698,7 +698,7 @@ export default function CampaignsPage() {
 
                     <Button
                       variant="outline"
-                      onClick={() => router.push(`/dashboard/admin/crm?project_id=${campaign.project_id}`)}
+                      onClick={() => router.push(`/dashboard/admin/crm/campaigns/${campaign.id}/pipeline`)}
                       className="w-full h-8 text-xs border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                       size="sm"
                     >

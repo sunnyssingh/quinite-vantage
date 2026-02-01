@@ -12,6 +12,9 @@ import Image from 'next/image'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { COUNTRIES } from '@/lib/constants/countries'
+
 export default function OrganizationSettingsPage() {
     const supabase = createClient()
     const [loading, setLoading] = useState(true)
@@ -40,8 +43,6 @@ export default function OrganizationSettingsPage() {
             const org = data.organization
             setOrganization(org)
             console.log('Fetched Organization:', org)
-            console.log('Settings:', org.settings)
-
 
             // If logo exists in settings, set it
             if (org.settings?.logo_url) {
@@ -121,6 +122,18 @@ export default function OrganizationSettingsPage() {
         }
     }
 
+    const handleCountryChange = (countryName) => {
+        const country = COUNTRIES.find(c => c.name === countryName)
+        if (country) {
+            setOrganization(prev => ({
+                ...prev,
+                country: country.name,
+                currency: country.currency,
+                currency_symbol: country.symbol
+            }))
+        }
+    }
+
     const handleSave = async () => {
         try {
             setLoading(true)
@@ -130,8 +143,10 @@ export default function OrganizationSettingsPage() {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    // Only address is editable by the user
-                    address: organization.settings?.address
+                    // Only country/currency are editable (if not set)
+                    country: organization.country,
+                    currency: organization.currency,
+                    currency_symbol: organization.currency_symbol
                 })
             })
 
@@ -291,21 +306,65 @@ export default function OrganizationSettingsPage() {
                         />
                     </div>
 
-                    {/* Address */}
+                    {/* Country & Currency Selection */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="country">Country</Label>
+                            <Select
+                                value={organization.country || ''}
+                                onValueChange={handleCountryChange}
+                                disabled={!!organization.country}
+                            >
+                                <SelectTrigger className={`mt-2 ${organization.country ? 'bg-gray-50 cursor-not-allowed' : ''}`}>
+                                    <SelectValue placeholder="Select Country" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {COUNTRIES.map((c) => (
+                                        <SelectItem key={c.code} value={c.name}>
+                                            {c.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {organization.country && (
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                    Country cannot be changed after onboarding.
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <Label htmlFor="currency">Currency</Label>
+                            <div className="flex items-center gap-2 mt-2">
+                                <div className="flex-1">
+                                    <Input
+                                        id="currency"
+                                        value={organization.currency ? `${organization.currency} (${organization.currency_symbol})` : 'Auto-selected'}
+                                        readOnly
+                                        disabled
+                                        className="bg-gray-50 text-gray-500 cursor-not-allowed"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Address - Read Only */}
                     <div>
                         <Label htmlFor="address">Address</Label>
                         <textarea
                             id="address"
-                            value={organization.settings?.address || ''}
-                            onChange={(e) => setOrganization({
-                                ...organization,
-                                settings: {
-                                    ...organization.settings,
-                                    address: e.target.value
-                                }
-                            })}
-                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
-                            placeholder="Enter full office address"
+                            value={[
+                                organization.address_line_1,
+                                organization.address_line_2,
+                                organization.city,
+                                organization.state,
+                                organization.pincode,
+                                organization.country
+                            ].filter(Boolean).join(', ') || ''}
+                            readOnly
+                            disabled
+                            className="flex min-h-[80px] w-full rounded-md border border-input bg-gray-50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
+                            placeholder="Address will be populated from onboarding details"
                         />
                     </div>
 

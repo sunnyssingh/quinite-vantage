@@ -261,22 +261,10 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
             </div>
 
             {/* Form Content */}
-            <div className="flex-1 py-6 md:py-8 max-w-5xl mx-auto w-full pb-24 px-6">
+            <div className="flex-1 py-4 md:py-8 max-w-5xl mx-auto w-full pb-20 px-3 md:px-6">
                 {currentStep === 0 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl flex gap-4 border border-blue-200 shadow-sm">
-                            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                                <Building2 className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-blue-900">Project Essentials</h3>
-                                <p className="text-xs text-blue-700 mt-1.5 leading-relaxed">
-                                    Provide a catchy name and detailed description to attract potential leads. Make it memorable!
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid gap-5">
+                    <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                        <div className="grid gap-6">
                             <div>
                                 <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                     <Building2 className="w-4 h-4 text-blue-600" />
@@ -290,7 +278,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 />
                                 {errors.name && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.name}</p>}
                                 {!errors.name && formData.name && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Looks good!</p>}
-                                <p className="text-xs text-slate-500 mt-1.5">💡 Tip: Choose a memorable name that reflects your project's unique features</p>
                             </div>
 
                             <div>
@@ -306,7 +293,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 />
                                 {errors.address && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.address}</p>}
                                 {!errors.address && formData.address && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Address saved!</p>}
-                                <p className="text-xs text-slate-500 mt-1.5">💡 Include plot number, street, and nearby landmarks for easy discovery</p>
                             </div>
 
                             <div>
@@ -327,7 +313,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     ) : formData.description.length >= 50 ? (
                                         <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Great description!</p>
                                     ) : (
-                                        <p className="text-xs text-slate-500">💡 Add details about amenities, location benefits, and unique features</p>
+                                        <span className="hidden"></span>
                                     )}
                                     <div className="flex items-center gap-2">
                                         <div className={`h-1.5 w-24 bg-slate-200 rounded-full overflow-hidden`}>
@@ -389,7 +375,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                                 <p className="text-sm font-semibold text-slate-900">Click to upload or drag and drop</p>
                                                 <p className="text-xs text-slate-500 mt-1">PNG, JPG, GIF up to 10MB</p>
                                             </div>
-                                            <p className="text-xs text-blue-600 font-medium">💡 Use high-quality images for better engagement</p>
                                         </div>
                                     )}
                                 </div>
@@ -398,13 +383,13 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex justify-end gap-3 pt-4 border-t mt-6">
-                            <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="min-w-[100px]">
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t mt-6 sm:flex sm:justify-end">
+                            <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleNext}
-                                className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
+                                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto sm:min-w-[120px]"
                             >
                                 Next Step
                                 <ChevronRight className="w-4 h-4 ml-2" />
@@ -414,20 +399,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 )}
 
                 {currentStep === 1 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-xl flex gap-4 border border-purple-200 shadow-sm">
-                            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center shrink-0">
-                                <Home className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-purple-900">Property Details</h3>
-                                <p className="text-xs text-purple-700 mt-1.5 leading-relaxed">
-                                    Select the property type and provide specifications to help buyers find exactly what they need.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="text-sm font-semibold text-slate-800 mb-2 block">Transaction Type</label>
                                 <select
@@ -505,7 +478,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                                 <option key={opt} value={opt}>{opt.toUpperCase()}</option>
                                             ))}
                                         </select>
-                                        <p className="text-xs text-slate-500 mt-1.5">💡 BHK = Bedroom, Hall, Kitchen</p>
                                     </div>
                                     <div>
                                         <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
@@ -519,7 +491,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                             className={`transition-all ${errors.carpetArea ? "border-red-300" : formData.carpetArea ? "border-green-400" : ""}`}
                                         />
                                         {errors.carpetArea && <p className="text-xs text-red-500 mt-1.5">{errors.carpetArea}</p>}
-                                        <p className="text-xs text-slate-500 mt-1.5">💡 Usable floor area excluding walls</p>
                                     </div>
                                     <div>
                                         <label className="text-sm font-semibold text-slate-800 mb-2 block">Built-up Area (sqft)</label>
@@ -529,7 +500,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                             onChange={e => handleChange('builtUpArea', e.target.value)}
                                             placeholder="e.g. 1450"
                                         />
-                                        <p className="text-xs text-slate-500 mt-1.5">💡 Carpet area + wall thickness</p>
                                     </div>
                                     <div>
                                         <label className="text-sm font-semibold text-slate-800 mb-2 block">Super Built-up (sqft)</label>
@@ -539,7 +509,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                             onChange={e => handleChange('superBuiltUpArea', e.target.value)}
                                             placeholder="e.g. 1600"
                                         />
-                                        <p className="text-xs text-slate-500 mt-1.5">💡 Built-up + common areas</p>
                                     </div>
                                 </div>
                             </div>
@@ -556,13 +525,13 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 <ChevronLeft className="w-4 h-4 mr-2" />
                                 Back
                             </Button>
-                            <div className="flex gap-3">
-                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="min-w-[100px]">
+                            <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3 w-full sm:w-auto ml-4">
+                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
                                     Cancel
                                 </Button>
                                 <Button
                                     onClick={handleNext}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto sm:min-w-[120px]"
                                 >
                                     Next Step
                                     <ChevronRight className="w-4 h-4 ml-2" />
@@ -573,18 +542,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 )}
 
                 {currentStep === 2 && (
-                    <div className="space-y-5 animate-in slide-in-from-right-4 duration-300">
-                        <div className="bg-indigo-50/50 p-4 rounded-lg flex gap-3 border border-indigo-100">
-                            <MapPin className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
-                            <div>
-                                <h3 className="text-sm font-semibold text-indigo-900">Pinpoint Location</h3>
-                                <p className="text-xs text-indigo-700 mt-1">
-                                    Accurate location details help leads find your project easily.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid gap-4">
+                    <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                        <div className="grid gap-6">
                             <div>
                                 <label className="text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
                                 <Input
@@ -626,13 +585,13 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 <ChevronLeft className="w-4 h-4 mr-2" />
                                 Back
                             </Button>
-                            <div className="flex gap-3">
-                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="min-w-[100px]">
+                            <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3 w-full sm:w-auto ml-4">
+                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
                                     Cancel
                                 </Button>
                                 <Button
                                     onClick={handleNext}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px]"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto sm:min-w-[120px]"
                                 >
                                     Next Step
                                     <ChevronRight className="w-4 h-4 ml-2" />
@@ -680,7 +639,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         ₹{Number(formData.priceMin).toLocaleString('en-IN')}
                                     </p>
                                 )}
-                                <p className="text-xs text-slate-500 mt-2">💡 Example: ₹50,00,000</p>
                             </div>
                             <div>
                                 <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
@@ -705,7 +663,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         ₹{Number(formData.priceMax).toLocaleString('en-IN')}
                                     </p>
                                 )}
-                                <p className="text-xs text-slate-500 mt-2">💡 Example: ₹75,00,000</p>
                             </div>
                         </div>
 
@@ -747,24 +704,24 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex justify-between gap-3 pt-4 border-t mt-6">
+                        <div className="flex justify-between items-center pt-4 border-t mt-6">
                             <Button
                                 variant="ghost"
                                 onClick={handleBack}
                                 disabled={isSubmitting}
-                                className="text-slate-500 hover:text-slate-800"
+                                className="text-slate-500 hover:text-slate-800 px-0 sm:px-4"
                             >
                                 <ChevronLeft className="w-4 h-4 mr-2" />
                                 Back
                             </Button>
-                            <div className="flex gap-3">
-                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="min-w-[100px]">
+                            <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3 w-full sm:w-auto ml-4">
+                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
                                     Cancel
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
                                     disabled={isSubmitting}
-                                    className={`min-w-[140px] ${initialData ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                                    className={`w-full sm:w-auto sm:min-w-[140px] ${initialData ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
                                 >
                                     {isSubmitting ? (
                                         <>

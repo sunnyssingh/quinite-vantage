@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogDescription
 } from '@/components/ui/dialog'
-import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List } from 'lucide-react'
+import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import ProjectCard from '@/components/projects/ProjectCard'
@@ -280,11 +280,13 @@ export default function ProjectsPage() {
 
           <Button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
+            className="gap-2 h-9 text-sm font-medium shadow-sm hover:bg-muted transition-all"
+            variant="outline"
             size="sm"
           >
-            <Plus className="w-4 h-4" />
-            {showCreateForm ? 'Cancel' : 'New Project'}
+            {showCreateForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {showCreateForm ? 'Cancel' : <span className="hidden sm:inline">New Project</span>}
+            {!showCreateForm && <span className="sm:hidden">New</span>}
           </Button>
         </div>
       </div>
@@ -300,7 +302,7 @@ export default function ProjectsPage() {
               </CardTitle>
               <CardDescription>Fill in the details to create a new real estate project</CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <ProjectForm
                 onSubmit={handleCreate}
                 onCancel={() => setShowCreateForm(false)}
@@ -356,7 +358,7 @@ export default function ProjectsPage() {
                   }}
                   onStartCampaign={(p) => {
                     // Navigate to Campaigns page filtered by project
-                    router.push(`/dashboard/admin/crm/campaigns?project_id=${p.id}`)
+                    router.push(`/dashboard/admin/crm/projects/${p.id}/campaigns`)
                   }}
                   deleting={deletingId === project.id}
                 />
@@ -400,7 +402,7 @@ export default function ProjectsPage() {
                   setViewOpen(true)
                 }}
                 onStartCampaign={(p) => {
-                  router.push(`/dashboard/admin/crm/campaigns?project_id=${p.id}`)
+                  router.push(`/dashboard/admin/crm/projects/${p.id}/campaigns`)
                 }}
                 deletingId={deletingId}
               />

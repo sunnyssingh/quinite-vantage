@@ -58,6 +58,35 @@ export default function SettingsPage() {
                         Manage users, roles, and access permissions
                     </p>
                 </Link>
+
+                <Link
+                    href="/dashboard/admin/settings/crm/pipeline"
+                    className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+                >
+                    <div className="mb-4">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-10 h-10 text-blue-600"
+                        >
+                            <path d="M21 7v6h-6" />
+                            <path d="M3 17a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3 v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2z" />
+                            <circle cx="9" cy="11" r="2" />
+                            <circle cx="15" cy="11" r="2" />
+                        </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">CRM Pipelines</h3>
+                    <p className="text-gray-600">
+                        Configure pipeline stages and settings
+                    </p>
+                </Link>
             </div>
         </div>
     )

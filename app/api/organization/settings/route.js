@@ -120,6 +120,9 @@ export async function PUT(request) {
         if (name !== undefined) updates.name = name
         if (sector !== undefined) updates.sector = sector
         if (company_name !== undefined) updates.company_name = company_name
+        if (body.country !== undefined) updates.country = body.country
+        if (body.currency !== undefined) updates.currency = body.currency
+        if (body.currency_symbol !== undefined) updates.currency_symbol = body.currency_symbol
 
         // Always include settings as we might have merged updates
         updates.settings = updatedSettings

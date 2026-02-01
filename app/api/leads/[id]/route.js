@@ -76,6 +76,44 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
+        // [Schema Alignment] Update Deal if value is provided
+        if (body.dealValue !== undefined) {
+            const amount = parseFloat(body.dealValue)
+            if (!isNaN(amount)) {
+                // Check if deal exists
+                const { data: existingDeal } = await supabase
+                    .from('deals')
+                    .select('id')
+                    .eq('lead_id', id)
+                    .single()
+
+                if (existingDeal) {
+                    await supabase
+                        .from('deals')
+                        .update({ amount })
+                        .eq('id', existingDeal.id)
+                } else {
+                    // Get user profile for organization_id
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('organization_id')
+                        .eq('id', user.id)
+                        .single()
+
+                    if (profile?.organization_id) {
+                        await supabase
+                            .from('deals')
+                            .insert({
+                                lead_id: id,
+                                amount,
+                                status: 'active',
+                                organization_id: profile.organization_id
+                            })
+                    }
+                }
+            }
+        }
+
         return NextResponse.json({ lead: data })
     } catch (error) {
         console.error('Error updating lead:', error)

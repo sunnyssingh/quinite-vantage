@@ -22,6 +22,7 @@ import { usePathname } from 'next/navigation'
 import MobileNav from '@/components/dashboard/MobileNav'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import AdminHeader from '@/components/admin/AdminHeader'
+import CustomBreadcrumbs from '@/components/ui/CustomBreadcrumbs'
 
 
 export default function AdminLayout({ children }) {
@@ -109,6 +110,9 @@ export default function AdminLayout({ children }) {
             {/* Main Content */}
             <main className={`flex-1 w-full bg-background/50 relative overflow-hidden flex flex-col ${isFullScreenModule ? '' : 'max-w-7xl mx-auto'}`}>
                 <div className={`flex-1 h-full w-full ${isFullScreenModule ? (pathname === '/dashboard/admin' ? 'overflow-y-auto no-scrollbar' : '') : 'overflow-y-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
+                    <div className={`${isFullScreenModule ? 'px-4 sm:px-6 lg:px-8 pt-4' : ''}`}>
+                        <CustomBreadcrumbs />
+                    </div>
                     {children}
                 </div>
             </main>
