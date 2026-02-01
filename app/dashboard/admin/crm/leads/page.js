@@ -1,7 +1,12 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
-import LeadSourceDialog from '@/components/crm/LeadSourceDialog'
+import dynamic from 'next/dynamic'
+
+const LeadSourceDialog = dynamic(() => import('@/components/crm/LeadSourceDialog'), {
+  ssr: false,
+  loading: () => null
+})
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -51,6 +56,7 @@ import {
 } from "@/components/ui/avatar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from 'react-hot-toast'
+import { getDefaultAvatar } from '@/lib/avatar-utils'
 
 export default function LeadsPage() {
   const searchParams = useSearchParams()
@@ -273,8 +279,14 @@ export default function LeadsPage() {
     try {
       const res = await fetch(`/api/leads/${leadToDelete.id}`, { method: 'DELETE' })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to delete lead')
+        // Only try to parse JSON if there's content
+        const contentType = res.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const data = await res.json()
+          throw new Error(data.error || 'Failed to delete lead')
+        } else {
+          throw new Error('Failed to delete lead')
+        }
       }
       setLeads(prev => prev.filter(l => l.id !== leadToDelete.id))
       toast.success("Lead deleted successfully")
@@ -630,7 +642,7 @@ export default function LeadsPage() {
                       <TableCell className="py-4">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border border-border/50">
-                            <AvatarImage src="" />
+                            <AvatarImage src={lead.avatar_url || getDefaultAvatar(lead.email || lead.name)} />
                             <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm">
                               {lead.name ? lead.name.substring(0, 2).toUpperCase() : 'NA'}
                             </AvatarFallback>

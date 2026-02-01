@@ -10,7 +10,8 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
-import { Loader2 } from 'lucide-react'
+import { User, Mail, Phone, Building2, Target, FileText } from 'lucide-react'
+
 
 export default function LeadForm({
     initialData = null,
@@ -97,34 +98,71 @@ export default function LeadForm({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="space-y-1.5">
-                <Label>Name *</Label>
-                <Input name="name" defaultValue={initialData?.name} required />
+        <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name Field */}
+            <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <User className="w-4 h-4 text-slate-500" />
+                    Full Name *
+                </Label>
+                <Input
+                    name="name"
+                    defaultValue={initialData?.name}
+                    required
+                    placeholder="Enter lead's full name"
+                    className="h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                />
             </div>
 
+            {/* Email & Phone Row */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <Label>Email</Label>
-                    <Input name="email" type="email" defaultValue={initialData?.email} />
+                <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-slate-500" />
+                        Email Address
+                    </Label>
+                    <Input
+                        name="email"
+                        type="email"
+                        defaultValue={initialData?.email}
+                        placeholder="email@example.com"
+                        className="h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
                 </div>
-                <div className="space-y-1.5">
-                    <Label>Phone</Label>
-                    <Input name="phone" defaultValue={initialData?.phone} />
+                <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-slate-500" />
+                        Phone Number *
+                    </Label>
+                    <Input
+                        name="phone"
+                        defaultValue={initialData?.phone}
+                        required
+                        placeholder="+1 (555) 000-0000"
+                        className="h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                    />
                 </div>
             </div>
 
+            {/* Project & Stage Row */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <Label>Project</Label>
+                <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-slate-500" />
+                        Project
+                    </Label>
                     <Select
                         name="projectId"
                         defaultValue={initialData?.project_id || 'none'}
                         onValueChange={handleProjectChange}
                     >
-                        <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                        <SelectTrigger className="h-11 border-slate-300">
+                            <SelectValue placeholder="Select project" />
+                        </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
+                            <SelectItem value="none">
+                                <span className="text-slate-500">No Project</span>
+                            </SelectItem>
                             {projects.map(p => (
                                 <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                             ))}
@@ -133,22 +171,25 @@ export default function LeadForm({
                 </div>
 
                 {fetchedStages.length > 0 || loadingStages ? (
-                    <div className="space-y-1.5">
-                        <Label>Pipeline Stage</Label>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <Target className="w-4 h-4 text-slate-500" />
+                            Pipeline Stage
+                        </Label>
                         <Select
                             name="stageId"
                             value={selectedStageId}
                             onValueChange={setSelectedStageId}
                             disabled={loadingStages}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger className="h-11 border-slate-300">
                                 <SelectValue placeholder={loadingStages ? "Loading..." : "Select stage"} />
                             </SelectTrigger>
                             <SelectContent>
                                 {fetchedStages.map(stage => (
                                     <SelectItem key={stage.id} value={stage.id}>
                                         <div className="flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color }} />
+                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
                                             {stage.name}
                                         </div>
                                     </SelectItem>
@@ -159,10 +200,15 @@ export default function LeadForm({
                         <input type="hidden" name="status" value="new" />
                     </div>
                 ) : (
-                    <div className="space-y-1.5">
-                        <Label>Status</Label>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <Target className="w-4 h-4 text-slate-500" />
+                            Status
+                        </Label>
                         <Select name="status" defaultValue={initialStatus || initialData?.status || 'new'}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-11 border-slate-300">
+                                <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="new">New</SelectItem>
                                 <SelectItem value="contacted">Contacted</SelectItem>
@@ -175,16 +221,37 @@ export default function LeadForm({
                 )}
             </div>
 
-            <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Textarea name="notes" defaultValue={initialData?.notes} rows={3} />
+            {/* Notes Field */}
+            <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-slate-500" />
+                    Notes
+                </Label>
+                <Textarea
+                    name="notes"
+                    defaultValue={initialData?.notes}
+                    rows={4}
+                    placeholder="Add any additional notes or context about this lead..."
+                    className="border-slate-300 focus:border-blue-500 focus:ring-blue-500 resize-none"
+                />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    {initialData ? 'Update Lead' : 'Create Lead'}
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCancel}
+                    className="h-11 px-6 border-slate-300 hover:bg-slate-50"
+                >
+                    Cancel
+                </Button>
+                <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="h-11 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all"
+                >
+                    {isSubmitting ? 'Saving...' : (initialData ? 'Update Lead' : 'Create Lead')}
                 </Button>
             </div>
         </form>

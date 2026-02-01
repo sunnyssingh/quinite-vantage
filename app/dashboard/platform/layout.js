@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   AlertCircle,
-  CreditCard
+  CreditCard,
+  Megaphone
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -96,6 +97,7 @@ export default function PlatformLayout({ children }) {
     { icon: CreditCard, label: 'Subscriptions', href: '/dashboard/platform/subscriptions' },
     { icon: FileText, label: 'Audit Logs', href: '/dashboard/platform/audit' },
     { icon: Users2, label: 'Profile', href: '/dashboard/platform/profile' },
+    { icon: Megaphone, label: 'Broadcast Notifications', href: '/dashboard/platform/notifications' },
   ]
 
 

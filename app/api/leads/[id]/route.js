@@ -82,3 +82,32 @@ export async function PUT(request, { params }) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
+
+export async function DELETE(request, { params }) {
+    try {
+        const supabase = await createServerSupabaseClient()
+        const { id } = await params
+
+        // Get user profile
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Delete lead
+        const { error } = await supabase
+            .from('leads')
+            .delete()
+            .eq('id', id)
+
+        if (error) {
+            console.error('Error deleting lead:', error)
+            return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+
+        return NextResponse.json({ success: true }, { status: 200 })
+    } catch (error) {
+        console.error('Error deleting lead:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+}

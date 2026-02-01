@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DndContext, useDraggable, useDroppable, DragOverlay } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { GripVertical, Trash2, Smartphone, Type, Mail, CheckSquare, AlignLeft, Calendar, Hash, Link as LinkIcon, List, Disc, Heading, Plus, X } from 'lucide-react'
+import { GripVertical, Trash2, Smartphone, Type, Mail, CheckSquare, AlignLeft, Calendar, Hash, Link as LinkIcon, List, Disc, Heading, Plus, X, Monitor, Copy, Check } from 'lucide-react'
 import { nanoid } from 'nanoid'
 
 // Expanded Field Types
@@ -25,12 +25,71 @@ const FIELD_TYPES = [
 ]
 
 export default function FormBuilder({ projectId }) {
-    const [fields, setFields] = useState([])
+    const [fields, setFields] = useState([
+        // Pre-populate with mandatory fields
+        {
+            id: nanoid(),
+            type: 'text',
+            label: 'Full Name',
+            placeholder: 'Ravi Sastri',
+            required: true,
+            isStatic: false
+        },
+        {
+            id: nanoid(),
+            type: 'phone',
+            label: 'Phone Number',
+            placeholder: '+918866066069',
+            required: true,
+            isStatic: false
+        }
+    ])
     const [activeDragItem, setActiveDragItem] = useState(null)
     const [selectedField, setSelectedField] = useState(null)
     const [formName, setFormName] = useState('New Lead Form')
     const [saving, setSaving] = useState(false)
     const [shareUrl, setShareUrl] = useState(null)
+    const [isMobile, setIsMobile] = useState(false)
+    const [copied, setCopied] = useState(false)
+
+    // Detect mobile device
+    useEffect(() => {
+        const checkMobile = () => {
+            const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
+            setIsMobile(mobile)
+        }
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
+
+    const handleCopy = () => {
+        if (!shareUrl) return
+        navigator.clipboard.writeText(shareUrl)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+    }
+
+    // Show mobile message if on mobile
+    if (isMobile) {
+        return (
+            <div className="flex items-center justify-center h-full p-8">
+                <div className="text-center space-y-4 max-w-md">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                        <Monitor className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-900">Desktop Required</h3>
+                    <p className="text-slate-600">
+                        The Form Builder requires a desktop or laptop computer for the best experience.
+                        Please switch to a larger screen to create and edit forms.
+                    </p>
+                    <p className="text-sm text-slate-500">
+                        Minimum screen width: 768px
+                    </p>
+                </div>
+            </div>
+        )
+    }
 
     // DND Handlers
     const handleDragStart = (e) => {
@@ -124,28 +183,36 @@ export default function FormBuilder({ projectId }) {
 
     return (
         <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex flex-col h-full gap-4">
-                {/* Header Controls */}
-                <div className="flex items-center justify-between bg-white p-4 border rounded-lg shadow-sm">
-                    <div className="flex items-center gap-4 flex-1">
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Form Name</Label>
-                            <Input
-                                value={formName}
-                                onChange={(e) => setFormName(e.target.value)}
-                                className="h-8 w-64 font-medium"
-                            />
-                        </div>
+            <div className="flex flex-col h-full gap-3">
+                {/* Compact Header Controls */}
+                <div className="flex items-center justify-between gap-3 px-1">
+                    <Input
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        placeholder="Form Name"
+                        className="h-9 max-w-xs font-medium text-sm"
+                    />
+                    <div className="flex items-center gap-2">
                         {shareUrl && (
-                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded text-xs border border-green-200">
-                                <span>Public Link:</span>
-                                <a href={shareUrl} target="_blank" className="underline font-medium hover:text-green-800">{shareUrl}</a>
+                            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-md text-xs border border-green-200">
+                                <span className="font-medium">Link:</span>
+                                <a href={shareUrl} target="_blank" className="underline hover:text-green-800 max-w-[200px] truncate">
+                                    {shareUrl}
+                                </a>
+                                <div className="h-4 w-px bg-green-200 mx-1" />
+                                <button
+                                    onClick={handleCopy}
+                                    className="p-1 hover:bg-green-100 rounded-sm transition-colors text-green-700 hover:text-green-800"
+                                    title="Copy to clipboard"
+                                >
+                                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                </button>
                             </div>
                         )}
+                        <Button onClick={handleSave} disabled={saving} size="sm" className="h-9">
+                            {saving ? 'Saving...' : 'Save & Get Link'}
+                        </Button>
                     </div>
-                    <Button onClick={handleSave} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save & Get Link'}
-                    </Button>
                 </div>
 
                 <div className="flex flex-1 border rounded-lg overflow-hidden bg-white min-h-0">
@@ -164,7 +231,7 @@ export default function FormBuilder({ projectId }) {
                         <FormCanvas fields={fields} onSelect={setSelectedField} selectedId={selectedField?.id} onRemove={removeField} />
                     </div>
 
-                    {/* 3. Properties (Right) - Narrower */}
+                    {/* 3. Properties (Right) - Only show when field selected */}
                     {selectedField ? (
                         <div className="w-64 border-l bg-white p-3 overflow-y-auto">
                             <h3 className="font-semibold text-base mb-3">Properties</h3>
@@ -229,17 +296,13 @@ export default function FormBuilder({ projectId }) {
                                 </Button>
                             </div>
                         </div>
-                    ) : (
-                        <div className="w-80 border-l bg-white p-4 flex items-center justify-center text-slate-400 text-sm">
-                            Select a field to edit properties
-                        </div>
-                    )}
+                    ) : null}
                 </div>
 
                 <DragOverlay>
                     {activeDragItem ? (
-                        <div className="p-3 bg-white border rounded shadow flex items-center gap-2 w-48 font-medium text-sm">
-                            <activeDragItem.icon className="w-4 h-4" />
+                        <div className="p-2 bg-white border-2 border-blue-500 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium cursor-grabbing">
+                            <activeDragItem.icon className="w-4 h-4 text-blue-600" />
                             {activeDragItem.label}
                         </div>
                     ) : null}

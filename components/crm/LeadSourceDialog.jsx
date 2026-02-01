@@ -4,17 +4,22 @@ import {
     DialogContent,
     DialogDescription,
     DialogHeader,
-    DialogTitle
+    DialogTitle,
+    DialogClose
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { FileText, UserPlus, Upload, Database, LayoutTemplate, Megaphone, Smartphone, Building2, Globe, Zap, MessageSquare, Mail, Webhook, Code, Linkedin, Facebook } from 'lucide-react'
+import { FileText, UserPlus, Upload, Database, LayoutTemplate, Megaphone, Smartphone, Building2, Globe, Zap, MessageSquare, Mail, Webhook, Code, Linkedin, Facebook, X } from 'lucide-react'
 import LeadForm from './LeadForm'
 import { toast } from 'react-hot-toast'
-import FormBuilder from './FormBuilder' // [NEW] moved up
+import dynamic from 'next/dynamic'
+
+const FormBuilder = dynamic(() => import('./FormBuilder'), {
+    loading: () => <div className="h-64 flex items-center justify-center text-slate-400">Loading builder...</div>
+})
 
 export default function LeadSourceDialog({ open, onOpenChange, projectId, projects }) {
     const [activeTab, setActiveTab] = useState('manual')
@@ -141,40 +146,73 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden sm:rounded-xl">
-                <div className="p-4 border-b border-border flex items-center justify-between bg-background">
-                    <div>
-                        <DialogTitle className="text-lg font-semibold tracking-tight">Add New Leads</DialogTitle>
-                        <DialogDescription className="text-muted-foreground mt-1">Choose a method to bring leads into your pipeline.</DialogDescription>
+            <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden sm:rounded-2xl border-0 shadow-2xl [&>button]:hidden">
+                {/* Compact Header */}
+                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <DialogTitle className="text-xl font-bold text-white">Add New Leads</DialogTitle>
+                            <DialogDescription className="text-blue-100 text-xs mt-0.5">
+                                Choose your preferred method to capture leads
+                            </DialogDescription>
+                        </div>
+                        <DialogClose className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-white/50">
+                            <X className="h-5 w-5" />
+                            <span className="sr-only">Close</span>
+                        </DialogClose>
                     </div>
                 </div>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                    <div className="px-4 pb-2 bg-background">
-                        <TabsList className="grid grid-cols-4 w-full max-w-2xl bg-muted/50 p-1">
-                            <TabsTrigger value="manual" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-xs">
-                                <UserPlus className="w-3.5 h-3.5 mr-2" /> Manual
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 bg-slate-50">
+                    {/* Compact Tab Navigation */}
+                    <div className="px-6 py-3 bg-white border-b border-slate-200">
+                        <TabsList className="grid grid-cols-4 w-full bg-slate-100/80 p-1 rounded-lg h-auto">
+                            <TabsTrigger
+                                value="manual"
+                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md py-2 px-3 transition-all duration-200 text-xs font-medium"
+                            >
+                                <UserPlus className="w-4 h-4 mr-1.5" />
+                                Manual
                             </TabsTrigger>
-                            <TabsTrigger value="builder" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-xs">
-                                <LayoutTemplate className="w-3.5 h-3.5 mr-2" /> Form Builder
+                            <TabsTrigger
+                                value="builder"
+                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md py-2 px-3 transition-all duration-200 text-xs font-medium"
+                            >
+                                <LayoutTemplate className="w-4 h-4 mr-1.5" />
+                                Form Builder
                             </TabsTrigger>
-                            <TabsTrigger value="import" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-xs">
-                                <Upload className="w-3.5 h-3.5 mr-2" /> CSV Import
+                            <TabsTrigger
+                                value="import"
+                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md py-2 px-3 transition-all duration-200 text-xs font-medium"
+                            >
+                                <Upload className="w-4 h-4 mr-1.5" />
+                                CSV Import
                             </TabsTrigger>
-                            <TabsTrigger value="connect" className="data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-xs">
-                                <Database className="w-3.5 h-3.5 mr-2" /> Integrations
+                            <TabsTrigger
+                                value="connect"
+                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md py-2 px-3 transition-all duration-200 text-xs font-medium"
+                            >
+                                <Database className="w-4 h-4 mr-1.5" />
+                                Integrations
                             </TabsTrigger>
                         </TabsList>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto bg-muted/10" style={{ padding: '1rem' }}>
+                    <div className="flex-1 overflow-y-auto" style={{ padding: '1.5rem' }}>
                         <TabsContent value="manual" className="mt-0 h-full">
-                            <Card className="max-w-2xl mx-auto border-0 shadow-none bg-transparent">
-                                <CardHeader className="px-0 pt-0">
-                                    <CardTitle className="text-base font-medium">Single Lead Entry</CardTitle>
-                                    <CardDescription>Manually enter lead details for immediate follow-up.</CardDescription>
+                            <Card className="max-w-3xl mx-auto border shadow-md bg-white rounded-xl overflow-hidden">
+                                <CardHeader className="bg-slate-50/50 border-b border-slate-200 py-4 px-6">
+                                    <div className="flex items-center gap-2">
+                                        <UserPlus className="w-5 h-5 text-blue-600" />
+                                        <div>
+                                            <CardTitle className="text-base font-semibold text-slate-900">Single Lead Entry</CardTitle>
+                                            <CardDescription className="text-xs text-slate-600 mt-0.5">
+                                                Manually enter lead details for immediate follow-up
+                                            </CardDescription>
+                                        </div>
+                                    </div>
                                 </CardHeader>
-                                <CardContent className="px-0">
+                                <CardContent className="p-6">
                                     <LeadForm
                                         projects={projects}
                                         initialData={{ project_id: projectId }}
@@ -185,14 +223,17 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify(data)
                                                 })
+                                                const result = await res.json()
                                                 if (res.ok) {
                                                     toast.success("Lead added!")
                                                     onOpenChange(false)
                                                 } else {
-                                                    toast.error("Failed")
+                                                    console.error('[LeadSourceDialog] API Error:', result)
+                                                    toast.error(result.error || "Failed to create lead")
                                                 }
                                             } catch (e) {
-                                                console.error(e)
+                                                console.error('[LeadSourceDialog] Exception:', e)
+                                                toast.error("Network error: " + e.message)
                                             }
                                         }}
                                         onCancel={() => onOpenChange(false)}

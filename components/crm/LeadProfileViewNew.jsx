@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Mail, Phone, Building, MapPin, TrendingUp, X, Edit2, Save } from 'lucide-react'
+import { Mail, Phone, Building, MapPin, TrendingUp, X, Edit2, Save, Camera } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import LeadActivityTimeline from '@/components/crm/LeadActivityTimeline'
 import ClientPreferencesCard from '@/components/crm/ClientPreferencesCard'
@@ -15,8 +15,10 @@ import BestTimeToContactCard from '@/components/crm/BestTimeToContactCard'
 import SentimentAnalysisCard from '@/components/crm/SentimentAnalysisCard'
 import { Textarea } from '@/components/ui/textarea'
 import EditLeadProfileDialog from '@/components/crm/EditLeadProfileDialog'
+import AvatarPickerDialog from '@/components/crm/AvatarPickerDialog'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // Helper to get initials
 const getInitials = (name) => {
@@ -37,6 +39,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     const [notes, setNotes] = useState('')
     const [savingNotes, setSavingNotes] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
+    const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
 
     useEffect(() => {
         if (lead?.notes) setNotes(lead.notes)
@@ -70,10 +73,13 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         try {
             setLoading(true)
 
-            // Fetch lead basic info
-            const leadRes = await fetch(`/api/leads/${leadId}`)
+            // Fetch lead basic info (with cache-busting to ensure fresh data)
+            const leadRes = await fetch(`/api/leads/${leadId}?t=${Date.now()}`, {
+                cache: 'no-store'
+            })
             if (!leadRes.ok) throw new Error('Failed to fetch lead')
             const leadData = await leadRes.json()
+            console.log('Fetched lead data:', leadData.lead.avatar_url) // Debug log
             setLead(leadData.lead)
 
             // Fetch lead profile
@@ -110,10 +116,23 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full min-h-[400px]">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Loading lead profile...</p>
+            <div className="space-y-6 p-6">
+                {/* Header Skeleton */}
+                <div className="flex items-center gap-4">
+                    <Skeleton className="h-24 w-24 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                </div>
+                {/* Tabs Skeleton */}
+                <Skeleton className="h-10 w-full" />
+                {/* Content Skeleton */}
+                <div className="grid grid-cols-2 gap-4">
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
                 </div>
             </div>
         )
@@ -135,9 +154,9 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     }
 
     return (
-        <div className={`flex h-full bg-background ${isModal ? '' : 'min-h-screen'}`}>
+        <div className={`flex flex-col md:flex-row h-full bg-background ${isModal ? '' : 'min-h-screen'}`}>
             {/* Sidebar */}
-            <div className="w-80 border-r bg-card flex flex-col shrink-0 overflow-y-auto">
+            <div className="w-full md:w-80 border-r-0 border-b md:border-b-0 md:border-r bg-card flex flex-col shrink-0 overflow-y-visible md:overflow-y-auto h-auto md:h-full">
                 <div
                     className="h-32 shrink-0 w-full"
                     style={{
@@ -145,21 +164,38 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                     }}
                 />
 
-                <div className="flex flex-col items-center text-center px-6 -mt-12 mb-6">
-                    <div className="relative mb-4">
-                        <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                            <AvatarImage src={lead.avatar_url} alt={lead.name} />
-                            <AvatarImage src={lead.avatar_url} alt={lead.name} />
+                <div className="flex flex-col items-center text-center px-4 md:px-6 -mt-12 mb-4 md:mb-6">
+                    <div className="relative mb-4 group">
+                        <Avatar key={lead.avatar_url || 'no-avatar'} className="h-24 w-24 border-4 border-background shadow-lg">
+                            {lead.avatar_url ? (
+                                <img
+                                    src={lead.avatar_url}
+                                    alt={lead.name}
+                                    className="aspect-square h-full w-full object-cover"
+                                    onError={(e) => {
+                                        console.error('Avatar failed to load:', lead.avatar_url)
+                                        e.target.style.display = 'none'
+                                    }}
+                                />
+                            ) : null}
                             <AvatarFallback className="text-2xl font-bold bg-white text-primary shadow-sm">
                                 {getInitials(lead.name)}
                             </AvatarFallback>
                         </Avatar>
+                        {/* Edit Avatar Overlay */}
+                        <button
+                            onClick={() => setAvatarPickerOpen(true)}
+                            className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                            aria-label="Change avatar"
+                        >
+                            <Camera className="w-6 h-6 text-white" />
+                        </button>
                     </div>
                     <h2 className="text-xl font-bold text-foreground">{lead.name}</h2>
                     <p className="text-sm text-muted-foreground">{profile.company || 'No Company'}</p>
                 </div>
 
-                <div className="space-y-6 px-6 pb-6">
+                <div className="space-y-4 md:space-y-6 px-4 md:px-6 pb-4 md:pb-6">
                     <div>
                         <h3 className="text-sm font-semibold text-primary mb-3">Client Info</h3>
                         <div className="space-y-3">
@@ -219,9 +255,9 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 bg-muted/10">
-                <div className="border-b bg-background px-6">
+                <div className="border-b bg-background px-4 md:px-6 overflow-x-auto hide-scrollbar">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-                        <TabsList className="h-14 w-full justify-start bg-transparent p-0 space-x-6">
+                        <TabsList className="h-14 w-full justify-start bg-transparent p-0 space-x-6 min-w-max">
                             {['overview', 'notes', 'emails', 'timeline'].map(tab => (
                                 <TabsTrigger
                                     key={tab}
@@ -235,7 +271,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                     </Tabs>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6">
                     {activeTab === 'overview' && (
                         <div className="grid grid-cols-12 gap-6 pb-6">
                             {/* Row 1 */}
@@ -343,6 +379,13 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 onOpenChange={setEditDialogOpen}
                 lead={lead}
                 profile={profile}
+                onSave={fetchLeadData}
+            />
+
+            <AvatarPickerDialog
+                open={avatarPickerOpen}
+                onOpenChange={setAvatarPickerOpen}
+                lead={lead}
                 onSave={fetchLeadData}
             />
         </div>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Lock, Loader2 } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 export default function ChangePasswordForm() {
@@ -101,14 +101,7 @@ export default function ChangePasswordForm() {
                         disabled={loading}
                         className="w-full sm:w-auto"
                     >
-                        {loading ? (
-                            <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Updating...
-                            </>
-                        ) : (
-                            'Update Password'
-                        )}
+                        {loading ? 'Updating...' : 'Update Password'}
                     </Button>
                 </form>
             </CardContent>

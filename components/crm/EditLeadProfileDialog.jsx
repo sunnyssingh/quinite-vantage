@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'react-hot-toast'
-import { Loader2 } from 'lucide-react'
+import { X } from 'lucide-react'
 
 export default function EditLeadProfileDialog({ open, onOpenChange, lead, profile, onSave }) {
     const [loading, setLoading] = useState(false)
@@ -25,23 +25,8 @@ export default function EditLeadProfileDialog({ open, onOpenChange, lead, profil
         mailing_city: '',
         mailing_state: '',
         mailing_zip: '',
-        mailing_zip: '',
-        mailing_country: '',
-        avatar_url: ''
+        mailing_country: ''
     })
-
-    const AVATAR_OPTIONS = [
-        'https://robohash.org/Felix.png?set=set4&size=150x150',
-        'https://robohash.org/Aneka.png?set=set4&size=150x150',
-        'https://robohash.org/Zoe.png?set=set4&size=150x150',
-        'https://robohash.org/Loki.png?set=set4&size=150x150',
-        'https://robohash.org/Misty.png?set=set4&size=150x150',
-        'https://robohash.org/Shadow.png?set=set4&size=150x150',
-        'https://robohash.org/Luna.png?set=set4&size=150x150',
-        'https://robohash.org/Oreo.png?set=set4&size=150x150',
-        'https://robohash.org/Simba.png?set=set4&size=150x150',
-        'https://robohash.org/Bella.png?set=set4&size=150x150'
-    ]
 
     useEffect(() => {
         if (lead && profile) {
@@ -57,9 +42,7 @@ export default function EditLeadProfileDialog({ open, onOpenChange, lead, profil
                 mailing_city: profile.mailing_city || '',
                 mailing_state: profile.mailing_state || '',
                 mailing_zip: profile.mailing_zip || '',
-                mailing_zip: profile.mailing_zip || '',
-                mailing_country: profile.mailing_country || '',
-                avatar_url: lead.avatar_url || ''
+                mailing_country: profile.mailing_country || ''
             })
         }
     }, [lead, profile, open])
@@ -83,13 +66,15 @@ export default function EditLeadProfileDialog({ open, onOpenChange, lead, profil
                     phone: formData.phone,
                     mobile: formData.mobile,
                     title: formData.title,
-                    title: formData.title,
-                    department: formData.department,
-                    avatar_url: formData.avatar_url
+                    department: formData.department
                 })
             })
 
-            if (!leadRes.ok) throw new Error('Failed to update lead basic info')
+            if (!leadRes.ok) {
+                const errorData = await leadRes.json()
+                console.error('Lead update failed:', errorData)
+                throw new Error(errorData.error || 'Failed to update lead basic info')
+            }
 
             // Update Profile Info
             const profileRes = await fetch(`/api/leads/${lead.id}/profile`, {
@@ -128,10 +113,9 @@ export default function EditLeadProfileDialog({ open, onOpenChange, lead, profil
 
                 <form onSubmit={handleSubmit}>
                     <Tabs defaultValue="contact" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="contact">Contact</TabsTrigger>
                             <TabsTrigger value="address">Address</TabsTrigger>
-                            <TabsTrigger value="avatar">Avatar</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="contact" className="space-y-4 py-4">
@@ -169,19 +153,7 @@ export default function EditLeadProfileDialog({ open, onOpenChange, lead, profil
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="avatar" className="py-4">
-                            <div className="grid grid-cols-5 gap-4">
-                                {AVATAR_OPTIONS.map((url, i) => (
-                                    <div
-                                        key={i}
-                                        className={`cursor-pointer rounded-full overflow-hidden border-4 transition-all ${formData.avatar_url === url ? 'border-primary scale-110 shadow-md' : 'border-transparent hover:border-muted hover:scale-105'}`}
-                                        onClick={() => setFormData(prev => ({ ...prev, avatar_url: url }))}
-                                    >
-                                        <img src={url} alt={`Avatar ${i + 1}`} className="w-full h-full bg-secondary object-cover" />
-                                    </div>
-                                ))}
-                            </div>
-                        </TabsContent>
+
 
                         <TabsContent value="address" className="space-y-4 py-4">
                             <div className="space-y-2">
@@ -216,8 +188,7 @@ export default function EditLeadProfileDialog({ open, onOpenChange, lead, profil
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                         <Button type="submit" disabled={loading}>
-                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Save Changes
+                            {loading ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </DialogFooter>
                 </form>
