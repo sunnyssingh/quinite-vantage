@@ -137,6 +137,32 @@ export async function POST(request) {
       console.warn('Audit log failed:', e.message)
     }
 
+    // Automatic Campaign Creation
+    try {
+      const today = new Date()
+      const nextMonth = new Date(today)
+      nextMonth.setMonth(nextMonth.getMonth() + 1)
+
+      const campaignPayload = {
+        organization_id: profile.organization_id,
+        project_id: project.id,
+        name: `${project.name} Campaign`,
+        description: `Default campaign for ${project.name}`,
+        start_date: today.toISOString().split('T')[0],
+        end_date: nextMonth.toISOString().split('T')[0],
+        time_start: '09:00',
+        time_end: '17:00',
+        status: 'scheduled',
+        created_by: user.id
+      }
+
+      await admin.from('campaigns').insert(campaignPayload)
+
+    } catch (campError) {
+      console.error('Failed to auto-create campaign:', campError)
+      // We don't block the project creation response if this fails, just log it.
+    }
+
     return corsJSON({ project })
   } catch (e) {
     console.error('projects POST error:', e)

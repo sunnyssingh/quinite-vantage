@@ -53,7 +53,6 @@ export async function POST(request, { params }) {
             return NextResponse.json({ error: 'No organization found' }, { status: 403 })
         }
 
-        // Create task
         const { data, error } = await supabase
             .from('lead_tasks')
             .insert({
@@ -62,7 +61,9 @@ export async function POST(request, { params }) {
                 title: body.title,
                 description: body.description,
                 due_date: body.due_date,
+                due_time: body.due_time,
                 priority: body.priority || 'medium',
+                status: body.status || 'pending',
                 assigned_to: body.assigned_to,
                 created_by: user.id
             })
@@ -70,12 +71,13 @@ export async function POST(request, { params }) {
             .single()
 
         if (error) {
+            console.error('Supabase error creating task:', error)
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
         return NextResponse.json({ task: data })
     } catch (error) {
         console.error('Error creating task:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
     }
 }

@@ -17,7 +17,7 @@ export async function GET(request, { params }) {
             .from('leads')
             .select(`
                 *,
-                project:projects(id, name),
+                project:projects(id, name, image_url, address, project_type),
                 deals(*)
             `)
             .eq('id', id)

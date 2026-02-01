@@ -48,6 +48,54 @@ export async function PUT(request, { params }) {
     }
 }
 
+export async function PATCH(request, { params }) {
+    try {
+        const supabase = await createServerSupabaseClient()
+        const { id, taskId } = await params
+        const body = await request.json()
+
+        // Get user profile
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Prepare update data (only update provided fields)
+        const updateData = {}
+        if (body.status !== undefined) updateData.status = body.status
+        if (body.title !== undefined) updateData.title = body.title
+        if (body.description !== undefined) updateData.description = body.description
+        if (body.due_date !== undefined) updateData.due_date = body.due_date
+        if (body.priority !== undefined) updateData.priority = body.priority
+        if (body.assigned_to !== undefined) updateData.assigned_to = body.assigned_to
+
+        // If marking as completed, set completed_at
+        if (body.status === 'completed') {
+            updateData.completed_at = new Date().toISOString()
+        } else if (body.status === 'pending') {
+            updateData.completed_at = null
+        }
+
+        // Update task
+        const { data, error } = await supabase
+            .from('lead_tasks')
+            .update(updateData)
+            .eq('id', taskId)
+            .eq('lead_id', id)
+            .select('*')
+            .single()
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 })
+        }
+
+        return NextResponse.json({ task: data })
+    } catch (error) {
+        console.error('Error updating task:', error)
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
+}
+
 export async function DELETE(request, { params }) {
     try {
         const supabase = await createServerSupabaseClient()

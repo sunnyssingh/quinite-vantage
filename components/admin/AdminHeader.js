@@ -39,6 +39,7 @@ import {
     SheetTitle
 } from "@/components/ui/sheet" // [NEW]
 import { Button } from '@/components/ui/button'
+import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { GlobalSearch } from './GlobalSearch'
 import { NotificationBell } from './NotificationBell'
@@ -56,7 +57,7 @@ export default function AdminHeader({ user, profile }) {
 
     const navItems = [
         { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
-        { label: 'CRM', href: '/dashboard/admin/crm/dashboard', icon: KanbanSquare },
+        { label: 'CRM', href: '/dashboard/admin/crm', icon: KanbanSquare },
         { label: 'Inventory', href: '/dashboard/admin/inventory', icon: Building },
         { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 }
     ]
@@ -75,11 +76,11 @@ export default function AdminHeader({ user, profile }) {
     const isCrmModule = pathname?.startsWith('/dashboard/admin/crm')
 
     return (
-        <header className="sticky top-0 z-30 w-full border-b border-border bg-white shadow-sm">
+        <header className="sticky top-0 z-30 w-full  border-border bg-white">
             <div className="w-full px-4 sm:px-6">
                 <div className="flex justify-between h-14 items-center">
                     {/* Left Section: Logo & Nav */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-6 h-full">
                         {/* Mobile Menu */}
                         <div className="md:hidden">
                             <Sheet open={open} onOpenChange={setOpen}>
@@ -91,7 +92,7 @@ export default function AdminHeader({ user, profile }) {
                                 <SheetContent side="left" className="w-[80%] sm:w-[300px] p-0 overflow-y-auto">
                                     <SheetHeader className="p-6 border-b border-border text-left">
                                         <SheetTitle className="flex items-center gap-2">
-                                            <div className="relative w-8 h-8">
+                                            <div className="relative w-10 h-10">
                                                 <Image
                                                     src="/assets/logo.svg"
                                                     alt="Quinite Vantage"
@@ -99,7 +100,6 @@ export default function AdminHeader({ user, profile }) {
                                                     className="object-contain"
                                                 />
                                             </div>
-                                            <span>Quinite Vantage</span>
                                         </SheetTitle>
                                     </SheetHeader>
                                     <div className="p-4 flex flex-col gap-1">
@@ -111,12 +111,12 @@ export default function AdminHeader({ user, profile }) {
                                                     key={item.href}
                                                     href={item.href}
                                                     onClick={() => setOpen(false)}
-                                                    className={`
-                                                        flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
-                                                        ${isActive
-                                                            ? 'bg-blue-50 text-blue-700'
-                                                            : 'text-muted-foreground hover:bg-slate-50 hover:text-foreground'}
-                                                    `}
+                                                    className={cn(
+                                                        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                                                        isActive
+                                                            ? "bg-blue-50 text-blue-700"
+                                                            : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
+                                                    )}
                                                 >
                                                     <Icon className="w-4 h-4" />
                                                     {item.label}
@@ -127,7 +127,7 @@ export default function AdminHeader({ user, profile }) {
                                         {isCrmModule && (
                                             <>
                                                 <div className="my-2 border-t border-border" />
-                                                <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                                <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
                                                     CRM Module
                                                 </div>
                                                 {crmNavItems.map((item) => {
@@ -138,12 +138,12 @@ export default function AdminHeader({ user, profile }) {
                                                             key={item.href}
                                                             href={item.href}
                                                             onClick={() => setOpen(false)}
-                                                            className={`
-                                                                flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
-                                                                ${isActive
-                                                                    ? 'bg-blue-50 text-blue-700'
-                                                                    : 'text-muted-foreground hover:bg-slate-50 hover:text-foreground'}
-                                                            `}
+                                                            className={cn(
+                                                                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                                                                isActive
+                                                                    ? "bg-blue-50 text-blue-700"
+                                                                    : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
+                                                            )}
                                                         >
                                                             <Icon className="w-4 h-4" />
                                                             {item.label}
@@ -157,8 +157,9 @@ export default function AdminHeader({ user, profile }) {
                             </Sheet>
                         </div>
 
-                        {/* Logo */}
-                        <div className="flex-shrink-0 flex items-center gap-4">
+                        {/* Logo - Mobile & Desktop */}
+                        <div className="flex-shrink-0 flex items-center gap-4 h-full">
+                            {/* Desktop: Full Logo */}
                             <div className="relative w-32 h-8 hidden md:block">
                                 <Image
                                     src="/assets/logo.svg"
@@ -169,11 +170,22 @@ export default function AdminHeader({ user, profile }) {
                                 />
                             </div>
 
+                            {/* Mobile: Logo Icon Only */}
+                            <div className="relative w-8 h-8 md:hidden">
+                                <Image
+                                    src="/assets/logo.svg"
+                                    alt="Quinite Vantage"
+                                    fill
+                                    className="object-contain"
+                                    priority
+                                />
+                            </div>
+
                             {/* Vertical Separator */}
                             <div className="hidden md:block h-6 w-px bg-slate-200"></div>
 
                             {/* Desktop Nav */}
-                            <nav className="hidden md:flex items-center gap-1">
+                            <nav className="hidden md:flex items-end h-full">
                                 {navItems.map((item) => {
                                     const isActive = pathname === item.href || (item.href !== '/dashboard/admin' && pathname.startsWith(item.href))
                                     const Icon = item.icon
@@ -182,14 +194,24 @@ export default function AdminHeader({ user, profile }) {
                                         <Link
                                             key={item.href}
                                             href={item.href}
-                                            className={`
-                                                flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200
-                                                ${isActive
-                                                    ? 'bg-blue-50 text-blue-700'
-                                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}
-                                            `}
+                                            className={cn(
+                                                "relative flex items-center gap-2 px-5 text-sm font-medium transition-all duration-300 rounded-t-lg", // Thinner font, smoother roundness
+                                                /* Height calculation: Full height minus top margin. Natural feel = floating slightly off top */
+                                                "h-[calc(100%-12px)] mb-0",
+                                                isActive
+                                                    ? "text-blue-600 bg-[#f5f8fb]" // Clean, no shadow, no border. Just color.
+                                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50 h-[calc(100%-18px)] mb-1.5 rounded-md"
+                                            )}
                                         >
-                                            <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                                            {/* Top Gradient Border */}
+                                            {isActive && (
+                                                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-lg" />
+                                            )}
+
+                                            <Icon className={cn(
+                                                "w-4 h-4 mb-0.5",
+                                                isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
+                                            )} />
                                             {item.label}
                                         </Link>
                                     )

@@ -483,17 +483,18 @@ export default function SubscriptionPage() {
                         ))}
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)}>
+                    <div className="grid grid-cols-2 gap-4 mt-6 sm:flex sm:justify-end">
+                        <Button variant="outline" onClick={() => setUpgradeDialogOpen(false)} className="w-full sm:w-auto">
                             Cancel
                         </Button>
                         <Button
                             onClick={() => selectedPlan && handleUpgrade(selectedPlan.slug)}
                             disabled={!selectedPlan || selectedPlan.id === subscription?.plan?.id}
+                            className="w-full sm:w-auto"
                         >
                             {selectedPlan?.features.custom_pricing ? 'Contact Sales' : 'Upgrade Now'}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -537,14 +538,14 @@ export default function SubscriptionPage() {
                         </div>
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setMandateDialogOpen(false)}>
+                    <div className="grid grid-cols-2 gap-4 mt-6 sm:flex sm:justify-end">
+                        <Button variant="outline" onClick={() => setMandateDialogOpen(false)} className="w-full sm:w-auto">
                             Cancel
                         </Button>
-                        <Button onClick={handleConfirmMandate}>
+                        <Button onClick={handleConfirmMandate} className="w-full sm:w-auto">
                             Confirm Mandate
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 

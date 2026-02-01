@@ -441,7 +441,7 @@ export default function ProjectCampaignsPage() {
                                         </Button>
                                         <Button
                                             variant="outline"
-                                            onClick={() => router.push(`/dashboard/admin/crm/projects/${campaign.project_id}/pipeline`)}
+                                            onClick={() => router.push(`/dashboard/admin/crm/projects/${campaign.project_id}/campaigns/${campaign.id}/pipeline`)}
                                             className="w-full h-8 text-xs border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                                             size="sm"
                                         >

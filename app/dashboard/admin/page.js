@@ -20,6 +20,7 @@ import {
     Building
 } from 'lucide-react'
 import Link from 'next/link'
+import CustomBreadcrumbs from '@/components/ui/CustomBreadcrumbs'
 
 export default function AdminDashboardPage() {
     const [dashboardStats, setDashboardStats] = useState({
@@ -134,7 +135,10 @@ export default function AdminDashboardPage() {
     }
 
     return (
-        <div className="p-6 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <div className="p-4 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
+            <div className="mb-2">
+                <CustomBreadcrumbs />
+            </div>
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>

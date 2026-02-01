@@ -213,56 +213,64 @@ export default function LeadActivityTimeline({ leadId }) {
             <CardContent>
                 {interactions.length === 0 ? (
                     <div className="text-center py-12">
-                        <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No activity recorded yet</p>
-                        <p className="text-sm text-muted-foreground mt-1">Add your first interaction to start tracking</p>
+                        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <FileText className="w-6 h-6 text-gray-300" />
+                        </div>
+                        <p className="font-medium text-gray-900">No activity yet</p>
+                        <p className="text-sm text-gray-500 mt-1">Start by adding a note or logging a call.</p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="relative pl-4 space-y-8 before:absolute before:inset-y-0 before:left-[11px] before:w-[2px] before:bg-gray-200 first:before:mt-1 last:before:h-auto">
                         {interactions.map((interaction) => {
                             const typeInfo = INTERACTION_TYPES[interaction.type] || INTERACTION_TYPES.note
                             const Icon = typeInfo.icon
 
                             return (
-                                <div key={interaction.id} className="flex gap-4 pb-4 border-b last:border-0">
-                                    <div className={`p-2 rounded-lg h-fit ${typeInfo.color}`}>
-                                        <Icon className="w-4 h-4" />
+                                <div key={interaction.id} className="relative pl-6">
+                                    {/* Timeline Node */}
+                                    <div className={`absolute left-[-21px] top-0 p-1.5 rounded-full bg-white ring-4 ring-white border-2 ${typeInfo.color.replace('text-', 'border-').replace('bg-', 'border-').split(' ')[0]}-200`}>
+                                        <Icon className={`w-3.5 h-3.5 ${typeInfo.color.split(' ')[1]}`} />
                                     </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-start justify-between mb-1">
-                                            <div>
-                                                <h4 className="font-medium">{interaction.subject}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <Badge variant="outline" className="text-xs">
-                                                        {typeInfo.label}
-                                                    </Badge>
-                                                    <Badge variant="outline" className="text-xs capitalize">
-                                                        {interaction.direction}
-                                                    </Badge>
-                                                    {interaction.duration && (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {interaction.duration} min
-                                                        </span>
-                                                    )}
-                                                </div>
+
+                                    {/* Content Card */}
+                                    <div className="space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="font-semibold text-sm text-gray-900">{interaction.subject}</h4>
+                                                <Badge variant="secondary" className="text-[10px] font-medium px-1.5 py-0 h-5">
+                                                    {typeInfo.label}
+                                                </Badge>
                                             </div>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs text-gray-400 whitespace-nowrap">
                                                 {formatDistanceToNow(new Date(interaction.created_at), { addSuffix: true })}
                                             </span>
                                         </div>
+
                                         {interaction.content && (
-                                            <p className="text-sm text-muted-foreground mt-2">{interaction.content}</p>
+                                            <div className="text-sm text-gray-600 bg-gray-50/50 p-3 rounded-md border border-gray-100">
+                                                {interaction.content}
+                                            </div>
                                         )}
-                                        {interaction.outcome && (
-                                            <p className="text-sm text-foreground mt-2">
-                                                <span className="font-medium">Outcome:</span> {interaction.outcome}
-                                            </p>
-                                        )}
-                                        {interaction.created_by_user && (
-                                            <p className="text-xs text-muted-foreground mt-2">
-                                                By {interaction.created_by_user.name}
-                                            </p>
-                                        )}
+
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-xs text-gray-500">
+                                            {interaction.duration && (
+                                                <div className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    <span>{interaction.duration}m</span>
+                                                </div>
+                                            )}
+                                            {interaction.outcome && (
+                                                <div className="flex items-center gap-1">
+                                                    <span className="font-medium text-gray-700">Outcome:</span>
+                                                    <span>{interaction.outcome}</span>
+                                                </div>
+                                            )}
+                                            {interaction.created_by_user && (
+                                                <div className="flex items-center gap-1 ml-auto">
+                                                    <span>by {interaction.created_by_user.name}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )

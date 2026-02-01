@@ -17,25 +17,30 @@ export async function GET() {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.error('Users API - Auth error:', authError)
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get current user's profile
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('organization_id, is_platform_admin')
+      .select('organization_id')
       .eq('id', user.id)
       .single()
 
-    if (!profile?.organization_id && !profile?.is_platform_admin) {
-      return corsJSON({ error: 'Organization not found' }, { status: 400 })
+    console.log('Users API - Profile:', profile, 'Error:', profileError)
+
+    if (!profile?.organization_id) {
+      console.warn('Users API - No organization found for user:', user.id)
+      // Return empty array instead of error for better UX
+      return corsJSON({ users: [] })
     }
 
     // Use admin client to bypass RLS and get all users
     const adminClient = createAdminClient()
 
-    // Get all users in the organization (without role join to avoid filtering)
-    let query = adminClient
+    // Get all users in the organization
+    const { data: users, error } = await adminClient
       .from('profiles')
       .select(`
         id,
@@ -43,33 +48,19 @@ export async function GET() {
         full_name,
         phone,
         organization_id,
-        is_platform_admin,
-        role_id,
+        role,
         created_at
       `)
+      .eq('organization_id', profile.organization_id)
       .order('created_at', { ascending: false })
 
-    // Platform admins can see all users, regular users only see their org
-    if (!profile.is_platform_admin) {
-      query = query.eq('organization_id', profile.organization_id)
+    if (error) {
+      console.error('Users API - Query error:', error)
+      throw error
     }
 
-    const { data: users, error } = await query
-
-    if (error) throw error
-
-    // Fetch all roles separately
-    const { data: allRoles } = await adminClient
-      .from('roles')
-      .select('id, name, description')
-
-    // Map roles to users
-    const usersWithRoles = users?.map(user => ({
-      ...user,
-      role: allRoles?.find(r => r.id === user.role_id) || null
-    })) || []
-
-    return corsJSON({ users: usersWithRoles })
+    // Return users with role already included
+    return corsJSON({ users: users || [] })
   } catch (e) {
     console.error('users GET error:', e)
     return corsJSON({ error: e.message }, { status: 500 })

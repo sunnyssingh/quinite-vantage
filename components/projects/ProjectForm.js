@@ -240,7 +240,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                             return (
                                 <div key={step.id} className="flex flex-col items-center gap-2 bg-gradient-to-br from-slate-50 to-blue-50/30 px-1 md:px-3">
                                     <div className={`
-                                        w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                                        w-8 h-8 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300
                                         ${isActive ? 'border-blue-600 bg-blue-500 text-white scale-110 shadow-lg shadow-blue-200' :
                                             isCompleted ? 'border-green-500 bg-green-500 text-white shadow-md' :
                                                 'border-slate-300 bg-white text-slate-400'}
@@ -266,7 +266,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                         <div className="grid gap-6">
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                     <Building2 className="w-4 h-4 text-blue-600" />
                                     Project Name *
                                 </label>
@@ -274,14 +274,14 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     value={formData.name}
                                     onChange={e => handleChange('name', e.target.value)}
                                     placeholder="e.g. Sunrise Heights, Green Valley Residency"
-                                    className={`transition-all ${errors.name ? "border-red-300 focus-visible:ring-red-200" : formData.name ? "border-green-400 focus-visible:ring-green-200" : ""}`}
+                                    className={`transition-all text-xs sm:text-sm ${errors.name ? "border-red-300 focus-visible:ring-red-200" : formData.name ? "border-green-400 focus-visible:ring-green-200" : ""}`}
                                 />
                                 {errors.name && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.name}</p>}
                                 {!errors.name && formData.name && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Looks good!</p>}
                             </div>
 
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                     <MapPin className="w-4 h-4 text-blue-600" />
                                     Full Address *
                                 </label>
@@ -289,14 +289,14 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     value={formData.address}
                                     onChange={e => handleChange('address', e.target.value)}
                                     placeholder="e.g. Plot No. 123, Main Street, Near Central Park, Sector 5"
-                                    className={`transition-all ${errors.address ? "border-red-300 focus-visible:ring-red-200" : formData.address ? "border-green-400 focus-visible:ring-green-200" : ""}`}
+                                    className={`transition-all text-xs sm:text-sm ${errors.address ? "border-red-300 focus-visible:ring-red-200" : formData.address ? "border-green-400 focus-visible:ring-green-200" : ""}`}
                                 />
                                 {errors.address && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.address}</p>}
                                 {!errors.address && formData.address && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Address saved!</p>}
                             </div>
 
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                     <ImageIcon className="w-4 h-4 text-blue-600" />
                                     Description *
                                 </label>
@@ -305,7 +305,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     onChange={e => handleChange('description', e.target.value)}
                                     placeholder="Describe your project in detail... Include amenities like swimming pool, gym, children's play area, 24/7 security, proximity to schools, hospitals, shopping centers, etc."
                                     rows={5}
-                                    className={`transition-all ${errors.description ? "border-red-300 focus-visible:ring-red-200" : formData.description.length >= 50 ? "border-green-400 focus-visible:ring-green-200" : ""}`}
+                                    className={`transition-all text-xs sm:text-sm ${errors.description ? "border-red-300 focus-visible:ring-red-200" : formData.description.length >= 50 ? "border-green-400 focus-visible:ring-green-200" : ""}`}
                                 />
                                 <div className="flex justify-between items-center mt-2">
                                     {errors.description ? (
@@ -334,7 +334,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                             </div>
 
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                     <Upload className="w-4 h-4 text-blue-600" />
                                     Project Banner Image *
                                 </label>
@@ -402,7 +402,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block">Transaction Type</label>
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Transaction Type</label>
                                 <select
                                     className="w-full rounded-lg border-2 border-slate-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                     value={formData.transaction}
@@ -414,7 +414,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 </select>
                             </div>
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block">Category</label>
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Category</label>
                                 <select
                                     className="w-full rounded-lg border-2 border-slate-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                     value={formData.propertyCategory}
@@ -428,7 +428,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                         </div>
 
                         <div>
-                            <label className="text-sm font-semibold text-slate-800 mb-3 block">Property Type</label>
+                            <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">Property Type</label>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {['apartment', 'villa_bungalow', 'row_house', 'penthouse'].map(type => {
                                     const icons = {
@@ -468,7 +468,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div>
-                                        <label className="text-sm font-semibold text-slate-800 mb-2 block">BHK Configuration</label>
+                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">BHK Configuration</label>
                                         <select
                                             value={formData.bhk}
                                             onChange={e => handleChange('bhk', e.target.value)}
@@ -480,7 +480,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                             Carpet Area (sqft) *
                                         </label>
                                         <Input
@@ -488,26 +488,28 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                             value={formData.carpetArea}
                                             onChange={e => handleChange('carpetArea', e.target.value)}
                                             placeholder="e.g. 1200"
-                                            className={`transition-all ${errors.carpetArea ? "border-red-300" : formData.carpetArea ? "border-green-400" : ""}`}
+                                            className={`transition-all text-xs sm:text-sm ${errors.carpetArea ? "border-red-300" : formData.carpetArea ? "border-green-400" : ""}`}
                                         />
                                         {errors.carpetArea && <p className="text-xs text-red-500 mt-1.5">{errors.carpetArea}</p>}
                                     </div>
                                     <div>
-                                        <label className="text-sm font-semibold text-slate-800 mb-2 block">Built-up Area (sqft)</label>
+                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Built-up Area (sqft)</label>
                                         <Input
                                             type="number"
                                             value={formData.builtUpArea}
                                             onChange={e => handleChange('builtUpArea', e.target.value)}
                                             placeholder="e.g. 1450"
+                                            className="text-xs sm:text-sm"
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-sm font-semibold text-slate-800 mb-2 block">Super Built-up (sqft)</label>
+                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Super Built-up (sqft)</label>
                                         <Input
                                             type="number"
                                             value={formData.superBuiltUpArea}
                                             onChange={e => handleChange('superBuiltUpArea', e.target.value)}
                                             placeholder="e.g. 1600"
+                                            className="text-xs sm:text-sm"
                                         />
                                     </div>
                                 </div>
@@ -545,31 +547,32 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                         <div className="grid gap-6">
                             <div>
-                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
+                                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
                                 <Input
                                     value={formData.locCity}
                                     onChange={e => handleChange('locCity', e.target.value)}
                                     placeholder="e.g. Mumbai"
-                                    className={errors.locCity ? "border-red-300" : ""}
+                                    className={`text-xs sm:text-sm ${errors.locCity ? "border-red-300" : ""}`}
                                 />
                                 {errors.locCity && <p className="text-xs text-red-500 mt-1">{errors.locCity}</p>}
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Locality *</label>
+                                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Locality *</label>
                                 <Input
                                     value={formData.locLocality}
                                     onChange={e => handleChange('locLocality', e.target.value)}
                                     placeholder="e.g. Bandra West"
-                                    className={errors.locLocality ? "border-red-300" : ""}
+                                    className={`text-xs sm:text-sm ${errors.locLocality ? "border-red-300" : ""}`}
                                 />
                                 {errors.locLocality && <p className="text-xs text-red-500 mt-1">{errors.locLocality}</p>}
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Landmark</label>
+                                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Landmark</label>
                                 <Input
                                     value={formData.locLandmark}
                                     onChange={e => handleChange('locLandmark', e.target.value)}
                                     placeholder="e.g. Near St. Peter's Church"
+                                    className="text-xs sm:text-sm"
                                 />
                             </div>
                         </div>
@@ -617,7 +620,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                     <IndianRupee className="w-4 h-4 text-green-600" />
                                     Minimum Price *
                                 </label>
@@ -628,7 +631,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         value={formData.priceMin}
                                         onChange={e => handleChange('priceMin', e.target.value)}
                                         placeholder="5000000"
-                                        className={`pl-8 text-lg font-semibold transition-all ${errors.priceMin ? "border-red-300" : formData.priceMin ? "border-green-400" : ""
+                                        className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMin ? "border-red-300" : formData.priceMin ? "border-green-400" : ""
                                             }`}
                                     />
                                 </div>
@@ -641,7 +644,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 )}
                             </div>
                             <div>
-                                <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                     <IndianRupee className="w-4 h-4 text-green-600" />
                                     Maximum Price *
                                 </label>
@@ -652,7 +655,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         value={formData.priceMax}
                                         onChange={e => handleChange('priceMax', e.target.value)}
                                         placeholder="7500000"
-                                        className={`pl-8 text-lg font-semibold transition-all ${errors.priceMax ? "border-red-300" : formData.priceMax ? "border-green-400" : ""
+                                        className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMax ? "border-red-300" : formData.priceMax ? "border-green-400" : ""
                                             }`}
                                     />
                                 </div>

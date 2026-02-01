@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import LeadForm from './LeadForm'
 
-const PipelineBoard = forwardRef(({ projectId }, ref) => {
+const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     const [pipelines, setPipelines] = useState([])
     const [activePipeline, setActivePipeline] = useState(null)
     const [leads, setLeads] = useState([])
@@ -50,7 +50,7 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
 
     // Define fetchData first so it can be used in hooks below
     const fetchData = useCallback(async () => {
-        console.log('🔄 [PipelineBoard] fetchData called, projectId:', projectId)
+        console.log('🔄 [PipelineBoard] fetchData called, projectId:', projectId, 'campaignId:', campaignId)
         try {
             setLoading(true)
             // 1. Fetch Pipelines
@@ -65,6 +65,7 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
             // 2. Fetch Leads
             const params = new URLSearchParams()
             if (projectId) params.append('project_id', projectId)
+            if (campaignId) params.append('campaign_id', campaignId)
 
             const leadsRes = await fetch(`/api/leads?${params.toString()}`)
             const leadsData = await leadsRes.json()
@@ -83,7 +84,7 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
         } finally {
             setLoading(false)
         }
-    }, [projectId])
+    }, [projectId, campaignId])
 
     useEffect(() => {
         fetchData()
@@ -105,6 +106,13 @@ const PipelineBoard = forwardRef(({ projectId }, ref) => {
             // If projectId wasn't manually selected but we are in a project context, use that
             if (!formData.projectId && projectId) {
                 formData.projectId = projectId
+            }
+
+            // If campaignId context exists, should we enforce it? 
+            // Currently LeadForm doesn't seem to have campaign selection, maybe we should auto-inject campaignId in API?
+            // For now let's assume API handles it or user selects it.
+            if (!formData.campaignId && campaignId) {
+                formData.campaignId = campaignId
             }
 
             const res = await fetch('/api/leads', {

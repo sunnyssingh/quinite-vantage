@@ -105,16 +105,24 @@ export default function AdminLayout({ children }) {
 
     return (
         <div className="h-screen bg-secondary/20 flex flex-col overflow-hidden">
-            <AdminHeader user={user} profile={profile} />
+            {/* Header - Fixed at top */}
+            <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md shadow-sm border-b border-border/40 shrink-0">
+                <AdminHeader user={user} profile={profile} />
+            </div>
 
             {/* Main Content */}
-            <main className={`flex-1 w-full bg-background/50 relative overflow-hidden flex flex-col ${isFullScreenModule ? '' : 'max-w-7xl mx-auto'}`}>
-                <div className={`flex-1 h-full w-full ${isFullScreenModule ? (pathname === '/dashboard/admin' ? 'overflow-y-auto no-scrollbar' : '') : 'overflow-y-auto px-4 sm:px-6 lg:px-8 py-8'}`}>
-                    <div className={`${isFullScreenModule ? 'px-4 sm:px-6 lg:px-8 pt-4' : ''}`}>
-                        <CustomBreadcrumbs />
+            <main className="flex-1 w-full bg-background/50 relative flex flex-col min-h-0 overflow-hidden">
+                {isFullScreenModule ? (
+                    /* CRM/Inventory: Delegate scroll to children (CrmLayout) */
+                    <div className="flex-1 h-full w-full overflow-hidden">
+                        {children}
                     </div>
-                    {children}
-                </div>
+                ) : (
+                    /* Other pages: Global scroll */
+                    <div className="flex-1 h-full w-full overflow-y-auto scroll-smooth p-4">
+                        {children}
+                    </div>
+                )}
             </main>
         </div>
     )

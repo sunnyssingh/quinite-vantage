@@ -31,8 +31,8 @@ export default function CustomBreadcrumbs() {
                 // Default Label
                 let label = segment.charAt(0).toUpperCase() + segment.slice(1)
 
-                // Skip "Dashboard" and "Admin" in visual output (marked as hidden)
-                const isHidden = ['dashboard', 'admin'].includes(segment.toLowerCase())
+                // Skip "Dashboard" and "Admin" in visual output
+                let isHidden = ['dashboard', 'admin'].includes(segment.toLowerCase())
 
                 // Check if segment is a UUID (simple regex)
                 const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)
@@ -73,7 +73,32 @@ export default function CustomBreadcrumbs() {
                         'pipeline': 'Pipeline Settings'
                     }
                     if (staticLabels[segment.toLowerCase()]) {
-                        label = staticLabels[segment.toLowerCase()]
+                        // Context-aware overrides
+                        if (segment.toLowerCase() === 'pipeline') {
+                            const grandParent = rawSegments[index - 2]?.toLowerCase()
+                            const grandParentId = rawSegments[index - 1]
+
+                            if (grandParent === 'projects') {
+                                try {
+                                    // Fetch project name for "The Park Pipeline"
+                                    const { data } = await supabase.from('projects').select('name').eq('id', grandParentId).single()
+                                    label = data?.name ? `${data.name} Pipeline` : 'Project Pipeline'
+                                } catch (e) {
+                                    label = 'Project Pipeline'
+                                }
+                            } else if (grandParent === 'campaigns') {
+                                try {
+                                    const { data } = await supabase.from('campaigns').select('name').eq('id', grandParentId).single()
+                                    label = data?.name ? `${data.name} Pipeline` : 'Campaign Pipeline'
+                                } catch (e) {
+                                    label = 'Campaign Pipeline'
+                                }
+                            } else {
+                                label = staticLabels[segment.toLowerCase()]
+                            }
+                        } else {
+                            label = staticLabels[segment.toLowerCase()]
+                        }
                     }
                 }
 
@@ -89,22 +114,22 @@ export default function CustomBreadcrumbs() {
     if (breadcrumbs.length === 0) return null
 
     return (
-        <Breadcrumb className="mb-6">
-            <BreadcrumbList className="sm:gap-2">
+        <Breadcrumb className="mb-0">
+            <BreadcrumbList className="sm:gap-1.5">
                 {breadcrumbs.map((item, index) => {
                     const isLast = index === breadcrumbs.length - 1
                     return (
                         <Fragment key={item.href}>
                             <BreadcrumbItem>
                                 {isLast ? (
-                                    <BreadcrumbPage className="font-semibold text-foreground">
+                                    <BreadcrumbPage className="font-medium text-primary text-xs tracking-tight">
                                         {item.label}
                                     </BreadcrumbPage>
                                 ) : (
                                     <BreadcrumbLink asChild>
                                         <Link
                                             href={item.href}
-                                            className="text-muted-foreground hover:text-foreground transition-colors"
+                                            className="text-muted-foreground/60 hover:text-primary transition-colors text-xs"
                                         >
                                             {item.label}
                                         </Link>
@@ -112,7 +137,7 @@ export default function CustomBreadcrumbs() {
                                 )}
                             </BreadcrumbItem>
                             {!isLast && (
-                                <BreadcrumbSeparator className="text-muted-foreground/40">
+                                <BreadcrumbSeparator className="text-muted-foreground/40 text-xs">
                                     <span className="">/</span>
                                 </BreadcrumbSeparator>
                             )}

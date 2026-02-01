@@ -705,10 +705,10 @@ export default function PlatformSubscriptionsPage() {
                         </div>
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsPlanDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSavePlan}>{editingPlan ? 'Update Plan' : 'Create Plan'}</Button>
-                    </DialogFooter>
+                    <div className="grid grid-cols-2 gap-4 mt-6 sm:flex sm:justify-end">
+                        <Button variant="outline" onClick={() => setIsPlanDialogOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                        <Button onClick={handleSavePlan} className="w-full sm:w-auto">{editingPlan ? 'Update Plan' : 'Create Plan'}</Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
@@ -759,10 +759,10 @@ export default function PlatformSubscriptionsPage() {
                         </div>
                     </div>
 
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsChangePlanDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleConfirmChangePlan} disabled={!changePlanData.planId}>Assign Plan</Button>
-                    </DialogFooter>
+                    <div className="grid grid-cols-2 gap-4 mt-6 sm:flex sm:justify-end">
+                        <Button variant="outline" onClick={() => setIsChangePlanDialogOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+                        <Button onClick={handleConfirmChangePlan} disabled={!changePlanData.planId} className="w-full sm:w-auto">Assign Plan</Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

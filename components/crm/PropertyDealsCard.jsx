@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 export default function PropertyDealsCard({ deals = [] }) {
@@ -24,45 +24,26 @@ export default function PropertyDealsCard({ deals = [] }) {
     }
 
     return (
-        <Card className="h-full">
+        <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="flex items-center gap-2">
-                    <CardTitle className="text-base font-semibold">Property Deals</CardTitle>
+                    <div className="p-1.5 bg-orange-50 text-orange-600 rounded-md">
+                        <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <CardTitle className="text-sm font-semibold text-gray-900">Property Deals</CardTitle>
                     <Badge variant="secondary" className="rounded-sm px-1.5 py-0 text-xs text-muted-foreground">
                         {deals.length}
                     </Badge>
                 </div>
-                <Button variant="outline" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400">
                     <Plus className="h-4 w-4" />
                 </Button>
             </CardHeader>
             <CardContent>
-                {deals.length === 0 ? (
-                    <div className="text-center py-6 text-muted-foreground text-sm">
-                        No active deals
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {deals.map((deal) => (
-                            <div key={deal.id} className="pb-4 border-b last:border-0 last:pb-0">
-                                <div className="flex justify-between items-start mb-1">
-                                    <h4 className="text-sm font-semibold text-primary">{deal.name}</h4>
-                                </div>
-                                <div className="text-lg font-bold text-orange-500 mb-2">
-                                    {formatCurrency(deal.amount || 0)}
-                                </div>
-                                <div className="flex items-center gap-4 text-xs">
-                                    <Badge variant="secondary" className={getStageColor(deal.stage)}>
-                                        Stage: {deal.stage || 'New'}
-                                    </Badge>
-                                    <span className="text-muted-foreground">
-                                        Probability: {deal.probability || 0}%
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground h-full min-h-[150px]">
+                    <p className="text-lg font-semibold mb-2">Coming Soon 🚀</p>
+                    <p className="text-sm text-center px-4">This feature is currently under development.</p>
+                </div>
             </CardContent>
         </Card>
     )

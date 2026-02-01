@@ -7,27 +7,49 @@ import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import LeadSourceDialog from '@/components/crm/LeadSourceDialog'
 
-export default function ProjectPipelinePage() {
+import { createClient } from '@/lib/supabase/client'
+
+export default function CampaignPipelinePage() {
     const params = useParams()
     const router = useRouter()
     const projectId = params.id
+    const campaignId = params.campaignId
+    const supabase = createClient()
 
     // Board state
     const [isDealInitOpen, setIsDealInitOpen] = useState(false)
-    const [project, setProject] = useState(null)
+    const [campaignName, setCampaignName] = useState('Campaign')
+    const [projectName, setProjectName] = useState('Project')
     const pipelineBoardRef = useRef(null)
 
-    // Fetch project details for header
+    // Fetch details
     useEffect(() => {
-        if (!projectId) return
-        fetch(`/api/projects?id=${projectId}`).then(res => res.json()).then(data => {
-            // Assuming API returns { projects: [...] } or single project
-            const found = data.projects?.find(p => p.id === projectId)
-            if (found) setProject(found)
-        })
-    }, [projectId])
+        const fetchDetails = async () => {
+            // 1. Fetch Project Name
+            try {
+                const res = await fetch(`/api/projects?id=${projectId}`)
+                const data = await res.json()
+                const found = data.projects?.find(p => p.id === projectId)
+                if (found) setProjectName(found.name)
+            } catch (e) {
+                console.error('Failed to fetch project name:', e)
+            }
 
-    const projectName = project?.name || 'Project'
+            // 2. Fetch Campaign Name (via API to ensure RLS compliance)
+            if (campaignId) {
+                try {
+                    const res = await fetch(`/api/campaigns/${campaignId}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        if (data.campaign) setCampaignName(data.campaign.name)
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch campaign name:', e)
+                }
+            }
+        }
+        fetchDetails()
+    }, [projectId, campaignId])
 
     return (
         <div className="min-h-screen bg-muted/5">
@@ -45,7 +67,7 @@ export default function ProjectPipelinePage() {
                     </Button>
                     <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
                         <Building2 className="w-7 h-7 text-foreground" />
-                        {projectName} Pipeline
+                        {campaignName} Pipeline
                     </h1>
                     <div className="flex items-center gap-3 mt-1">
                         <p className="text-muted-foreground text-sm">
@@ -79,15 +101,20 @@ export default function ProjectPipelinePage() {
 
             {/* Board */}
             <div className="p-6">
-                <PipelineBoard ref={pipelineBoardRef} projectId={projectId} />
+                <PipelineBoard
+                    ref={pipelineBoardRef}
+                    projectId={projectId}
+                    campaignId={campaignId}
+                />
             </div>
 
             <LeadSourceDialog
                 open={isDealInitOpen}
                 onOpenChange={setIsDealInitOpen}
                 projectId={projectId}
-                // We pass current project as the only option to prevent confusion
-                projects={project ? [project] : []}
+                // We pass current project as the only option
+                projects={[{ id: projectId, name: projectName }]} // Simplified since we don't have full object if fetch fails, but 'project' state above would satisfy if we used it.
+            // Actually let's use the fetched project state if we had it.
             />
         </div>
     )

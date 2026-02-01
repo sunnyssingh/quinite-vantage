@@ -69,6 +69,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         }
     }, [leadId])
 
+    const [organization, setOrganization] = useState(null)
+
     const fetchLeadData = async () => {
         try {
             setLoading(true)
@@ -87,6 +89,13 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
             if (!profileRes.ok) throw new Error('Failed to fetch profile')
             const profileData = await profileRes.json()
             setProfile(profileData.profile)
+
+            // Fetch organization settings for currency
+            const orgRes = await fetch('/api/organization/settings')
+            if (orgRes.ok) {
+                const orgData = await orgRes.json()
+                setOrganization(orgData.organization)
+            }
 
             console.log('Lead data with call logs:', leadData.lead)
 
@@ -154,98 +163,104 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     }
 
     return (
-        <div className={`flex flex-col md:flex-row h-full bg-background ${isModal ? '' : 'min-h-screen'}`}>
-            {/* Sidebar */}
-            <div className="w-full md:w-80 border-r-0 border-b md:border-b-0 md:border-r bg-card flex flex-col shrink-0 overflow-y-visible md:overflow-y-auto h-auto md:h-full">
-                <div
-                    className="h-32 shrink-0 w-full"
-                    style={{
-                        background: 'linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9)'
-                    }}
-                />
+        <div className={`flex flex-col md:flex-row gap-6 ${isModal ? 'h-[80vh]' : ''}`}>
+            {/* Sidebar - Sticky if not modal */}
+            <div className={`w-full md:w-80 flex flex-col shrink-0 space-y-4 ${!isModal ? 'md:sticky md:top-0' : 'overflow-y-auto'}`}>
+                <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+                    <div
+                        className="h-28 w-full"
+                        style={{
+                            background: 'linear-gradient(to right, #ffffff, #e1f5fe, #b3e5fc)'
+                        }}
+                    />
 
-                <div className="flex flex-col items-center text-center px-4 md:px-6 -mt-12 mb-4 md:mb-6">
-                    <div className="relative mb-4 group">
-                        <Avatar key={lead.avatar_url || 'no-avatar'} className="h-24 w-24 border-4 border-background shadow-lg">
-                            {lead.avatar_url ? (
-                                <img
-                                    src={lead.avatar_url}
-                                    alt={lead.name}
-                                    className="aspect-square h-full w-full object-cover"
-                                    onError={(e) => {
-                                        console.error('Avatar failed to load:', lead.avatar_url)
-                                        e.target.style.display = 'none'
-                                    }}
-                                />
-                            ) : null}
-                            <AvatarFallback className="text-2xl font-bold bg-white text-primary shadow-sm">
-                                {getInitials(lead.name)}
-                            </AvatarFallback>
-                        </Avatar>
-                        {/* Edit Avatar Overlay */}
-                        <button
-                            onClick={() => setAvatarPickerOpen(true)}
-                            className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                            aria-label="Change avatar"
-                        >
-                            <Camera className="w-6 h-6 text-white" />
-                        </button>
+                    <div className="flex flex-col items-center text-center px-6 -mt-12 mb-6">
+                        <div className="relative mb-3 group">
+                            <Avatar key={lead.avatar_url || 'no-avatar'} className="h-24 w-24 border-4 border-background shadow-md">
+                                {lead.avatar_url ? (
+                                    <img
+                                        src={lead.avatar_url}
+                                        alt={lead.name}
+                                        className="aspect-square h-full w-full object-cover"
+                                        onError={(e) => {
+                                            console.error('Avatar failed to load:', lead.avatar_url)
+                                            e.target.style.display = 'none'
+                                        }}
+                                    />
+                                ) : null}
+                                <AvatarFallback className="text-2xl font-bold bg-white text-primary">
+                                    {getInitials(lead.name)}
+                                </AvatarFallback>
+                            </Avatar>
+                            {/* Edit Avatar Overlay */}
+                            <button
+                                onClick={() => setAvatarPickerOpen(true)}
+                                className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                                aria-label="Change avatar"
+                            >
+                                <Camera className="w-6 h-6 text-white" />
+                            </button>
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900">{lead.name}</h2>
+                        <p className="text-sm text-gray-500">{profile.company || 'No Company'}</p>
                     </div>
-                    <h2 className="text-xl font-bold text-foreground">{lead.name}</h2>
-                    <p className="text-sm text-muted-foreground">{profile.company || 'No Company'}</p>
-                </div>
 
-                <div className="space-y-4 md:space-y-6 px-4 md:px-6 pb-4 md:pb-6">
-                    <div>
-                        <h3 className="text-sm font-semibold text-primary mb-3">Client Info</h3>
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-[80px_1fr] gap-2 text-sm">
-                                <span className="text-muted-foreground">Email</span>
-                                <span className="font-medium text-foreground truncate" title={lead.email}>{lead.email}</span>
-                            </div>
-                            <div className="grid grid-cols-[80px_1fr] gap-2 text-sm">
-                                <span className="text-muted-foreground">Phone</span>
-                                <span className="font-medium text-green-600 truncate">{lead.phone || 'N/A'}</span>
-                            </div>
-                            <div className="grid grid-cols-[80px_1fr] gap-2 text-sm">
-                                <span className="text-muted-foreground">Mobile</span>
-                                <span className="font-medium text-green-600 truncate">{lead.mobile || 'N/A'}</span>
-                            </div>
-                            <div className="grid grid-cols-[80px_1fr] gap-2 text-sm">
-                                <span className="text-muted-foreground">Title</span>
-                                <span className="font-medium text-blue-600 truncate">{lead.title || profile.job_title || 'N/A'}</span>
-                            </div>
-                            <div className="grid grid-cols-[80px_1fr] gap-2 text-sm">
-                                <span className="text-muted-foreground">Dept</span>
-                                <span className="font-medium text-teal-600 truncate">{lead.department || 'N/A'}</span>
+                    <div className="px-6 pb-6 space-y-6">
+                        <div>
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Contact Info</h3>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3 text-sm group">
+                                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
+                                        <Mail className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-gray-500">Email</p>
+                                        <p className="font-medium text-gray-900 truncate" title={lead.email}>{lead.email}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm group">
+                                    <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 group-hover:bg-green-100 transition-colors">
+                                        <Phone className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-gray-500">Phone</p>
+                                        <p className="font-medium text-gray-900 truncate">{lead.phone || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm group">
+                                    <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-100 transition-colors">
+                                        <Building className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs text-gray-500">Department</p>
+                                        <p className="font-medium text-gray-900 truncate">{lead.department || 'N/A'}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                    </div>
-
-                    <div>
-                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                            <MapPin className="w-4 h-4" />
-                            Address Info
-                        </h3>
-                        <div className="space-y-2 text-sm">
-                            <div className="grid grid-cols-[100px_1fr] gap-2">
-                                <span className="text-muted-foreground">Address</span>
-                                <span className="font-medium text-foreground dark:text-blue-400">
-                                    {[
-                                        profile.mailing_street,
-                                        profile.mailing_city,
-                                        profile.mailing_state,
-                                        profile.mailing_zip,
-                                        profile.mailing_country
-                                    ].filter(p => p && p.trim() !== '').join(', ') || 'N/A'}
-                                </span>
+                        <div>
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Location</h3>
+                            <div className="flex items-start gap-3 text-sm">
+                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 shrink-0">
+                                    <MapPin className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0 pt-1">
+                                    <p className="font-medium text-gray-900 leading-snug">
+                                        {[
+                                            profile.mailing_city,
+                                            profile.mailing_state,
+                                            profile.mailing_country
+                                        ].filter(Boolean).join(', ') || 'N/A'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                        {[profile.mailing_street, profile.mailing_zip].filter(Boolean).join(', ')}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="pt-4">
-                        <Button variant="outline" className="w-full" onClick={() => setEditDialogOpen(true)}>
+                        <Button variant="outline" className="w-full rounded-lg border-dashed border-gray-300 hover:border-primary hover:text-primary transition-colors" onClick={() => setEditDialogOpen(true)}>
                             <Edit2 className="w-4 h-4 mr-2" />
                             Edit Profile
                         </Button>
@@ -254,101 +269,143 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0 bg-muted/10">
-                <div className="border-b bg-background px-4 md:px-6 overflow-x-auto hide-scrollbar">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-                        <TabsList className="h-14 w-full justify-start bg-transparent p-0 space-x-6 min-w-max">
+            <div className={`flex-1 min-w-0 ${isModal ? 'overflow-y-auto' : ''}`}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <div className="border-b bg-transparent mb-6">
+                        <TabsList className="h-auto w-full justify-start bg-transparent p-0 space-x-8">
                             {['overview', 'notes', 'emails', 'timeline'].map(tab => (
                                 <TabsTrigger
                                     key={tab}
                                     value={tab}
-                                    className="h-14 rounded-none border-b-2 border-transparent px-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none font-medium capitalize"
+                                    className="rounded-none border-b-2 border-transparent px-0 py-2.5 data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent font-medium capitalize text-muted-foreground hover:text-foreground transition-colors"
                                 >
                                     {tab}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
-                    </Tabs>
-                </div>
+                    </div>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-6">
                     {activeTab === 'overview' && (
-                        <div className="grid grid-cols-12 gap-6 pb-6">
-                            {/* Row 1 */}
-                            <div className="col-span-12 md:col-span-6 lg:col-span-5">
-                                <Card className="h-full">
-                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                        <div className="flex items-center gap-2">
-                                            <Building className="w-5 h-5" />
-                                            <CardTitle className="text-base font-semibold">Properties</CardTitle>
-                                            <Badge variant="secondary" className="rounded-sm px-1.5 py-0 text-xs text-muted-foreground">1</Badge>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <Edit2 className="w-4 h-4" />
-                                        </Button>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-sm text-muted-foreground">
-                                            {profile.project ? (
-                                                <div className="flex gap-4">
-                                                    <div className="h-16 w-16 bg-muted rounded-lg shrink-0 overflow-hidden">
-                                                        {/* Placeholder for project image */}
-                                                        <div className="w-full h-full bg-secondary flex items-center justify-center">
-                                                            <Building className="w-6 h-6 text-muted-foreground/50" />
+                        <div className="space-y-6">
+                            {/* Summary Cards */}
+                            <div className="grid grid-cols-12 gap-6">
+                                {/* Properties Card */}
+                                <div className="col-span-12 md:col-span-4">
+                                    <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200">
+                                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md">
+                                                    <Building className="w-4 h-4" />
+                                                </div>
+                                                <CardTitle className="text-sm font-semibold text-gray-900">Properties</CardTitle>
+                                            </div>
+                                            <Badge variant="secondary" className="px-1.5 py-0 h-5 text-[10px] font-medium">
+                                                {(lead.projects?.length || (lead.project ? 1 : 0))}
+                                            </Badge>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {(lead.projects || (lead.project ? [lead.project] : [])).length > 0 ? (
+                                                <div className="max-h-[350px] overflow-y-auto pr-1 space-y-4 custom-scrollbar">
+                                                    {(lead.projects || [lead.project]).map((project, index) => (
+                                                        <div key={index} className="group">
+                                                            <div className="aspect-video w-full bg-gray-100 rounded-xl overflow-hidden mb-2 relative shadow-sm border border-gray-100">
+                                                                {project.image_url ? (
+                                                                    <img
+                                                                        src={project.image_url}
+                                                                        alt={project.name}
+                                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                                        onError={(e) => e.target.style.display = 'none'}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50">
+                                                                        <Building className="w-8 h-8 opacity-20" />
+                                                                    </div>
+                                                                )}
+                                                                {/* Gradient Overlay & Title */}
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 flex flex-col justify-end">
+                                                                    <h4 className="text-white font-bold text-lg leading-tight shadow-sm">{project.name}</h4>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Location & Details */}
+                                                            <div className="px-1 space-y-1">
+                                                                {project.address && (
+                                                                    <div className="flex items-start gap-1.5 text-sm text-gray-500">
+                                                                        <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
+                                                                        <span className="line-clamp-1">{project.address}</span>
+                                                                    </div>
+                                                                )}
+                                                                {project.project_type && (
+                                                                    <div className="flex items-center gap-1.5 text-xs text-gray-400 pl-0.5">
+                                                                        <span className="w-3 h-3 flex items-center justify-center font-semibold text-[10px] bg-gray-100 rounded-full text-gray-500">#</span>
+                                                                        <span>{project.project_type}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-semibold text-primary">{profile.project.name}</p>
-                                                        <p className="text-xs text-muted-foreground mt-1">Ready to Occupy ✓</p>
-                                                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">Amenities: Pool, Gym, WiFi...</p>
-                                                    </div>
+                                                    ))}
                                                 </div>
                                             ) : (
-                                                <p>No associated properties</p>
+                                                <div className="py-12 text-center flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-xl bg-gray-50/50">
+                                                    <Building className="w-8 h-8 mb-2 opacity-20" />
+                                                    <p className="text-sm">No properties linked</p>
+                                                    <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-primary">Link Property</Button>
+                                                </div>
                                             )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                            <div className="col-span-12 md:col-span-6 lg:col-span-7">
-                                <ClientPreferencesCard profile={profile} />
-                            </div>
-
-                            {/* Row 2 */}
-                            <div className="col-span-12 md:col-span-6 lg:col-span-5">
-                                <PropertyDealsCard deals={lead.deals || []} />
-                            </div>
-                            <div className="col-span-12 md:col-span-6 lg:col-span-7 grid grid-rows-2 gap-6">
-                                <div className="row-span-1">
-                                    <ComingUpNextCard tasks={[]} />
+                                        </CardContent>
+                                    </Card>
                                 </div>
-                                <div className="row-span-1">
-                                    <BestTimeToContactCard profile={profile} />
+
+                                {/* Client Preferences - Spans 8 cols */}
+                                <div className="col-span-12 md:col-span-8">
+                                    <ClientPreferencesCard
+                                        profile={profile}
+                                        leadId={leadId}
+                                        onUpdate={fetchLeadData}
+                                        currency={organization?.currency || 'USD'}
+                                    />
                                 </div>
                             </div>
 
-                            {/* Row 3 - Sentiment Analysis */}
-                            <div className="col-span-12 md:col-span-6 lg:col-span-5">
+                            {/* Secondary Row */}
+                            <div className="grid grid-cols-12 gap-6">
+                                <div className="col-span-12 md:col-span-4">
+                                    <PropertyDealsCard deals={lead.deals || []} />
+                                </div>
+                                <div className="col-span-12 md:col-span-4">
+                                    <ComingUpNextCard leadId={leadId} />
+                                </div>
+                                <div className="col-span-12 md:col-span-4">
+                                    <BestTimeToContactCard
+                                        profile={profile}
+                                        leadId={leadId}
+                                        onUpdate={fetchLeadData}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Sentiment */}
+                            <div>
                                 <SentimentAnalysisCard callLogs={lead.call_logs || []} />
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'notes' && (
-                        <Card className="h-full min-h-[500px]">
+                        <Card className="border-0 shadow-sm ring-1 ring-gray-200">
                             <CardHeader>
-                                <CardTitle>Notes</CardTitle>
-                                <CardDescription>Internal notes about this lead</CardDescription>
+                                <CardTitle className="text-base">Notes</CardTitle>
+                                <CardDescription>Internal notes and remarks</CardDescription>
                             </CardHeader>
-                            <CardContent className="h-[calc(100%-80px)] flex flex-col gap-4">
+                            <CardContent>
                                 <Textarea
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    className="flex-1 resize-none p-4 text-base"
-                                    placeholder="Type your notes here..."
+                                    className="min-h-[200px] resize-none text-base p-4 focus-visible:ring-1 focus-visible:ring-primary/20"
+                                    placeholder="Start typing..."
                                 />
-                                <div className="flex justify-end">
-                                    <Button onClick={handleSaveNotes} disabled={savingNotes}>
+                                <div className="flex justify-end mt-4">
+                                    <Button onClick={handleSaveNotes} disabled={savingNotes} size="sm">
                                         <Save className="w-4 h-4 mr-2" />
                                         {savingNotes ? 'Saving...' : 'Save Notes'}
                                     </Button>
@@ -358,20 +415,22 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                     )}
 
                     {activeTab === 'emails' && (
-                        <div className="flex flex-col items-center justify-center h-[500px] text-muted-foreground bg-card rounded-xl border border-dashed m-1">
-                            <Mail className="w-12 h-12 mb-4 opacity-50" />
-                            <h3 className="text-lg font-medium">Email Integration</h3>
-                            <p className="max-w-xs text-center mt-2">Connect your email to view communication history directly in the timeline.</p>
-                            <Button variant="outline" className="mt-4">Connect Email</Button>
+                        <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground bg-gray-50/50 rounded-xl border-2 border-dashed">
+                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                                <Mail className="w-8 h-8 text-primary/60" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900">Connect Email</h3>
+                            <p className="max-w-xs text-center mt-2 text-sm">Sync your email to see all communications in one place.</p>
+                            <Button variant="outline" className="mt-6">Integrate Now</Button>
                         </div>
                     )}
 
                     {activeTab === 'timeline' && (
-                        <div className="max-w-4xl mx-auto">
+                        <div className="max-w-3xl">
                             <LeadActivityTimeline leadId={leadId} />
                         </div>
                     )}
-                </div>
+                </Tabs>
             </div>
 
             <EditLeadProfileDialog

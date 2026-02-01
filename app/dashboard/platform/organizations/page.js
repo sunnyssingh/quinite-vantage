@@ -274,9 +274,9 @@ export default function PlatformOrganizationsPage() {
                 <p className="text-xs text-gray-500 mt-1">Must be a valid verified number in Plivo.</p>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="ghost" onClick={() => setEditOrg(null)}>Cancel</Button>
-                <Button type="submit">Save Changes</Button>
+              <div className="grid grid-cols-2 gap-4 pt-4 sm:flex sm:justify-end">
+                <Button type="button" variant="outline" onClick={() => setEditOrg(null)} className="w-full sm:w-auto">Cancel</Button>
+                <Button type="submit" className="w-full sm:w-auto">Save Changes</Button>
               </div>
             </form>
           </div>

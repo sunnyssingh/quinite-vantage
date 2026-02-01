@@ -145,11 +145,11 @@ export default function NewPropertyPage() {
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end gap-4">
-                    <Link href="/dashboard/admin/inventory">
-                        <Button variant="outline" type="button">Cancel</Button>
+                <div className="grid grid-cols-2 gap-4 sm:flex sm:justify-end">
+                    <Link href="/dashboard/admin/inventory" className="w-full sm:w-auto">
+                        <Button variant="outline" type="button" className="w-full">Cancel</Button>
                     </Link>
-                    <Button type="submit" className="bg-gradient-to-r from-purple-600 to-pink-600 text-white" disabled={loading}>
+                    <Button type="submit" className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 text-white" disabled={loading}>
                         {loading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
                         Create Listing
                     </Button>
