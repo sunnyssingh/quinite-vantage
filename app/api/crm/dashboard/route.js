@@ -224,13 +224,13 @@ export async function GET(request) {
 
         const dashboardData = {
             totalLeads: totalLeads || 0,
-            leadsChange: '+12%', // Mocked trend
+            leadsChange: null, // 'Coming soon',
             activeDeals: activeDealsCount,
-            dealsChange: '+5%',
+            dealsChange: null,
             conversionRate,
-            conversionChange: '+2%',
+            conversionChange: null,
             revenue: `${currencySymbol}${totalRevenue.toLocaleString()}`,
-            revenueChange: '+8%',
+            revenueChange: null,
             recentActivities: formattedActivities,
             pipelineOverview,
             tasksCompleted,

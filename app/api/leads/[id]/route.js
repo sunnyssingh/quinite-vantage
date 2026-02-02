@@ -132,7 +132,22 @@ export async function DELETE(request, { params }) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Delete lead
+        // Delete dependent records manually (Cascade)
+
+        // 1. Delete call-related data (depend on call_logs and lead)
+        await Promise.all([
+            supabase.from('conversation_insights').delete().eq('lead_id', id),
+            supabase.from('agent_calls').delete().eq('lead_id', id),
+            supabase.from('call_attempts').delete().eq('lead_id', id)
+        ])
+
+        // 2. Delete call logs (depends on lead)
+        await supabase.from('call_logs').delete().eq('lead_id', id)
+
+        // 3. Delete deals (depends on lead)
+        await supabase.from('deals').delete().eq('lead_id', id)
+
+        // 4. Delete lead
         const { error } = await supabase
             .from('leads')
             .delete()

@@ -67,13 +67,14 @@ export async function POST(request) {
             .limit(1)
             .select()
 
-        // Update lead status to transferred
+        // Update lead status (Legacy columns removed)
+        // Ideally we should move them to a "Qualified" stage here, but for now we just track it.
+        // TODO: Look up 'Qualified' stage and move them there.
         await supabase
             .from('leads')
             .update({
-                status: 'transferred',
-                call_status: 'transferred',
-                transferred_to_human: true
+                transferred_to_human: true,
+                last_contacted_at: new Date().toISOString()
             })
             .eq('id', leadId)
     }

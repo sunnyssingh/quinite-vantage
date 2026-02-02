@@ -59,9 +59,7 @@ export async function GET(request) {
         }
 
         // Apply filters
-        if (status) { // Legacy / Fallback
-            query = query.eq('status', status)
-        }
+
         if (projectId) {
             query = query.eq('project_id', projectId)
         }

@@ -46,6 +46,21 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Target Organization not found. Please select a project.' }, { status: 400 })
         }
 
+        // Fetch default stage for the project
+        let defaultStageId = null
+        if (projectId) {
+            const { data: stages } = await adminClient
+                .from('pipeline_stages')
+                .select('id, pipelines!inner(project_id)')
+                .eq('pipelines.project_id', projectId)
+                .order('order_index', { ascending: true })
+                .limit(1)
+
+            if (stages && stages.length > 0) {
+                defaultStageId = stages[0].id
+            }
+        }
+
         if (!Array.isArray(leads) || leads.length === 0) {
             return NextResponse.json({ error: 'Invalid leads data' }, { status: 400 })
         }
@@ -87,7 +102,7 @@ export async function POST(request) {
                 name: lead.name,
                 email: lead.email || null,
                 phone: cleanPhone, // Store the clean +91 format
-                status: lead.status || 'new',
+                stage_id: defaultStageId,
                 source: 'csv_upload',
                 notes: lead.notes || null,
                 created_by: user.id

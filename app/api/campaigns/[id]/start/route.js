@@ -138,12 +138,52 @@ export async function POST(request, { params }) {
 
         if (enableRealCalling && plivoConfigured) {
             // REAL CALLING MODE - QUEUE BASED
-            console.log(`🚀 Queuing ${leads.length} leads for scalable processing...`)
+
+            // Get retry mode from URL (default: 'none' -> Only call new leads)
+            // Options: 'none' (default), 'failed' (retry no_answer/busy), 'all' (force retry everything)
+            const retryMode = searchParams.get('retryMode') || 'none'
+            console.log(`🔄 Campaign Retry Mode: ${retryMode}`)
+
+            // 1. Always exclude currently QUEUED leads to prevent immediate double-dialing
+            const { data: existingQueue } = await adminClient
+                .from('call_queue')
+                .select('lead_id')
+                .eq('campaign_id', campaign.id)
+                .eq('status', 'queued')
+
+            const queuedLeadIds = new Set(existingQueue?.map(q => q.lead_id) || [])
+
+            // 2. Fetch history based on retry mode
+            let calledLeadIds = new Set()
+
+            if (retryMode !== 'all') {
+                // Default: skip almost everything that was attempted
+                let statusFilter = ['completed', 'transferred', 'voicemail', 'no_answer', 'failed', 'busy']
+
+                if (retryMode === 'failed') {
+                    // If retrying failed, we ONLY filter out actual conversations
+                    statusFilter = ['completed', 'transferred']
+                }
+
+                const { data: existingLogs } = await adminClient
+                    .from('call_logs')
+                    .select('lead_id')
+                    .eq('campaign_id', campaign.id)
+                    .in('call_status', statusFilter)
+
+                calledLeadIds = new Set(existingLogs?.map(l => l.lead_id) || [])
+            }
+
+            const leadsToCall = leads.filter(lead =>
+                !calledLeadIds.has(lead.id) && !queuedLeadIds.has(lead.id)
+            )
+
+            console.log(`🚀 Queuing ${leadsToCall.length} leads (Mode: ${retryMode}). Skipped ${leads.length - leadsToCall.length} leads.`)
 
             const queueInserts = [];
             const validLeadsToUpdate = [];
 
-            for (const lead of leads) {
+            for (const lead of leadsToCall) {
                 // Normalize phone number (Auto-add +91)
                 let phone = lead.phone?.toString().replace(/[\s\-\(\)]/g, '') || ''
                 if (/^\d{10}$/.test(phone)) phone = '+91' + phone
@@ -269,10 +309,8 @@ export async function POST(request, { params }) {
                 await adminClient
                     .from('leads')
                     .update({
-                        call_status: selectedOutcome.status,
                         transferred_to_human: selectedOutcome.transferred,
-                        call_date: new Date().toISOString(),
-                        status: selectedOutcome.transferred ? 'qualified' : lead.status
+                        last_contacted_at: new Date().toISOString()
                     })
                     .eq('id', lead.id)
 

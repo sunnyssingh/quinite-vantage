@@ -560,17 +560,12 @@ export default function LeadsPage() {
                     {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+
               ) : (
-                <Select name="status" defaultValue={editingLead?.status || 'new'}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                    <SelectItem value="qualified">Qualified</SelectItem>
-                    <SelectItem value="converted">Converted</SelectItem>
-                    <SelectItem value="lost">Lost</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="p-2 text-sm text-yellow-600 bg-yellow-50 rounded border border-yellow-200">
+                  No pipeline stages found. Please configure a pipeline for this project.
+                  <input type="hidden" name="stageId" value="" />
+                </div>
               )}
             </div>
 
@@ -719,9 +714,7 @@ export default function LeadsPage() {
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Badge variant="outline" className={`${getStatusBadgeColor(lead.status)} shadow-none border-0`}>
-                            {lead.status || 'New'}
-                          </Badge>
+                          <div className="text-xs text-muted-foreground italic">No Stages</div>
                         )}
                       </TableCell>
 

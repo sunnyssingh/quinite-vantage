@@ -88,15 +88,26 @@ export async function POST(request, { params }) {
             }
 
             // Update lead
+            // Update lead
             await adminClient
                 .from('leads')
                 .update({
-                    call_status: selectedOutcome.status,
                     transferred_to_human: selectedOutcome.transferred,
-                    call_date: new Date().toISOString(),
-                    status: selectedOutcome.transferred ? 'qualified' : lead.status
+                    last_contacted_at: new Date().toISOString()
                 })
                 .eq('id', lead.id)
+
+            // Insert call log (Required for analytics)
+            await adminClient
+                .from('call_logs')
+                .insert({
+                    campaign_id: campaign.id,
+                    lead_id: lead.id,
+                    call_status: selectedOutcome.status,
+                    transferred: selectedOutcome.transferred,
+                    duration: Math.floor(Math.random() * 120) + 10,
+                    notes: `Simulated: ${selectedOutcome.status}`
+                })
 
             totalCalls++
             if (selectedOutcome.transferred) {

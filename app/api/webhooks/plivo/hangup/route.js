@@ -87,10 +87,9 @@ export async function POST(request) {
                             contactedStageId = contactedStage?.id
                         }
 
-                        // Update lead with status and stage
+                        // Update lead with stage only (status/call_status columns are removed)
                         const updateData = {
-                            status: 'contacted',
-                            call_status: 'called'
+                            last_contacted_at: new Date().toISOString()
                         }
 
                         // Only update stage if we found a contacted stage
@@ -103,14 +102,11 @@ export async function POST(request) {
                             .from('leads')
                             .update(updateData)
                             .eq('id', data.lead_id)
-                            .neq('status', 'transferred')
-                            .neq('status', 'converted')
                     } else if (data?.lead_id && (hangupCause === 'NO_ANSWER' || hangupCause === 'USER_BUSY')) {
                         // Update lead for unanswered calls
                         await adminClient
                             .from('leads')
                             .update({
-                                call_status: hangupCause === 'NO_ANSWER' ? 'no_answer' : 'busy',
                                 last_call_attempt: new Date().toISOString()
                             })
                             .eq('id', data.lead_id)
