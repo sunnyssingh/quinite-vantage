@@ -46,7 +46,7 @@ export default function LeadForm({
     const [fetchedStages, setFetchedStages] = useState(stages)
     const [loadingStages, setLoadingStages] = useState(false)
 
-    const [selectedStageId, setSelectedStageId] = useState(initialStageId || initialData?.stage_id || '')
+    const [selectedStageId, setSelectedStageId] = useState(initialData?.stage_id || initialStageId || '')
 
     // Fetch stages when project changes
     const fetchStages = async (pid) => {
@@ -81,17 +81,26 @@ export default function LeadForm({
         }
     }
 
-    // Initial fetch if no stages provided
+    // Initial fetch if no stages provided, and refresh when initialData changes
     React.useEffect(() => {
         if (stages.length === 0) {
             fetchStages(initialData?.project_id || 'none')
         } else {
-            // If stages provided via props, ensure one is selected
+            // If stages provided via props, use them
+            setFetchedStages(stages)
+            // Ensure one is selected
             if (!selectedStageId && stages.length > 0) {
-                setSelectedStageId(stages[0].id)
+                setSelectedStageId(initialData?.stage_id || stages[0].id)
             }
         }
-    }, [])
+    }, [initialData, stages])
+
+    // Sync selectedStageId when initialData changes
+    React.useEffect(() => {
+        if (initialData?.stage_id) {
+            setSelectedStageId(initialData.stage_id)
+        }
+    }, [initialData?.stage_id])
 
     const handleProjectChange = (val) => {
         fetchStages(val)

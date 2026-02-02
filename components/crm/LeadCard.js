@@ -83,12 +83,9 @@ export function LeadCard({ lead }) {
                 <div className="pt-2 border-t border-border/50 flex items-center justify-between">
                     <Badge
                         variant="outline"
-                        className={`text-[9px] h-5 px-2 font-medium ${lead.call_status === 'completed' || lead.call_status === 'transferred'
-                            ? 'text-green-600 bg-green-50/50 border-green-200'
-                            : 'text-muted-foreground bg-muted/20 border-border'
-                            }`}
+                        className="text-[9px] h-5 px-2 font-medium text-muted-foreground bg-muted/20 border-border"
                     >
-                        {lead.call_status ? lead.call_status.replace('_', ' ').toUpperCase() : 'NEW'}
+                        {lead.lead_source || lead.source || 'Manual'}
                     </Badge>
 
                     {/* AI Score */}

@@ -53,7 +53,8 @@ export async function GET(request) {
             { data: allLeads },
             { data: allDeals },
             { data: stages },
-            { data: recentActivities }
+            { data: recentActivities },
+            { data: allTasks }
         ] = await Promise.all([
             // 1. Total Leads Count
             adminClient
@@ -84,10 +85,16 @@ export async function GET(request) {
             // 5. Fetch Recent Activities
             adminClient
                 .from('audit_logs')
-                .select('id, action, entity_type, created_at, user:profiles(full_name)')
+                .select('id, action, entity_type, created_at, user_name')
                 .eq('organization_id', organizationId)
                 .order('created_at', { ascending: false })
-                .limit(5)
+                .limit(5),
+
+            // 6. Fetch All Tasks for statistics
+            adminClient
+                .from('lead_tasks')
+                .select('id, status, due_date')
+                .eq('organization_id', organizationId)
         ])
 
         // Aggregation Logic
@@ -169,14 +176,51 @@ export async function GET(request) {
         // Format activities
         const formattedActivities = recentActivities?.map(activity => {
             const timeAgo = getTimeAgo(new Date(activity.created_at))
+
+            // Extract action verb
+            let action = activity.action?.toLowerCase() || 'updated'
+            if (action.includes('create')) action = 'created'
+            else if (action.includes('update')) action = 'updated'
+            else if (action.includes('delete')) action = 'deleted'
+
+            // Get entity and user
+            const entity = activity.entity_type?.toLowerCase() || 'item'
+            const userName = activity.user_name || 'Someone'
+
+            // Create user-friendly title
+            let title = ''
+            if (action === 'created') {
+                title = `${userName} created a new ${entity}`
+            } else if (action === 'updated') {
+                title = `${userName} updated ${entity}`
+            } else if (action === 'deleted') {
+                title = `${userName} deleted ${entity}`
+            } else {
+                title = `${userName} ${action} ${entity}`
+            }
+
             return {
                 id: activity.id,
                 type: getActivityType(activity.entity_type),
-                title: `${activity.action} ${activity.entity_type}`,
+                title: title,
                 time: timeAgo,
                 status: getActivityStatus(activity.action)
             }
         }) || []
+
+        // Calculate Task Statistics
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        const tasksCompleted = allTasks?.filter(t => t.status === 'completed').length || 0
+        const tasksPending = allTasks?.filter(t => t.status === 'pending').length || 0
+        const tasksOverdue = allTasks?.filter(t => {
+            if (t.status === 'completed') return false
+            if (!t.due_date) return false
+            const dueDate = new Date(t.due_date)
+            dueDate.setHours(0, 0, 0, 0)
+            return dueDate < today
+        }).length || 0
 
         const dashboardData = {
             totalLeads: totalLeads || 0,
@@ -188,7 +232,10 @@ export async function GET(request) {
             revenue: `${currencySymbol}${totalRevenue.toLocaleString()}`,
             revenueChange: '+8%',
             recentActivities: formattedActivities,
-            pipelineOverview
+            pipelineOverview,
+            tasksCompleted,
+            tasksPending,
+            tasksOverdue
         }
 
         return NextResponse.json(dashboardData)

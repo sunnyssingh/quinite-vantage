@@ -8,7 +8,6 @@ import {
     TrendingDown,
     Users,
     Target,
-    DollarSign,
     Activity,
     ArrowUpRight,
     Plus,
@@ -73,10 +72,11 @@ export default function CRMDashboardPage() {
         },
         {
             title: 'Revenue (MTD)',
-            value: loading ? '...' : stats?.revenue || '$0',
+            value: loading ? '...' : stats?.revenue || '₹0',
             change: loading ? '...' : stats?.revenueChange || '+15%',
             trend: 'up',
-            icon: DollarSign,
+            icon: null, // No icon, will show currency symbol
+            currencySymbol: loading ? '₹' : (stats?.revenue?.match(/^[^\d]+/)?.[0] || '₹'),
             color: 'text-emerald-600',
             bgColor: 'bg-emerald-50',
         },
@@ -198,8 +198,14 @@ export default function CRMDashboardPage() {
                         <Card key={index} className="overflow-hidden border-border hover:shadow-md transition-all duration-200">
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between mb-4">
-                                    <div className={`p-3 rounded-lg ${metric.bgColor}`}>
-                                        <Icon className={`w-6 h-6 ${metric.color}`} />
+                                    <div className={`p-3 rounded-lg ${metric.bgColor} w-12 h-12 flex items-center justify-center`}>
+                                        {Icon ? (
+                                            <Icon className={`w-6 h-6 ${metric.color}`} />
+                                        ) : (
+                                            <span className={`text-2xl font-bold ${metric.color}`}>
+                                                {metric.currencySymbol}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${metric.trend === 'up' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
                                         <TrendIcon className="w-3 h-3" />
@@ -309,24 +315,31 @@ export default function CRMDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {recentActivities.map((activity) => {
-                                const Icon = getActivityIcon(activity.type)
-                                return (
-                                    <div key={activity.id} className="flex gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors">
-                                        <div className={`p-2 rounded-lg ${getStatusColor(activity.status)} flex-shrink-0`}>
-                                            <Icon className="w-4 h-4" />
+                            {recentActivities.length > 0 ? (
+                                recentActivities.map((activity) => {
+                                    const Icon = getActivityIcon(activity.type)
+                                    return (
+                                        <div key={activity.id} className="flex gap-3 p-3 rounded-lg hover:bg-secondary/50 transition-colors">
+                                            <div className={`p-2 rounded-lg ${getStatusColor(activity.status)} flex-shrink-0`}>
+                                                <Icon className="w-4 h-4" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-foreground line-clamp-1">
+                                                    {activity.title}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {activity.time}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-foreground line-clamp-1">
-                                                {activity.title}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                {activity.time}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )
-                            })}
+                                    )
+                                })
+                            ) : (
+                                <div className="text-center py-8 text-muted-foreground text-sm">
+                                    <p>No recent activities yet.</p>
+                                    <p className="text-xs mt-1">Start by adding leads or creating campaigns.</p>
+                                </div>
+                            )}
                         </div>
                         <Link href="/dashboard/admin/crm/auditlog">
                             <Button variant="ghost" className="w-full mt-4 gap-2">
@@ -348,7 +361,7 @@ export default function CRMDashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Tasks Completed</p>
-                                <p className="text-2xl font-bold text-foreground">24</p>
+                                <p className="text-2xl font-bold text-foreground">{loading ? '...' : stats?.tasksCompleted || 0}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -361,7 +374,7 @@ export default function CRMDashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Pending Follow-ups</p>
-                                <p className="text-2xl font-bold text-foreground">8</p>
+                                <p className="text-2xl font-bold text-foreground">{loading ? '...' : stats?.tasksPending || 0}</p>
                             </div>
                         </div>
                     </CardContent>
@@ -374,7 +387,7 @@ export default function CRMDashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Overdue Tasks</p>
-                                <p className="text-2xl font-bold text-foreground">3</p>
+                                <p className="text-2xl font-bold text-foreground">{loading ? '...' : stats?.tasksOverdue || 0}</p>
                             </div>
                         </div>
                     </CardContent>

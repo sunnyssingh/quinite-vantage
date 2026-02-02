@@ -11,7 +11,9 @@ import {
     FileText,
     Settings,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Phone,
+    TrendingUp
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -46,6 +48,13 @@ export default function CrmSidebar() {
             title: 'Marketing',
             items: [
                 { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone },
+            ]
+        },
+        {
+            title: 'Call Management',
+            items: [
+                { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone },
+                { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp },
             ]
         },
         {
