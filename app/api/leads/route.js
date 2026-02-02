@@ -131,9 +131,9 @@ export async function POST(request) {
         console.log('✅ [Leads POST] Organization ID:', profile.organization_id)
 
         const body = await request.json()
-        const { name, email, phone, projectId, status, notes, stageId, dealValue } = body
+        const { name, email, phone, projectId, notes, stageId, dealValue } = body
 
-        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, status, stageId, dealValue })
+        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, stageId, dealValue })
 
         // Validation
         if (!name || name.trim() === '') {
@@ -194,7 +194,6 @@ export async function POST(request) {
                 phone: phone?.trim() || null,
                 project_id: projectId || null,
                 stage_id: finalStageId, // Use provided or auto-assigned stage
-                status: status || 'new',
                 notes: notes?.trim() || null,
                 organization_id: profile.organization_id,
                 created_by: user.id,
