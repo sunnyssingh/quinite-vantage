@@ -107,7 +107,6 @@ export async function POST(request, { params }) {
         console.log(`   Plivo Configured: ${isPlivoConfigured()}`)
 
         // Get leads for this campaign's project (Batch Processing)
-        // Only fetch leads that haven't been called successfully yet
         console.log(`🔎 Searching for leads with Project ID: ${campaign.project_id}`)
 
         const { data: leads, error: leadsError } = await adminClient
@@ -115,8 +114,6 @@ export async function POST(request, { params }) {
             .select('*')
             .eq('organization_id', profile.organization_id)
             .eq('project_id', campaign.project_id)
-            // Fix: Handle NULL call_status correctly using OR syntax
-            .or('call_status.in.(new,pending,failed,not_called),call_status.is.null')
             .limit(batchSize)
 
         if (leadsError) {
