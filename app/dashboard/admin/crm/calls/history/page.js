@@ -240,7 +240,7 @@ export default function CallHistory() {
                                                 <Badge className={getStatusColor(call.call_status)}>
                                                     {call.call_status?.replace('_', ' ').toUpperCase()}
                                                 </Badge>
-                                                {call.transferred && (
+                                                {call.transferred && call.call_status !== 'transferred' && (
                                                     <Badge variant="outline" className="text-blue-600 border-blue-600">
                                                         <PhoneForwarded className="h-3 w-3 mr-1" />
                                                         Transferred

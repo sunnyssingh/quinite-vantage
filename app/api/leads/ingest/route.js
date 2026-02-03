@@ -257,7 +257,7 @@ export async function POST(req) {
                         lead_source: standardized.lead_source || source,
                         external_lead_id: standardized.external_lead_id,
                         raw_data: standardized.raw_data || item,
-                        status: 'new'
+
                     }, { onConflict: 'phone, project_id' })
                     .select()
                     .single()
