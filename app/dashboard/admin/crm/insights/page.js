@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
     BarChart,
@@ -18,7 +19,7 @@ import {
     Legend,
     ResponsiveContainer
 } from 'recharts'
-import { TrendingUp, MessageSquare, DollarSign, Calendar, AlertTriangle } from 'lucide-react'
+import { Activity, MessageSquare, Banknote, Calendar, AlertTriangle, UserCheck } from 'lucide-react'
 
 export default function ConversationInsightsDashboard({ campaignId = null, dateRange = 30 }) {
     const [insights, setInsights] = useState([])
@@ -57,7 +58,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
 
     const calculateStats = (data) => {
         const totalInsights = data.length
-        const avgSentiment = data.reduce((sum, i) => sum + (i.sentiment_score || 0), 0) / totalInsights
+        const avgSentiment = data.reduce((sum, i) => sum + (i.overall_sentiment || 0), 0) / totalInsights
         const highInterest = data.filter(i => i.interest_level === 'high').length
         const budgetMentioned = data.filter(i => i.budget_mentioned).length
 
@@ -71,9 +72,9 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
 
     // Sentiment Distribution
     const getSentimentData = () => {
-        const positive = insights.filter(i => i.sentiment_score > 0.3).length
-        const neutral = insights.filter(i => i.sentiment_score >= -0.3 && i.sentiment_score <= 0.3).length
-        const negative = insights.filter(i => i.sentiment_score < -0.3).length
+        const positive = insights.filter(i => i.overall_sentiment > 0.3).length
+        const neutral = insights.filter(i => i.overall_sentiment >= -0.3 && i.overall_sentiment <= 0.3).length
+        const negative = insights.filter(i => i.overall_sentiment < -0.3).length
 
         return [
             { name: 'Positive', value: positive, color: '#10b981' },
@@ -153,11 +154,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        )
+        return <InsightsSkeleton />
     }
 
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
@@ -186,7 +183,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Avg Sentiment</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-green-600" />
+                        <Activity className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.avgSentiment}</div>
@@ -199,7 +196,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">High Interest</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-emerald-600" />
+                        <UserCheck className="h-4 w-4 text-emerald-600" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.highInterest}</div>
@@ -212,7 +209,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Budget Mentioned</CardTitle>
-                        <DollarSign className="h-4 w-4 text-yellow-600" />
+                        <Banknote className="h-4 w-4 text-yellow-600" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.budgetMentioned}</div>
@@ -363,6 +360,49 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                     </Card>
                 </TabsContent>
             </Tabs>
+        </div>
+    )
+}
+
+function InsightsSkeleton() {
+    return (
+        <div className="space-y-6 p-6">
+            <div className="space-y-2">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-96" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <Card key={i}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-4 rounded-full" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-8 w-16 mb-2" />
+                            <Skeleton className="h-3 w-32" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            <div className="space-y-4">
+                <div className="flex gap-2">
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-48 mb-2" />
+                        <Skeleton className="h-4 w-64" />
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-[300px] w-full" />
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     )
 }

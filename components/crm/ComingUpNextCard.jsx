@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, Plus, Flag, Clock, CheckCircle2, Circle } from 'lucide-react'
+import { Calendar, Plus, Flag, Clock, CheckCircle2, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -131,11 +131,29 @@ export default function ComingUpNextCard({ leadId }) {
         }
     }
 
+    const handleDeleteTask = async (taskId) => {
+        if (!confirm('Are you sure you want to delete this task?')) return
+
+        try {
+            const res = await fetch(`/api/leads/${leadId}/tasks/${taskId}`, {
+                method: 'DELETE'
+            })
+
+            if (!res.ok) throw new Error('Failed to delete task')
+
+            setTasks(tasks.filter(t => t.id !== taskId))
+            toast.success('Task deleted')
+        } catch (error) {
+            console.error('Error deleting task:', error)
+            toast.error('Failed to delete task')
+        }
+    }
+
     const getPriorityColor = (priority) => {
         switch (priority) {
-            case 'high': return 'text-red-600'
-            case 'medium': return 'text-orange-500'
-            case 'low': return 'text-blue-500'
+            case 'high': return 'text-red-500 fill-red-500/10'
+            case 'medium': return 'text-orange-500 fill-orange-500/10'
+            case 'low': return 'text-blue-500 fill-blue-500/10'
             default: return 'text-gray-400'
         }
     }
@@ -162,7 +180,7 @@ export default function ComingUpNextCard({ leadId }) {
                 <CardContent>
                     <div className="space-y-3">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />
+                            <div key={i} className="h-20 bg-gray-50 rounded-xl animate-pulse" /> // Increased height placeholder
                         ))}
                     </div>
                 </CardContent>
@@ -172,20 +190,22 @@ export default function ComingUpNextCard({ leadId }) {
 
     return (
         <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200 flex flex-col">
-            <CardHeader className="pb-3 shrink-0">
+            <CardHeader className="pb-4 shrink-0 border-b border-gray-100 mb-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-indigo-50 rounded-md">
-                            <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                            <CheckCircle2 className="w-4 h-4" />
                         </div>
-                        <CardTitle className="text-sm font-semibold text-gray-900">Tasks</CardTitle>
-                        {tasks.length > 0 && (
-                            <span className="text-xs text-gray-500">({tasks.filter(t => t.status !== 'completed').length})</span>
-                        )}
+                        <div>
+                            <CardTitle className="text-sm font-bold text-gray-900">Tasks</CardTitle>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {tasks.filter(t => t.status !== 'completed').length} pending
+                            </p>
+                        </div>
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full">
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </DialogTrigger>
@@ -304,7 +324,7 @@ export default function ComingUpNextCard({ leadId }) {
                 </div>
             </CardHeader>
 
-            <CardContent className="flex-1 overflow-y-auto space-y-2">
+            <CardContent className="flex-1 overflow-y-auto px-4 pb-4">
                 {tasks.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center py-8">
                         <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mb-3">
@@ -323,72 +343,96 @@ export default function ComingUpNextCard({ leadId }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         {tasks.map((task) => (
                             <div
                                 key={task.id}
                                 className={cn(
-                                    "group flex items-start gap-3 p-3 rounded-lg border transition-all hover:shadow-sm",
+                                    "group relative flex items-start gap-3 p-4 rounded-xl border transition-all",
                                     task.status === 'completed'
-                                        ? "bg-gray-50/50 border-gray-100"
-                                        : "bg-white border-gray-200 hover:border-indigo-200"
+                                        ? "bg-gray-50/80 border-gray-100"
+                                        : "bg-white border-gray-100 shadow-sm hover:border-indigo-200 hover:shadow-md"
                                 )}
                             >
                                 <button
                                     onClick={() => toggleTaskStatus(task.id, task.status)}
                                     className={cn(
-                                        "mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
+                                        "mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
                                         task.status === 'completed'
                                             ? "bg-indigo-600 border-indigo-600"
-                                            : "border-gray-300 hover:border-indigo-500"
+                                            : "border-gray-200 hover:border-indigo-500 text-transparent hover:text-indigo-500"
                                     )}
                                 >
-                                    {task.status === 'completed' && (
-                                        <CheckCircle2 className="w-3 h-3 text-white" />
-                                    )}
+                                    <CheckCircle2 className={cn("w-3.5 h-3.5", task.status === 'completed' ? "text-white" : "opacity-0 hover:opacity-100")} />
                                 </button>
 
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                    <div className="flex items-start justify-between gap-3">
                                         <p className={cn(
-                                            "text-sm font-medium",
+                                            "text-sm font-semibold leading-tight",
                                             task.status === 'completed'
-                                                ? "line-through text-gray-500"
+                                                ? "line-through text-gray-400"
                                                 : "text-gray-900"
                                         )}>
                                             {task.title}
                                         </p>
-                                        <Flag className={cn("w-3.5 h-3.5 shrink-0", getPriorityColor(task.priority))} />
+
+                                        {/* Actions: Priority (if not completed) & Delete */}
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {task.status !== 'completed' && (
+                                                <Flag className={cn("w-4 h-4", getPriorityColor(task.priority))} />
+                                            )}
+
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleDeleteTask(task.id)
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-0.5"
+                                                title="Delete task"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {task.description && (
-                                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                        <p className={cn("text-xs line-clamp-2", task.status === 'completed' ? "text-gray-300" : "text-gray-500")}>
                                             {task.description}
                                         </p>
                                     )}
 
-                                    <div className="flex items-center gap-3 mt-2">
-                                        {task.due_date && (
-                                            <div className={cn(
-                                                "flex items-center gap-1 text-xs px-2 py-0.5 rounded-md",
-                                                new Date(task.due_date) < new Date() && task.status !== 'completed'
-                                                    ? "text-red-600 bg-red-50"
-                                                    : "text-gray-600 bg-gray-100"
-                                            )}>
-                                                <Calendar className="w-3 h-3" />
-                                                <span>{format(new Date(task.due_date), 'MMM d')}</span>
-                                                {task.due_time && <span className="text-gray-400">• {task.due_time}</span>}
-                                            </div>
-                                        )}
+                                    <div className="flex items-center justify-between mt-1 pt-2 border-t border-dashed border-gray-100">
+                                        <div className="flex items-center gap-4">
+                                            {task.due_date && (
+                                                <div className={cn(
+                                                    "flex items-center gap-1.5 text-xs font-medium",
+                                                    task.status === 'completed'
+                                                        ? "text-gray-400"
+                                                        : new Date(task.due_date) < new Date()
+                                                            ? "text-red-600"
+                                                            : "text-gray-600"
+                                                )}>
+                                                    <Calendar className="w-3.5 h-3.5" />
+                                                    <span>{format(new Date(task.due_date), 'MMM d')}</span>
+                                                    {task.due_time && <span className="opacity-70 font-normal">at {task.due_time}</span>}
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {task.assigned_to && (
-                                            <div className="flex items-center gap-1.5 ml-auto">
-                                                <Avatar className="h-5 w-5 border border-gray-200">
-                                                    <AvatarFallback className="text-[9px] bg-indigo-100 text-indigo-700">
+                                            <div className="flex items-center gap-1.5">
+                                                <Avatar className="h-6 w-6 border border-white ring-1 ring-gray-100">
+                                                    <AvatarFallback className={cn(
+                                                        "text-[10px] font-bold",
+                                                        task.status === 'completed' ? "bg-gray-100 text-gray-400" : "bg-indigo-50 text-indigo-600"
+                                                    )}>
                                                         {getUserName(task.assigned_to).substring(0, 2).toUpperCase()}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <span className="text-xs text-gray-500">{getUserName(task.assigned_to)}</span>
+                                                <span className={cn("text-xs font-medium", task.status === 'completed' ? "text-gray-300" : "text-gray-600")}>
+                                                    {getUserName(task.assigned_to).split(' ')[0]}
+                                                </span>
                                             </div>
                                         )}
                                     </div>

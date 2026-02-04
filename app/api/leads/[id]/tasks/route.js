@@ -12,6 +12,20 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Cleanup completed tasks older than 24 hours
+        try {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+            await supabase
+                .from('lead_tasks')
+                .delete()
+                .eq('lead_id', id)
+                .eq('status', 'completed')
+                .lt('completed_at', yesterday)
+        } catch (cleanupError) {
+            console.error('Error cleaning up old tasks:', cleanupError)
+            // Continue execution even if cleanup fails
+        }
+
         // Get tasks
         const { data, error } = await supabase
             .from('lead_tasks')

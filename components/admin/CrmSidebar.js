@@ -152,12 +152,7 @@ export default function CrmSidebar() {
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         className="w-full h-9 hover:bg-slate-100 text-slate-500 hover:text-slate-900"
                     >
-                        {isCollapsed ? <ChevronRight className="w-5 h-5" /> : (
-                            <div className="flex items-center gap-2">
-                                <ChevronLeft className="w-5 h-5" />
-                                <span className="text-xs font-medium uppercase tracking-wide">Collapse Sidebar</span>
-                            </div>
-                        )}
+                        {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
                     </Button>
                 </div>
             </aside>

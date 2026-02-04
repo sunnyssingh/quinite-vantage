@@ -353,6 +353,8 @@ export default function CampaignsPage() {
                   } else {
                     router.push(`/dashboard/admin/crm/campaigns`)
                   }
+                  // Trigger data refresh after URL change
+                  setTimeout(() => fetchData(), 100)
                 }}
               >
                 <option value="">All Projects</option>

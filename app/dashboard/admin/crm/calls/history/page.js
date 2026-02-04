@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
     Phone, Search, Calendar, Clock, User, Building2,
-    PhoneForwarded, PhoneOff, TrendingUp, MessageSquare,
-    Sparkles, ExternalLink
+    PhoneForwarded, PhoneOff, Activity, MessageSquare,
+    Flag, ExternalLink
 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatDistanceToNow, format } from 'date-fns'
 
 export default function CallHistory() {
@@ -120,11 +121,7 @@ export default function CallHistory() {
     }
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        )
+        return <CallHistorySkeleton />
     }
 
     return (
@@ -166,7 +163,7 @@ export default function CallHistory() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {calls.filter(c => c.call_status === 'completed').length}
+                            {calls.filter(c => c.call_status === 'completed' || c.call_status === 'transferred').length}
                         </div>
                     </CardContent>
                 </Card>
@@ -198,7 +195,7 @@ export default function CallHistory() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">With Insights</CardTitle>
-                        <Sparkles className="h-4 w-4 text-yellow-600" />
+                        <Activity className="h-4 w-4 text-yellow-600" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
@@ -271,7 +268,7 @@ export default function CallHistory() {
                                             {call.insights && call.insights.length > 0 ? (
                                                 <div className="flex items-center gap-4 text-sm">
                                                     <div className="flex items-center gap-1">
-                                                        <TrendingUp className={`h-4 w-4 ${getSentimentColor(call.insights[0].overall_sentiment)}`} />
+                                                        <Activity className={`h-4 w-4 ${getSentimentColor(call.insights[0].overall_sentiment)}`} />
                                                         <span className="font-medium">
                                                             Sentiment: {call.insights[0].sentiment_label || 'N/A'}
                                                         </span>
@@ -284,7 +281,7 @@ export default function CallHistory() {
                                                     </div>
                                                     {call.insights[0].priority_score && (
                                                         <div className="flex items-center gap-1">
-                                                            <Sparkles className="h-4 w-4 text-yellow-500" />
+                                                            <Flag className="h-4 w-4 text-yellow-500" />
                                                             <span>Priority: {call.insights[0].priority_score}/100</span>
                                                         </div>
                                                     )}
@@ -320,7 +317,7 @@ export default function CallHistory() {
                                                     onClick={() => analyzeCall(call.id)}
                                                     disabled={analyzing === call.id}
                                                 >
-                                                    <Sparkles className="h-4 w-4 mr-1" />
+                                                    <Activity className="h-4 w-4 mr-1" />
                                                     {analyzing === call.id ? 'Analyzing...' : 'Analyze'}
                                                 </Button>
                                             )}
@@ -342,6 +339,71 @@ export default function CallHistory() {
                             ))}
                         </div>
                     )}
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
+
+function CallHistorySkeleton() {
+    return (
+        <div className="space-y-6 p-6">
+            <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-64" />
+                </div>
+                <Skeleton className="h-8 w-24 rounded-full" />
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+                <Skeleton className="h-10 flex-1" />
+                <div className="flex gap-2">
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-24" />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                    <Card key={i}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-4 rounded-full" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-8 w-16" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-6 w-32 mb-2" />
+                    <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="border rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                                <div className="space-y-3 flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <Skeleton className="h-6 w-48" />
+                                        <Skeleton className="h-5 w-24 rounded-full" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Skeleton className="h-4 w-32" />
+                                        <Skeleton className="h-4 w-32" />
+                                    </div>
+                                </div>
+                                <div className="ml-4 space-y-2">
+                                    <Skeleton className="h-8 w-32" />
+                                    <Skeleton className="h-8 w-24" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </CardContent>
             </Card>
         </div>

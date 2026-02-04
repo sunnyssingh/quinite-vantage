@@ -40,6 +40,12 @@ export default function CustomBreadcrumbs() {
                 if (isUUID) {
                     // Identify context based on previous segment
                     const parentSegment = rawSegments[index - 1]
+                    const nextSegment = rawSegments[index + 1]
+
+                    // Hide campaign/project UUID if followed by 'pipeline' since the pipeline label will include the name
+                    if ((parentSegment === 'campaigns' || parentSegment === 'projects') && nextSegment === 'pipeline') {
+                        isHidden = true
+                    }
 
                     try {
                         if (parentSegment === 'leads') {

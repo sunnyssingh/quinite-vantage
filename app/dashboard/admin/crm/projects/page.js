@@ -280,8 +280,7 @@ export default function ProjectsPage() {
 
           <Button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className="gap-2 h-9 text-sm font-medium shadow-sm hover:bg-muted transition-all"
-            variant="outline"
+            className="gap-2 h-9 text-sm font-medium shadow-sm transition-all"
             size="sm"
           >
             {showCreateForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}

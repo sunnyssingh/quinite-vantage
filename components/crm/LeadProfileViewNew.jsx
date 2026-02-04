@@ -165,8 +165,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     return (
         <div className={`flex flex-col md:flex-row gap-6 ${isModal ? 'h-[80vh]' : ''}`}>
             {/* Sidebar - Sticky if not modal */}
-            <div className={`w-full md:w-80 flex flex-col shrink-0 space-y-4 ${!isModal ? 'md:sticky md:top-0' : 'overflow-y-auto'}`}>
-                <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+            <div className={`w-full md:w-80 flex flex-col shrink-0 space-y-4 ${!isModal ? '' : 'overflow-y-auto'}`}>
+                <div className="bg-card border rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
                     <div
                         className="h-28 w-full"
                         style={{
@@ -205,7 +205,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                         <p className="text-sm text-gray-500">{profile.company || 'No Company'}</p>
                     </div>
 
-                    <div className="px-6 pb-6 space-y-6">
+                    <div className="px-6 pb-6 flex flex-col flex-1 gap-6">
                         <div>
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Contact Info</h3>
                             <div className="space-y-4">
@@ -260,7 +260,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                             </div>
                         </div>
 
-                        <Button variant="outline" className="w-full rounded-lg border-dashed border-gray-300 hover:border-primary hover:text-primary transition-colors" onClick={() => setEditDialogOpen(true)}>
+                        <Button variant="outline" className="w-full rounded-lg border-dashed border-gray-300 hover:border-primary hover:text-primary transition-colors mt-auto" onClick={() => setEditDialogOpen(true)}>
                             <Edit2 className="w-4 h-4 mr-2" />
                             Edit Profile
                         </Button>
@@ -307,8 +307,9 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                                             {(lead.projects || (lead.project ? [lead.project] : [])).length > 0 ? (
                                                 <div className="max-h-[350px] overflow-y-auto pr-1 space-y-4 custom-scrollbar">
                                                     {(lead.projects || [lead.project]).map((project, index) => (
-                                                        <div key={index} className="group">
-                                                            <div className="aspect-video w-full bg-gray-100 rounded-xl overflow-hidden mb-2 relative shadow-sm border border-gray-100">
+                                                        <div key={index} className="group flex items-start gap-3 p-2 rounded-xl border border-transparent hover:bg-slate-50 hover:border-slate-100 transition-all cursor-pointer">
+                                                            {/* Small Thumbnail */}
+                                                            <div className="h-14 w-20 shrink-0 bg-slate-100 rounded-lg overflow-hidden relative border border-slate-200">
                                                                 {project.image_url ? (
                                                                     <img
                                                                         src={project.image_url}
@@ -317,28 +318,27 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                                                                         onError={(e) => e.target.style.display = 'none'}
                                                                     />
                                                                 ) : (
-                                                                    <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50">
-                                                                        <Building className="w-8 h-8 opacity-20" />
+                                                                    <div className="flex items-center justify-center h-full text-slate-400">
+                                                                        <Building className="w-5 h-5 opacity-40" />
                                                                     </div>
                                                                 )}
-                                                                {/* Gradient Overlay & Title */}
-                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 flex flex-col justify-end">
-                                                                    <h4 className="text-white font-bold text-lg leading-tight shadow-sm">{project.name}</h4>
-                                                                </div>
                                                             </div>
 
-                                                            {/* Location & Details */}
-                                                            <div className="px-1 space-y-1">
+                                                            {/* Details */}
+                                                            <div className="flex-1 min-w-0 py-0.5">
+                                                                <div className="flex justify-between items-start gap-2">
+                                                                    <h4 className="font-semibold text-sm text-slate-900 leading-tight truncate">{project.name}</h4>
+                                                                    {project.project_type && (
+                                                                        <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full">
+                                                                            {project.project_type}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
                                                                 {project.address && (
-                                                                    <div className="flex items-start gap-1.5 text-sm text-gray-500">
-                                                                        <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
-                                                                        <span className="line-clamp-1">{project.address}</span>
-                                                                    </div>
-                                                                )}
-                                                                {project.project_type && (
-                                                                    <div className="flex items-center gap-1.5 text-xs text-gray-400 pl-0.5">
-                                                                        <span className="w-3 h-3 flex items-center justify-center font-semibold text-[10px] bg-gray-100 rounded-full text-gray-500">#</span>
-                                                                        <span>{project.project_type}</span>
+                                                                    <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                                                                        <MapPin className="w-3 h-3 shrink-0 opacity-70" />
+                                                                        <span className="truncate">{project.address}</span>
                                                                     </div>
                                                                 )}
                                                             </div>

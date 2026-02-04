@@ -87,6 +87,9 @@ export default function LeadsPage() {
   const [stages, setStages] = useState([])
   const [loadingStages, setLoadingStages] = useState(false)
 
+  // Organization settings for currency
+  const [organization, setOrganization] = useState(null)
+
   // Fetch stages when project changes in edit form
   const fetchStages = async (pid) => {
     setLoadingStages(true)
@@ -181,7 +184,20 @@ export default function LeadsPage() {
 
   useEffect(() => {
     fetchData()
+    fetchOrganization()
   }, [stageFilter, searchQuery, projectId])
+
+  const fetchOrganization = async () => {
+    try {
+      const res = await fetch('/api/organization/settings')
+      if (res.ok) {
+        const data = await res.json()
+        setOrganization(data.organization)
+      }
+    } catch (error) {
+      console.error('Failed to fetch organization settings:', error)
+    }
+  }
 
   const fetchData = async () => {
     try {
@@ -537,7 +553,9 @@ export default function LeadsPage() {
             <div className="space-y-2">
               <Label>Forecast Value</Label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                <span className="absolute left-3 top-2.5 text-muted-foreground">
+                  {organization?.currency_symbol || '$'}
+                </span>
                 <Input
                   name="dealValue"
                   type="number"
