@@ -244,12 +244,12 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                             <ResponsiveContainer width="100%" height={300}>
                                 <PieChart>
                                     <Pie
-                                        data={getSentimentData()}
+                                        data={getSentimentData().filter(i => i.value > 0)}
                                         cx="50%"
                                         cy="50%"
-                                        labelLine={false}
-                                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                        outerRadius={100}
+                                        labelLine={true}
+                                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                        outerRadius={80}
                                         fill="#8884d8"
                                         dataKey="value"
                                     >
@@ -258,6 +258,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                                         ))}
                                     </Pie>
                                     <Tooltip />
+                                    <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -279,7 +280,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                                     <YAxis />
                                     <Tooltip />
                                     <Legend />
-                                    <Bar dataKey="value" fill="#3b82f6" />
+                                    <Bar dataKey="value" fill="#3b82f6" name="Count" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -301,7 +302,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                                     <YAxis />
                                     <Tooltip />
                                     <Legend />
-                                    <Bar dataKey="value" fill="#10b981" />
+                                    <Bar dataKey="value" fill="#10b981" name="Count" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -323,7 +324,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                                     <YAxis dataKey="name" type="category" width={150} />
                                     <Tooltip />
                                     <Legend />
-                                    <Bar dataKey="count" fill="#ef4444" />
+                                    <Bar dataKey="count" fill="#ef4444" name="Occurrences" />
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -341,12 +342,12 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                             <ResponsiveContainer width="100%" height={300}>
                                 <PieChart>
                                     <Pie
-                                        data={getBudgetRanges()}
+                                        data={getBudgetRanges().filter(i => i.value > 0)}
                                         cx="50%"
                                         cy="50%"
-                                        labelLine={false}
-                                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                        outerRadius={100}
+                                        labelLine={true}
+                                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                        outerRadius={80}
                                         fill="#8884d8"
                                         dataKey="value"
                                     >
@@ -355,6 +356,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                                         ))}
                                     </Pie>
                                     <Tooltip />
+                                    <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
                         </CardContent>

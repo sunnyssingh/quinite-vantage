@@ -14,6 +14,7 @@ export default function AgentDashboard() {
     const supabase = createClient()
 
     useEffect(() => {
+        console.log('🔄 AgentDashboard mounted, fetching calls...')
         fetchIncoming()
 
         // Subscribe to real-time updates
@@ -24,18 +25,23 @@ export default function AgentDashboard() {
                 schema: 'public',
                 table: 'agent_calls',
                 filter: 'outcome=eq.pending_acceptance'
-            }, () => {
+            }, (payload) => {
+                console.log('🔔 Real-time incoming call update:', payload)
                 fetchIncoming()
             })
-            .subscribe()
+            .subscribe((status) => {
+                console.log(`📡 Subscription status: ${status}`)
+            })
 
         return () => {
+            console.log('🔌 Unsubscribing from agent_calls_channel')
             supabase.removeChannel(channel)
         }
     }, [])
 
     const fetchIncoming = async () => {
         setLoading(true)
+        console.log('📥 Fetching incoming calls...')
         const { data, error } = await supabase
             .from('agent_calls')
             .select(`
@@ -48,8 +54,9 @@ export default function AgentDashboard() {
             .order('started_at', { ascending: false })
 
         if (error) {
-            console.error('Error fetching calls:', error)
+            console.error('❌ Error fetching calls:', error)
         } else {
+            console.log(`✅ Fetched ${data?.length || 0} incoming calls`, data)
             setIncomingCalls(data || [])
         }
         setLoading(false)
@@ -179,6 +186,7 @@ export default function AgentDashboard() {
                                         variant="outline"
                                         className="flex-1 h-11"
                                         size="lg"
+                                        onClick={() => window.open(`/dashboard/admin/crm/leads?leadId=${call.lead_id}`, '_blank')}
                                     >
                                         View Lead Details
                                     </Button>

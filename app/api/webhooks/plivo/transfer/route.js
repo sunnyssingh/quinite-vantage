@@ -67,16 +67,56 @@ export async function POST(request) {
             .limit(1)
             .select()
 
-        // Update lead status (Legacy columns removed)
-        // Ideally we should move them to a "Qualified" stage here, but for now we just track it.
-        // TODO: Look up 'Qualified' stage and move them there.
-        await supabase
-            .from('leads')
-            .update({
-                transferred_to_human: true,
-                last_contacted_at: new Date().toISOString()
-            })
-            .eq('id', leadId)
+        // Update lead status and move to 'Contacted' stage
+        try {
+            // 1. Get project_id from campaign
+            const { data: campaignData } = await supabase
+                .from('campaigns')
+                .select('project_id')
+                .eq('id', campaignId)
+                .single()
+
+            if (campaignData?.project_id) {
+                // 2. Find 'Contacted' stage for this project
+                // Note: Stages are per-project via the pipeline relation, but schema shows 
+                // pipeline_stages has project_id directly in the schema.sql:
+                // project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE
+                const { data: stageData } = await supabase
+                    .from('pipeline_stages')
+                    .select('id')
+                    .eq('project_id', campaignData.project_id)
+                    .ilike('name', 'Contacted') // Case-insensitive match
+                    .limit(1)
+                    .maybeSingle()
+
+                const updatePayload = {
+                    transferred_to_human: true,
+                    last_contacted_at: new Date().toISOString()
+                }
+
+                if (stageData?.id) {
+                    console.log(`✅ Moving lead to Contacted stage: ${stageData.id}`)
+                    updatePayload.stage_id = stageData.id
+                } else {
+                    console.log('⚠️ Contacted stage not found for project, skipping stage update')
+                }
+
+                await supabase
+                    .from('leads')
+                    .update(updatePayload)
+                    .eq('id', leadId)
+            }
+        } catch (err) {
+            console.error('❌ Error updating lead stage:', err)
+            // Fallback: just update the boolean flags if stage update fails
+            await supabase
+                .from('leads')
+                .update({
+                    transferred_to_human: true,
+                    last_contacted_at: new Date().toISOString()
+                })
+                .eq('id', leadId)
+        }
     }
 
     // Generate Plivo XML for blind transfer

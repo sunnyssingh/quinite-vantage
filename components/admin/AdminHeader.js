@@ -92,12 +92,12 @@ export default function AdminHeader({ user, profile }) {
                                 <SheetContent side="left" className="w-[80%] sm:w-[300px] p-0 overflow-y-auto">
                                     <SheetHeader className="p-6 border-b border-border text-left">
                                         <SheetTitle className="flex items-center gap-2">
-                                            <div className="relative w-10 h-10">
+                                            <div className="relative w-32 h-12">
                                                 <Image
                                                     src="/assets/logo.svg"
                                                     alt="Quinite Vantage"
                                                     fill
-                                                    className="object-contain"
+                                                    className="object-contain object-left"
                                                 />
                                             </div>
                                         </SheetTitle>
@@ -171,12 +171,12 @@ export default function AdminHeader({ user, profile }) {
                             </div>
 
                             {/* Mobile: Logo Icon Only */}
-                            <div className="relative w-8 h-8 md:hidden">
+                            <div className="relative w-28 h-10 md:hidden">
                                 <Image
                                     src="/assets/logo.svg"
                                     alt="Quinite Vantage"
                                     fill
-                                    className="object-contain"
+                                    className="object-contain object-left"
                                     priority
                                 />
                             </div>
