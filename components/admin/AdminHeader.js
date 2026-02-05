@@ -57,7 +57,7 @@ export default function AdminHeader({ user, profile }) {
 
     const navItems = [
         { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
-        { label: 'CRM', href: '/dashboard/admin/crm', icon: KanbanSquare },
+        { label: 'CRM', href: '/dashboard/admin/crm/dashboard', icon: KanbanSquare },
         { label: 'Inventory', href: '/dashboard/admin/inventory', icon: Building },
         { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 }
     ]
@@ -80,7 +80,7 @@ export default function AdminHeader({ user, profile }) {
             <div className="w-full px-4 sm:px-6">
                 <div className="flex justify-between h-14 items-center">
                     {/* Left Section: Logo & Nav */}
-                    <div className="flex items-center gap-6 h-full">
+                    <div className="flex items-center gap-2 md:gap-6 h-full">
                         {/* Mobile Menu */}
                         <div className="md:hidden">
                             <Sheet open={open} onOpenChange={setOpen}>

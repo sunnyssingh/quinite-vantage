@@ -17,8 +17,8 @@ export default function InventorySidebar() {
 
     const items = [
         { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard },
-        { label: 'Properties', href: '/dashboard/admin/inventory?tab=properties', icon: Building },
-        { label: 'Analytics', href: '/dashboard/admin/inventory?tab=analytics', icon: BarChart3 },
+        { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building },
+        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3 },
     ]
 
     return (

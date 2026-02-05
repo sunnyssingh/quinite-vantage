@@ -111,6 +111,12 @@ export async function POST(request) {
       metadata: metadata || (realEstate ? { real_estate: realEstate } : null),
       image_url: image_url || null,
       image_path: image_path || null,
+      // Inventory fields
+      total_units: body.total_units || 0,
+      unit_types: body.unit_types || null,
+      price_range: body.price_range || null,
+      project_status: body.project_status || 'planning',
+      show_in_inventory: body.show_in_inventory !== false,
       organization_id: profile.organization_id,
       created_by: user.id
     }
@@ -161,6 +167,65 @@ export async function POST(request) {
     } catch (campError) {
       console.error('Failed to auto-create campaign:', campError)
       // We don't block the project creation response if this fails, just log it.
+    }
+
+    // 9️⃣ Automatic Property Creation (Inventory Sync)
+    if (project.unit_types && Array.isArray(project.unit_types) && project.unit_types.length > 0) {
+      try {
+        const inserts = []
+
+        for (const unit of project.unit_types) {
+          const count = Number(unit.count) || 0
+          if (count > 0) {
+            // Parse residential details if available
+            let bedrooms = null
+            let size_sqft = null
+            let type = unit.type
+
+            // Handle new residential structure
+            if (unit.configuration) {
+              // Extract number from "3BHK" -> 3
+              const match = unit.configuration.match(/(\d+)/)
+              if (match) bedrooms = parseInt(match[0])
+              type = unit.property_type || unit.type || 'Apartment'
+            }
+
+            if (unit.carpet_area) {
+              size_sqft = Number(unit.carpet_area)
+            }
+
+            for (let i = 0; i < count; i++) {
+              inserts.push({
+                organization_id: profile.organization_id,
+                project_id: project.id,
+                title: `${unit.configuration || unit.type} Unit ${i + 1}`,
+                description: `Auto-generated ${unit.property_type || unit.type} unit for ${project.name}`,
+                type: type,
+                status: 'available',
+                price: Number(unit.price) || Number(project.pricing?.min) || 0,
+                bedrooms: bedrooms,
+                size_sqft: size_sqft,
+                created_by: user.id
+              })
+            }
+          }
+        }
+
+        if (inserts.length > 0) {
+          const { error: propError } = await admin
+            .from('properties')
+            .insert(inserts)
+
+          if (propError) {
+            console.error('Failed to auto-create properties:', propError)
+            // We log but don't fail the request
+          } else {
+            console.log(`Auto-created ${inserts.length} properties for project ${project.id}`)
+          }
+        }
+      } catch (propErr) {
+        console.error('Property auto-creation exception:', propErr)
+      }
     }
 
     return corsJSON({ project })

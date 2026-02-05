@@ -76,6 +76,26 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
+        // [Inventory Automation] If Lead is WON, mark linked property as SOLD
+        if (body.status === 'won' || body.stage === 'won' || (body.stageId && ['won', 'closed-won'].includes(body.stageId))) { // heuristic check
+            // Need to fetch lead's property_id first
+            const { data: leadData } = await supabase
+                .from('leads')
+                .select('property_id')
+                .eq('id', id)
+                .single()
+
+            if (leadData?.property_id) {
+                const adminClient = createAdminClient()
+                await adminClient
+                    .from('properties')
+                    .update({ status: 'sold' })
+                    .eq('id', leadData.property_id)
+
+                console.log(`[Inventory] Auto-sold property ${leadData.property_id} for lead ${id}`)
+            }
+        }
+
         // [Schema Alignment] Update Deal if value is provided
         if (body.dealValue !== undefined) {
             const amount = parseFloat(body.dealValue)

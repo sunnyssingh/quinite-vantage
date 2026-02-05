@@ -16,15 +16,25 @@ import {
     CheckCircle2,
     ChevronRight,
     ChevronLeft,
-    AlertCircle
+    AlertCircle,
+    Building,
+    TreePine,
+    Castle,
+    Briefcase,
+    ShoppingBag,
+    Warehouse,
+    Factory,
+    Plus,
+    Trash2
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import ResidentialConfigForm from '@/components/projects/ResidentialConfigForm'
 
 const STEPS = [
-    { id: 'basic', title: 'Basic Info', icon: Building2, description: 'Project identity' },
-    { id: 'property', title: 'Property', icon: Home, description: 'Type & Specs' },
+    { id: 'basic', title: 'Basic Info', icon: Building2, description: 'Project identity & Type' },
     { id: 'location', title: 'Location', icon: MapPin, description: 'Address details' },
-    { id: 'pricing', title: 'Pricing', icon: IndianRupee, description: 'Budget range' }
+    { id: 'pricing', title: 'Pricing', icon: IndianRupee, description: 'Budget range' },
+    { id: 'inventory', title: 'Inventory', icon: Store, description: 'Units & Status' }
 ]
 
 export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitting }) {
@@ -33,6 +43,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
     const [currentStep, setCurrentStep] = useState(0)
     const [touched, setTouched] = useState({})
     const [errors, setErrors] = useState({})
+
+    const [showAddConfig, setShowAddConfig] = useState(false)
 
     // Initialize state
     const [formData, setFormData] = useState({
@@ -50,13 +62,20 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         superBuiltUpArea: '',
         commercialArea: '',
         commercialBuiltUpArea: '',
+        commercialBuiltUpArea: '',
         groundFloor: false,
+        configurations: [],
         plotArea: '',
         locCity: '',
         locLocality: '',
         locLandmark: '',
         priceMin: '',
-        priceMax: ''
+        priceMax: '',
+        // Inventory fields
+        totalUnits: '',
+        unitTypes: [], // Array of detailed config objects
+        projectStatus: 'planning',
+        showInInventory: true
     })
 
     // Load initial data
@@ -80,6 +99,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 carpetArea: prop.residential?.carpet_area || '',
                 builtUpArea: prop.residential?.built_up_area || '',
                 superBuiltUpArea: prop.residential?.super_built_up_area || '',
+                configurations: prop.residential?.configurations || [],
                 commercialArea: prop.commercial?.area || '',
                 commercialBuiltUpArea: prop.commercial?.built_up_area || '',
                 groundFloor: prop.commercial?.ground_floor || false,
@@ -88,7 +108,12 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 locLocality: loc.locality || '',
                 locLandmark: loc.landmark || '',
                 priceMin: pricing.min || '',
-                priceMax: pricing.max || ''
+                priceMax: pricing.max || '',
+                // Inventory fields
+                totalUnits: initialData.total_units || '',
+                unitTypes: Array.isArray(initialData.unit_types) ? initialData.unit_types : [],
+                projectStatus: initialData.project_status || 'planning',
+                showInInventory: initialData.show_in_inventory !== false
             })
         }
     }, [initialData])
@@ -111,26 +136,17 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
             if (!data.description.trim()) newErrors.description = 'Description is required'
             else if (data.description.length < 50) newErrors.description = 'Description must be at least 50 characters'
             if (!data.imageUrl) newErrors.imageUrl = 'Project image is mandatory'
+
+            // Moved from Property step
+            if (!data.propertyCategory) newErrors.propertyCategory = 'Category is required'
         }
 
-        if (stepIndex === 1) { // Property
-            if (data.propertyCategory === 'residential') {
-                if (!data.carpetArea) newErrors.carpetArea = 'Carpet area is required'
-            }
-            if (data.propertyCategory === 'commercial') {
-                if (!data.commercialArea) newErrors.commercialArea = 'Area is required'
-            }
-            if (data.propertyCategory === 'land') {
-                if (!data.plotArea) newErrors.plotArea = 'Plot area is required'
-            }
-        }
-
-        if (stepIndex === 2) { // Location
+        if (stepIndex === 1) { // Location (was Step 2)
             if (!data.locCity.trim()) newErrors.locCity = 'City is required'
             if (!data.locLocality.trim()) newErrors.locLocality = 'Locality is required'
         }
 
-        if (stepIndex === 3) { // Pricing
+        if (stepIndex === 2) { // Pricing
             if (!data.priceMin) newErrors.priceMin = 'Minimum price is required'
             if (!data.priceMax) newErrors.priceMax = 'Maximum price is required'
             if (Number(data.priceMin) > Number(data.priceMax)) {
@@ -200,6 +216,41 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         } finally {
             setUploading(false)
         }
+    }
+
+
+
+
+
+    const handleAddConfiguration = () => {
+        const { bhk, carpetArea, builtUpArea, superBuiltUpArea } = formData
+        if (!carpetArea) {
+            toast.error("Carpet Area is required")
+            return
+        }
+
+        const newConfig = {
+            bhk,
+            carpet_area: Number(carpetArea),
+            built_up_area: Number(builtUpArea || 0),
+            super_built_up_area: Number(superBuiltUpArea || 0)
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            configurations: [...prev.configurations, newConfig],
+            // Reset fields
+            carpetArea: '',
+            builtUpArea: '',
+            superBuiltUpArea: ''
+        }))
+    }
+
+    const handleRemoveConfiguration = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            configurations: prev.configurations.filter((_, i) => i !== index)
+        }))
     }
 
     const handleSubmit = () => {
@@ -382,25 +433,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                             </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="grid grid-cols-2 gap-4 pt-4 border-t mt-6 sm:flex sm:justify-end">
-                            <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleNext}
-                                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto sm:min-w-[120px]"
-                            >
-                                Next Step
-                                <ChevronRight className="w-4 h-4 ml-2" />
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {currentStep === 1 && (
-                    <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Moved from Property Step */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
                             <div>
                                 <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Transaction Type</label>
                                 <select
@@ -408,9 +442,9 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     value={formData.transaction}
                                     onChange={e => handleChange('transaction', e.target.value)}
                                 >
-                                    <option value="sell">🏠 Sell</option>
-                                    <option value="rent">🔑 Rent</option>
-                                    <option value="lease">📋 Lease</option>
+                                    <option value="sell">Sell</option>
+                                    <option value="rent">Rent</option>
+                                    <option value="lease">Lease</option>
                                 </select>
                             </div>
                             <div>
@@ -420,9 +454,9 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     value={formData.propertyCategory}
                                     onChange={e => handleChange('propertyCategory', e.target.value)}
                                 >
-                                    <option value="residential">🏘️ Residential</option>
-                                    <option value="commercial">🏢 Commercial</option>
-                                    <option value="land">🌳 Land/Plot</option>
+                                    <option value="residential">Residential</option>
+                                    <option value="commercial">Commercial</option>
+                                    <option value="land">Land/Plot</option>
                                 </select>
                             </div>
                         </div>
@@ -430,319 +464,450 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                         <div>
                             <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">Property Type</label>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {['apartment', 'villa_bungalow', 'row_house', 'penthouse'].map(type => {
-                                    const icons = {
-                                        apartment: '🏢',
-                                        villa_bungalow: '🏡',
-                                        row_house: '🏘️',
-                                        penthouse: '🌆'
+                                {(() => {
+                                    // Define property types for each category
+                                    const propertyTypesByCategory = {
+                                        residential: [
+                                            { value: 'apartment', label: 'Apartment', icon: Building2 },
+                                            { value: 'villa_bungalow', label: 'Villa Bungalow', icon: Home },
+                                            { value: 'row_house', label: 'Row House', icon: Building },
+                                            { value: 'penthouse', label: 'Penthouse', icon: Castle }
+                                        ],
+                                        commercial: [
+                                            { value: 'office', label: 'Office Space', icon: Briefcase },
+                                            { value: 'retail', label: 'Retail Shop', icon: ShoppingBag },
+                                            { value: 'warehouse', label: 'Warehouse', icon: Warehouse },
+                                            { value: 'industrial', label: 'Industrial', icon: Factory }
+                                        ],
+                                        land: [
+                                            { value: 'residential_plot', label: 'Residential Plot', icon: Home },
+                                            { value: 'commercial_plot', label: 'Commercial Plot', icon: Building },
+                                            { value: 'agricultural', label: 'Agricultural Land', icon: TreePine },
+                                            { value: 'industrial_plot', label: 'Industrial Plot', icon: Factory }
+                                        ]
                                     }
-                                    return (
+
+                                    const currentTypes = propertyTypesByCategory[formData.propertyCategory] || propertyTypesByCategory.residential
+
+                                    return currentTypes.map(({ value, label, icon: IconComponent }) => (
                                         <button
-                                            key={type}
-                                            onClick={() => handleChange('propertyUseCase', type)}
-                                            className={`p-4 rounded-xl border-2 text-center transition-all transform hover:scale-105 ${formData.propertyUseCase === type
+                                            key={value}
+                                            onClick={() => handleChange('propertyUseCase', value)}
+                                            className={`p-4 rounded-xl border-2 text-center transition-all transform hover:scale-105 ${formData.propertyUseCase === value
                                                 ? 'border-blue-600 bg-blue-50 shadow-lg shadow-blue-200 scale-105'
                                                 : 'border-slate-200 hover:border-blue-300 bg-white'
                                                 }`}
                                         >
-                                            <div className="text-3xl mb-2">{icons[type]}</div>
-                                            <p className={`text-xs font-semibold ${formData.propertyUseCase === type ? 'text-blue-700' : 'text-slate-600'
+                                            <IconComponent className={`w-8 h-8 mx-auto mb-2 ${formData.propertyUseCase === value ? 'text-blue-600' : 'text-slate-400'}`} />
+                                            <p className={`text-xs font-semibold ${formData.propertyUseCase === value ? 'text-blue-700' : 'text-slate-600'
                                                 }`}>
-                                                {type.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                                {label}
                                             </p>
                                         </button>
-                                    )
-                                })}
+                                    ))
+                                })()}
                             </div>
                         </div>
 
-                        {formData.propertyCategory === 'residential' && (
-                            <div className="bg-gradient-to-br from-slate-50 to-blue-50/20 p-6 rounded-xl border-2 border-slate-200 space-y-5">
-                                <div className="flex items-center justify-between border-b border-slate-300 pb-3">
-                                    <h4 className="font-bold text-slate-900 flex items-center gap-2">
-                                        <Home className="w-5 h-5 text-blue-600" />
-                                        Configuration & Area
-                                    </h4>
-                                    <span className="text-xs text-slate-500 bg-white px-3 py-1 rounded-full border">Residential</span>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">BHK Configuration</label>
-                                        <select
-                                            value={formData.bhk}
-                                            onChange={e => handleChange('bhk', e.target.value)}
-                                            className="w-full rounded-lg border-2 border-slate-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                                        >
-                                            {['1rk', '1bhk', '2bhk', '3bhk', '4bhk', '5bhk'].map(opt => (
-                                                <option key={opt} value={opt}>{opt.toUpperCase()}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
-                                            Carpet Area (sqft) *
-                                        </label>
-                                        <Input
-                                            type="number"
-                                            value={formData.carpetArea}
-                                            onChange={e => handleChange('carpetArea', e.target.value)}
-                                            placeholder="e.g. 1200"
-                                            className={`transition-all text-xs sm:text-sm ${errors.carpetArea ? "border-red-300" : formData.carpetArea ? "border-green-400" : ""}`}
-                                        />
-                                        {errors.carpetArea && <p className="text-xs text-red-500 mt-1.5">{errors.carpetArea}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Built-up Area (sqft)</label>
-                                        <Input
-                                            type="number"
-                                            value={formData.builtUpArea}
-                                            onChange={e => handleChange('builtUpArea', e.target.value)}
-                                            placeholder="e.g. 1450"
-                                            className="text-xs sm:text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Super Built-up (sqft)</label>
-                                        <Input
-                                            type="number"
-                                            value={formData.superBuiltUpArea}
-                                            onChange={e => handleChange('superBuiltUpArea', e.target.value)}
-                                            placeholder="e.g. 1600"
-                                            className="text-xs sm:text-sm"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Action Buttons */}
-                        <div className="flex justify-between gap-3 pt-4 border-t mt-6">
-                            <Button
-                                variant="ghost"
-                                onClick={handleBack}
-                                disabled={isSubmitting}
-                                className="text-slate-500 hover:text-slate-800"
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-2" />
-                                Back
+                        <div className="grid grid-cols-2 gap-2 pt-4 border-t mt-6 sm:flex sm:justify-end sm:gap-3">
+                            <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
+                                Cancel
                             </Button>
-                            <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3 w-full sm:w-auto ml-4">
-                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleNext}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto sm:min-w-[120px]"
-                                >
-                                    Next Step
-                                    <ChevronRight className="w-4 h-4 ml-2" />
-                                </Button>
-                            </div>
+                            <Button
+                                onClick={handleNext}
+                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
+                            >
+                                Next Step
+                                <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                            </Button>
                         </div>
                     </div>
-                )}
+                )
+                }
 
-                {currentStep === 2 && (
-                    <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
-                        <div className="grid gap-6">
-                            <div>
-                                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
-                                <Input
-                                    value={formData.locCity}
-                                    onChange={e => handleChange('locCity', e.target.value)}
-                                    placeholder="e.g. Mumbai"
-                                    className={`text-xs sm:text-sm ${errors.locCity ? "border-red-300" : ""}`}
-                                />
-                                {errors.locCity && <p className="text-xs text-red-500 mt-1">{errors.locCity}</p>}
-                            </div>
-                            <div>
-                                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Locality *</label>
-                                <Input
-                                    value={formData.locLocality}
-                                    onChange={e => handleChange('locLocality', e.target.value)}
-                                    placeholder="e.g. Bandra West"
-                                    className={`text-xs sm:text-sm ${errors.locLocality ? "border-red-300" : ""}`}
-                                />
-                                {errors.locLocality && <p className="text-xs text-red-500 mt-1">{errors.locLocality}</p>}
-                            </div>
-                            <div>
-                                <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Landmark</label>
-                                <Input
-                                    value={formData.locLandmark}
-                                    onChange={e => handleChange('locLandmark', e.target.value)}
-                                    placeholder="e.g. Near St. Peter's Church"
-                                    className="text-xs sm:text-sm"
-                                />
-                            </div>
-                        </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex justify-between gap-3 pt-4 border-t mt-6">
-                            <Button
-                                variant="ghost"
-                                onClick={handleBack}
-                                disabled={isSubmitting}
-                                className="text-slate-500 hover:text-slate-800"
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-2" />
-                                Back
-                            </Button>
-                            <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3 w-full sm:w-auto ml-4">
-                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={handleNext}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto sm:min-w-[120px]"
-                                >
-                                    Next Step
-                                    <ChevronRight className="w-4 h-4 ml-2" />
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
-                {currentStep === 3 && (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                        <div className="text-center py-8">
-                            <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
-                                <IndianRupee className="w-10 h-10 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900">Final Step: Set Your Budget</h3>
-                            <p className="text-slate-600 mt-2">Define the price range for your project</p>
-                            <div className="inline-flex items-center gap-2 mt-3 bg-blue-50 px-4 py-2 rounded-full border border-blue-200">
-                                <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                                <span className="text-xs font-semibold text-blue-700">Almost done!</span>
-                            </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                            <div>
-                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
-                                    <IndianRupee className="w-4 h-4 text-green-600" />
-                                    Minimum Price *
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
+
+
+
+
+
+
+
+                {
+                    currentStep === 1 && (
+                        <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                            <div className="grid gap-6">
+                                <div>
+                                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
                                     <Input
-                                        type="number"
-                                        value={formData.priceMin}
-                                        onChange={e => handleChange('priceMin', e.target.value)}
-                                        placeholder="5000000"
-                                        className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMin ? "border-red-300" : formData.priceMin ? "border-green-400" : ""
-                                            }`}
+                                        value={formData.locCity}
+                                        onChange={e => handleChange('locCity', e.target.value)}
+                                        placeholder="e.g. Mumbai"
+                                        className={`text-xs sm:text-sm ${errors.locCity ? "border-red-300" : ""}`}
+                                    />
+                                    {errors.locCity && <p className="text-xs text-red-500 mt-1">{errors.locCity}</p>}
+                                </div>
+                                <div>
+                                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Locality *</label>
+                                    <Input
+                                        value={formData.locLocality}
+                                        onChange={e => handleChange('locLocality', e.target.value)}
+                                        placeholder="e.g. Bandra West"
+                                        className={`text-xs sm:text-sm ${errors.locLocality ? "border-red-300" : ""}`}
+                                    />
+                                    {errors.locLocality && <p className="text-xs text-red-500 mt-1">{errors.locLocality}</p>}
+                                </div>
+                                <div>
+                                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Landmark</label>
+                                    <Input
+                                        value={formData.locLandmark}
+                                        onChange={e => handleChange('locLandmark', e.target.value)}
+                                        placeholder="e.g. Near St. Peter's Church"
+                                        className="text-xs sm:text-sm"
                                     />
                                 </div>
-                                {errors.priceMin && <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.priceMin}</p>}
-                                {!errors.priceMin && formData.priceMin && (
-                                    <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        ₹{Number(formData.priceMin).toLocaleString('en-IN')}
-                                    </p>
-                                )}
                             </div>
-                            <div>
-                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
-                                    <IndianRupee className="w-4 h-4 text-green-600" />
-                                    Maximum Price *
-                                </label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
-                                    <Input
-                                        type="number"
-                                        value={formData.priceMax}
-                                        onChange={e => handleChange('priceMax', e.target.value)}
-                                        placeholder="7500000"
-                                        className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMax ? "border-red-300" : formData.priceMax ? "border-green-400" : ""
-                                            }`}
-                                    />
-                                </div>
-                                {errors.priceMax && <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.priceMax}</p>}
-                                {!errors.priceMax && formData.priceMax && (
-                                    <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3" />
-                                        ₹{Number(formData.priceMax).toLocaleString('en-IN')}
-                                    </p>
-                                )}
-                            </div>
-                        </div>
 
-                        {formData.priceMin && formData.priceMax && Number(formData.priceMin) < Number(formData.priceMax) && (
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-5 mt-6 max-w-2xl mx-auto">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                                        <CheckCircle2 className="w-5 h-5 text-white" />
-                                    </div>
-                                    <h4 className="text-sm font-bold text-green-900">Price Range Confirmed</h4>
-                                </div>
-                                <div className="text-center py-3 bg-white rounded-lg border border-green-200">
-                                    <p className="text-2xl font-bold text-green-700">
-                                        ₹{Number(formData.priceMin).toLocaleString('en-IN')} - ₹{Number(formData.priceMax).toLocaleString('en-IN')}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-5 mt-8 max-w-2xl mx-auto">
-                            <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2 mb-3">
-                                <AlertCircle className="w-4 h-4" />
-                                Review Before Saving
-                            </h4>
-                            <div className="space-y-2 text-xs">
-                                <div className="flex justify-between py-2 border-b border-amber-200">
-                                    <span className="text-amber-700">Project Name:</span>
-                                    <span className="font-semibold text-amber-900">{formData.name || 'Not set'}</span>
-                                </div>
-                                <div className="flex justify-between py-2 border-b border-amber-200">
-                                    <span className="text-amber-700">Location:</span>
-                                    <span className="font-semibold text-amber-900">{formData.locLocality}, {formData.locCity}</span>
-                                </div>
-                                <div className="flex justify-between py-2">
-                                    <span className="text-amber-700">Configuration:</span>
-                                    <span className="font-semibold text-amber-900">{formData.bhk.toUpperCase()}, {formData.propertyUseCase.replace('_', ' ')}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex justify-between items-center pt-4 border-t mt-6">
-                            <Button
-                                variant="ghost"
-                                onClick={handleBack}
-                                disabled={isSubmitting}
-                                className="text-slate-500 hover:text-slate-800 px-0 sm:px-4"
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-2" />
-                                Back
-                            </Button>
-                            <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-3 w-full sm:w-auto ml-4">
-                                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="w-full sm:w-auto sm:min-w-[100px]">
-                                    Cancel
-                                </Button>
+                            {/* Action Buttons */}
+                            <div className="flex justify-between gap-1 sm:gap-3 pt-4 border-t mt-6">
                                 <Button
-                                    onClick={handleSubmit}
+                                    variant="ghost"
+                                    onClick={handleBack}
                                     disabled={isSubmitting}
-                                    className={`w-full sm:w-auto sm:min-w-[140px] ${initialData ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                                    className="text-slate-500 hover:text-slate-800 text-xs sm:text-sm py-1.5 px-1 sm:py-2 sm:px-4"
                                 >
-                                    {isSubmitting ? (
-                                        <>
-                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                                            {initialData ? 'Update Project' : 'Create Project'}
-                                        </>
-                                    )}
+                                    <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
+                                    Back
                                 </Button>
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto ml-1 sm:ml-4">
+                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleNext}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
+                                    >
+                                        Next Step
+                                        <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
-        </div>
+                    )
+                }
+
+                {
+                    currentStep === 2 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                            <div className="text-center py-8">
+                                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+                                    <IndianRupee className="w-10 h-10 text-white" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900">Final Step: Set Your Budget</h3>
+                                <p className="text-slate-600 mt-2">Define the price range for your project</p>
+                                <div className="inline-flex items-center gap-2 mt-3 bg-blue-50 px-4 py-2 rounded-full border border-blue-200">
+                                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                                    <span className="text-xs font-semibold text-blue-700">Almost done!</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                                <div>
+                                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                        <IndianRupee className="w-4 h-4 text-green-600" />
+                                        Minimum Price *
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
+                                        <Input
+                                            type="number"
+                                            value={formData.priceMin}
+                                            onChange={e => handleChange('priceMin', e.target.value)}
+                                            placeholder="5000000"
+                                            className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMin ? "border-red-300" : formData.priceMin ? "border-green-400" : ""
+                                                }`}
+                                        />
+                                    </div>
+                                    {errors.priceMin && <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.priceMin}</p>}
+                                    {!errors.priceMin && formData.priceMin && (
+                                        <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            ₹{Number(formData.priceMin).toLocaleString('en-IN')}
+                                        </p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                        <IndianRupee className="w-4 h-4 text-green-600" />
+                                        Maximum Price *
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
+                                        <Input
+                                            type="number"
+                                            value={formData.priceMax}
+                                            onChange={e => handleChange('priceMax', e.target.value)}
+                                            placeholder="7500000"
+                                            className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMax ? "border-red-300" : formData.priceMax ? "border-green-400" : ""
+                                                }`}
+                                        />
+                                    </div>
+                                    {errors.priceMax && <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.priceMax}</p>}
+                                    {!errors.priceMax && formData.priceMax && (
+                                        <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                                            <CheckCircle2 className="w-3 h-3" />
+                                            ₹{Number(formData.priceMax).toLocaleString('en-IN')}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {formData.priceMin && formData.priceMax && Number(formData.priceMin) < Number(formData.priceMax) && (
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-5 mt-6 max-w-2xl mx-auto">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                            <CheckCircle2 className="w-5 h-5 text-white" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-green-900">Price Range Confirmed</h4>
+                                    </div>
+                                    <div className="text-center py-3 bg-white rounded-lg border border-green-200">
+                                        <p className="text-2xl font-bold text-green-700">
+                                            ₹{Number(formData.priceMin).toLocaleString('en-IN')} - ₹{Number(formData.priceMax).toLocaleString('en-IN')}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-5 mt-8 max-w-2xl mx-auto">
+                                <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2 mb-3">
+                                    <AlertCircle className="w-4 h-4" />
+                                    Review Before Saving
+                                </h4>
+                                <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between py-2 border-b border-amber-200">
+                                        <span className="text-amber-700">Project Name:</span>
+                                        <span className="font-semibold text-amber-900">{formData.name || 'Not set'}</span>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b border-amber-200">
+                                        <span className="text-amber-700">Location:</span>
+                                        <span className="font-semibold text-amber-900">{formData.locLocality}, {formData.locCity}</span>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <span className="text-amber-700">Configuration:</span>
+                                        <span className="font-semibold text-amber-900">{formData.bhk.toUpperCase()}, {formData.propertyUseCase.replace('_', ' ')}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-between gap-1 sm:gap-3 pt-4 border-t mt-6">
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleBack}
+                                    disabled={isSubmitting}
+                                    className="text-slate-500 hover:text-slate-800 text-xs sm:text-sm py-1.5 px-1 sm:py-2 sm:px-4"
+                                >
+                                    <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
+                                    Back
+                                </Button>
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto ml-1 sm:ml-4">
+                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleNext}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
+                                    >
+                                        Next Step
+                                        <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {
+                    currentStep === 3 && (
+                        <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
+                            <div className="text-center py-6">
+                                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+                                    <Store className="w-10 h-10 text-white" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900">Inventory Management</h3>
+                                <p className="text-slate-600 mt-2">Configure units and project status</p>
+                            </div>
+
+                            <div className="grid gap-6 max-w-3xl mx-auto">
+                                {/* Total Units */}
+                                <div>
+                                    <label className="text-sm font-semibold text-slate-800 mb-2 block">Total Units in Project</label>
+                                    <Input
+                                        type="number"
+                                        value={formData.totalUnits}
+                                        onChange={e => handleChange('totalUnits', e.target.value)}
+                                        placeholder="e.g., 120"
+                                        className="text-sm"
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1.5">Total number of flats/houses/units in this project</p>
+                                </div>
+
+                                {/* Unit Types Breakdown */}
+                                <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="text-sm font-semibold text-slate-800 block">Unit Types Breakdown</label>
+                                        {!showAddConfig && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setShowAddConfig(true)}
+                                                className="bg-white"
+                                            >
+                                                <Plus className="w-3 h-3 mr-1" /> Add Configuration
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {showAddConfig ? (
+                                        <ResidentialConfigForm
+                                            onCancel={() => setShowAddConfig(false)}
+                                            category={formData.propertyCategory}
+                                            priceRange={{ min: formData.priceMin, max: formData.priceMax }}
+                                            onAdd={(newConfig) => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    unitTypes: [...prev.unitTypes, newConfig]
+                                                }))
+                                                setShowAddConfig(false)
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            {formData.unitTypes.map((ut, index) => (
+                                                <div key={index} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex items-center gap-3">
+                                                    <div className="flex-1">
+                                                        {ut.configuration ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="font-semibold text-sm text-slate-800">
+                                                                    {ut.configuration} {ut.property_type || ut.type}
+                                                                </span>
+                                                                <span className="text-xs text-slate-500">
+                                                                    {ut.carpet_area} sqft • {ut.transaction_type || 'Sell'}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="font-semibold text-sm text-slate-800">{ut.type}</span>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[10px] text-slate-400 font-medium">COUNT</span>
+                                                            <span className="font-bold text-slate-900">{ut.count}</span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newTypes = formData.unitTypes.filter((_, i) => i !== index)
+                                                                setFormData(prev => ({ ...prev, unitTypes: newTypes }))
+                                                            }}
+                                                            className="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-full hover:bg-red-50"
+                                                            title="Remove"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {formData.unitTypes.length === 0 && (
+                                                <div className="col-span-full py-8 text-center text-slate-400 text-sm italic border-2 border-dashed border-slate-200 rounded-lg">
+                                                    No unit types added yet. Click "Add Configuration" to start.
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-slate-500 mt-3">Specify how many units of each type to auto-generate inventory properties</p>
+                                </div>
+
+                                {/* Project Status */}
+                                <div>
+                                    <label className="text-sm font-semibold text-slate-800 mb-2 block">Project Status</label>
+                                    <select
+                                        value={formData.projectStatus}
+                                        onChange={e => handleChange('projectStatus', e.target.value)}
+                                        className="w-full rounded-lg border-2 border-slate-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                    >
+                                        <option value="planning">Planning</option>
+                                        <option value="under_construction">Under Construction</option>
+                                        <option value="ready_to_move">Ready to Move</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </div>
+
+                                {/* Show in Inventory Toggle */}
+                                <div className="bg-blue-50 p-5 rounded-xl border-2 border-blue-200">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <label className="text-sm font-semibold text-blue-900 block">Show in Inventory Module</label>
+                                            <p className="text-xs text-blue-700 mt-1">Make this project visible in the inventory management section</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleChange('showInInventory', !formData.showInInventory)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.showInInventory ? 'bg-blue-600' : 'bg-gray-300'
+                                                }`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.showInInventory ? 'translate-x-6' : 'translate-x-1'
+                                                    }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-between items-center gap-1 sm:gap-3 pt-4 border-t mt-6">
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleBack}
+                                    disabled={isSubmitting}
+                                    className="text-slate-500 hover:text-slate-800 text-xs sm:text-sm py-1.5 px-1 sm:py-2 sm:px-4"
+                                >
+                                    <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
+                                    Back
+                                </Button>
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto ml-1 sm:ml-4">
+                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleSubmit}
+                                        disabled={isSubmitting}
+                                        className={`text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ${initialData ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                                                {initialData ? 'Update' : 'Create'}
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+            </div >
+        </div >
     )
 }

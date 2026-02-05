@@ -100,6 +100,7 @@ export async function POST(request) {
                 price,
                 type,
                 status: status || 'available',
+                show_in_crm: typeof body.show_in_crm !== 'undefined' ? body.show_in_crm : true,
                 bedrooms: bedrooms || 0,
                 bathrooms: bathrooms || 0,
                 size_sqft: size || 0,

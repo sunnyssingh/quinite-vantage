@@ -6,18 +6,21 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Building2, Megaphone, Package } from 'lucide-react'
+import { ArrowLeft, Building2, Package, BarChart3, Edit } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import ProjectMetrics from '@/components/projects/ProjectMetrics'
 import ProjectInventoryTab from '@/components/projects/ProjectInventoryTab'
+import VisualUnitGrid from '@/components/inventory/VisualUnitGrid'
+import EditProjectModal from '@/components/inventory/EditProjectModal'
 
-export default function ProjectDetailsPage() {
+export default function InventoryProjectDetailsPage() {
     const router = useRouter()
     const params = useParams()
     const projectId = params.id
 
     const [project, setProject] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [showEditModal, setShowEditModal] = useState(false)
 
     useEffect(() => {
         fetchProject()
@@ -50,6 +53,10 @@ export default function ProjectDetailsPage() {
         }))
     }
 
+    const handleProjectUpdated = (updatedProject) => {
+        setProject(updatedProject)
+    }
+
     if (loading) {
         return (
             <div className="space-y-6 p-6">
@@ -65,8 +72,8 @@ export default function ProjectDetailsPage() {
                 <Building2 className="w-16 h-16 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold text-foreground">Project Not Found</h3>
                 <p className="text-sm text-muted-foreground mb-4">The project you're looking for doesn't exist</p>
-                <Button onClick={() => router.push('/dashboard/admin/crm/projects')}>
-                    Back to Projects
+                <Button onClick={() => router.push('/dashboard/admin/inventory')}>
+                    Back to Inventory
                 </Button>
             </div>
         )
@@ -79,7 +86,7 @@ export default function ProjectDetailsPage() {
                 <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => router.push('/dashboard/admin/crm/projects')}
+                    onClick={() => router.push('/dashboard/admin/inventory')}
                 >
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
@@ -89,22 +96,30 @@ export default function ProjectDetailsPage() {
                         <p className="text-sm text-muted-foreground mt-1">{project.address}</p>
                     )}
                 </div>
+                <Button
+                    variant="outline"
+                    onClick={() => setShowEditModal(true)}
+                    className="flex items-center gap-2"
+                >
+                    <Edit className="w-4 h-4" />
+                    Edit Project
+                </Button>
             </div>
 
             {/* Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full max-w-lg grid-cols-3">
+                <TabsList className="grid w-full max-w-md grid-cols-3">
                     <TabsTrigger value="overview" className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4" />
+                        <BarChart3 className="w-4 h-4" />
                         Overview
                     </TabsTrigger>
-                    <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                        <Megaphone className="w-4 h-4" />
-                        Campaigns
-                    </TabsTrigger>
-                    <TabsTrigger value="inventory" className="flex items-center gap-2">
+                    <TabsTrigger value="properties" className="flex items-center gap-2">
                         <Package className="w-4 h-4" />
-                        Inventory
+                        List View
+                    </TabsTrigger>
+                    <TabsTrigger value="visual" className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4" />
+                        Visual View
                     </TabsTrigger>
                 </TabsList>
 
@@ -133,30 +148,37 @@ export default function ProjectDetailsPage() {
                     </div>
                 </TabsContent>
 
-                {/* Campaigns Tab */}
-                <TabsContent value="campaigns">
-                    <Card className="p-6">
-                        <div className="text-center py-12">
-                            <Megaphone className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                            <h3 className="text-lg font-semibold text-foreground mb-2">Campaigns</h3>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                View and manage campaigns for this project
-                            </p>
-                            <Button onClick={() => router.push(`/dashboard/admin/crm/projects/${projectId}/campaigns`)}>
-                                Go to Campaigns
-                            </Button>
-                        </div>
-                    </Card>
-                </TabsContent>
-
-                {/* Inventory Tab */}
-                <TabsContent value="inventory">
+                {/* Properties Tab */}
+                <TabsContent value="properties">
                     <ProjectInventoryTab
                         projectId={projectId}
+                        project={project}
                         onMetricsUpdate={handleMetricsUpdate}
                     />
                 </TabsContent>
+
+                <TabsContent value="visual">
+                    <Card className="p-6">
+                        <div className="mb-6">
+                            <h3 className="text-lg font-semibold mb-1">Visual Inventory</h3>
+                            <p className="text-sm text-muted-foreground">Click on any unit to update its status.</p>
+                        </div>
+                        <VisualUnitGrid
+                            projectId={projectId}
+                            onMetricsUpdate={handleMetricsUpdate}
+                        />
+                    </Card>
+                </TabsContent>
             </Tabs>
+
+            {/* Edit Project Modal */}
+            <EditProjectModal
+                project={project}
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                onProjectUpdated={handleProjectUpdated}
+            />
         </div>
     )
 }
+

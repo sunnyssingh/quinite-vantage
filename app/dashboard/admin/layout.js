@@ -99,8 +99,7 @@ export default function AdminLayout({ children }) {
         return null
     }
 
-    const isFullScreenModule = pathname === '/dashboard/admin' ||
-        pathname?.startsWith('/dashboard/admin/crm') ||
+    const isFullScreenModule = pathname?.startsWith('/dashboard/admin/crm') ||
         pathname?.startsWith('/dashboard/admin/inventory')
 
     return (

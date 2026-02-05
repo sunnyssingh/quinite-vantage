@@ -77,6 +77,12 @@ export default function ProjectsPage() {
         address: formData.address,
         image_url: formData.imageUrl,
         image_path: formData.imagePath,
+        // Inventory fields
+        total_units: Number(formData.totalUnits || 0),
+        unit_types: formData.unitTypes,
+        price_range: { min: Number(formData.priceMin || 0), max: Number(formData.priceMax || 0) },
+        project_status: formData.projectStatus || 'planning',
+        show_in_inventory: formData.showInInventory !== false,
         real_estate: {
           transaction: formData.transaction,
           property: {
@@ -141,6 +147,12 @@ export default function ProjectsPage() {
         address: formData.address,
         image_url: formData.imageUrl,
         image_path: formData.imagePath,
+        // Inventory fields
+        total_units: Number(formData.totalUnits || 0),
+        unit_types: formData.unitTypes,
+        price_range: { min: Number(formData.priceMin || 0), max: Number(formData.priceMax || 0) },
+        project_status: formData.projectStatus || 'planning',
+        show_in_inventory: formData.showInInventory !== false,
         real_estate: {
           transaction: formData.transaction,
           property: {

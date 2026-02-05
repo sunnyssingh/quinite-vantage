@@ -15,6 +15,7 @@ import BestTimeToContactCard from '@/components/crm/BestTimeToContactCard'
 import SentimentAnalysisCard from '@/components/crm/SentimentAnalysisCard'
 import { Textarea } from '@/components/ui/textarea'
 import EditLeadProfileDialog from '@/components/crm/EditLeadProfileDialog'
+import LinkPropertyDialog from '@/components/crm/LinkPropertyDialog'
 import AvatarPickerDialog from '@/components/crm/AvatarPickerDialog'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -39,6 +40,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     const [notes, setNotes] = useState('')
     const [savingNotes, setSavingNotes] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
+    const [linkDialogOpen, setLinkDialogOpen] = useState(false)
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
 
     useEffect(() => {
@@ -349,7 +351,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                                                 <div className="py-12 text-center flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-xl bg-gray-50/50">
                                                     <Building className="w-8 h-8 mb-2 opacity-20" />
                                                     <p className="text-sm">No properties linked</p>
-                                                    <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-primary">Link Property</Button>
+                                                    <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-primary" onClick={() => setLinkDialogOpen(true)}>Link Property</Button>
                                                 </div>
                                             )}
                                         </CardContent>
@@ -446,6 +448,16 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 onOpenChange={setAvatarPickerOpen}
                 lead={lead}
                 onSave={fetchLeadData}
+            />
+
+            <LinkPropertyDialog
+                lead={lead}
+                isOpen={linkDialogOpen}
+                onClose={() => setLinkDialogOpen(false)}
+                onLinkSuccess={() => {
+                    fetchLeadData()
+                    toast.success('Property linked successfully')
+                }}
             />
         </div>
     )
