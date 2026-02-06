@@ -31,23 +31,23 @@ export default function ProjectCard({ project }) {
 
     return (
         <Card
-            className="border-border hover:shadow-lg transition-all duration-300 cursor-pointer group"
+            className="border-border shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden"
             onClick={handleClick}
         >
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 bg-gradient-to-br from-white to-slate-50 group-hover:from-blue-50 group-hover:to-white transition-colors">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                        <CardTitle className="text-base font-bold text-foreground group-hover:text-blue-600 transition-colors truncate">
+                        <CardTitle className="text-lg font-bold text-foreground group-hover:text-blue-600 transition-colors truncate">
                             {project.name}
                         </CardTitle>
                         {project.address && (
-                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 truncate">
-                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                            <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1 truncate">
+                                <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                                 {project.address}
                             </p>
                         )}
                     </div>
-                    <Badge variant="outline" className={`${status.color} border text-[10px] font-semibold px-2 py-0.5 whitespace-nowrap`}>
+                    <Badge variant="outline" className={`${status.color} border text-[10px] font-semibold px-2.5 py-1 whitespace-nowrap shadow-sm`}>
                         {status.label}
                     </Badge>
                 </div>
@@ -55,29 +55,29 @@ export default function ProjectCard({ project }) {
 
             <CardContent className="space-y-4">
                 {/* Quick Stats */}
-                <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-blue-50 p-2.5 rounded-lg border border-blue-100">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                            <p className="text-[10px] font-medium text-blue-700">Total</p>
+                <div className="grid grid-cols-3 gap-2.5">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                            <Building2 className="w-4 h-4 text-blue-600" />
+                            <p className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">Total</p>
                         </div>
-                        <p className="text-lg font-bold text-blue-900">{totalUnits}</p>
+                        <p className="text-xl font-bold text-blue-900">{totalUnits}</p>
                     </div>
 
-                    <div className="bg-green-50 p-2.5 rounded-lg border border-green-100">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <Home className="w-3.5 h-3.5 text-green-600" />
-                            <p className="text-[10px] font-medium text-green-700">Available</p>
+                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-3 rounded-lg border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                            <Home className="w-4 h-4 text-emerald-600" />
+                            <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wide">Available</p>
                         </div>
-                        <p className="text-lg font-bold text-green-900">{availableUnits}</p>
+                        <p className="text-xl font-bold text-emerald-900">{availableUnits}</p>
                     </div>
 
-                    <div className="bg-purple-50 p-2.5 rounded-lg border border-purple-100">
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />
-                            <p className="text-[10px] font-medium text-purple-700">Sold</p>
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-3 rounded-lg border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                            <p className="text-[10px] font-semibold text-purple-700 uppercase tracking-wide">Sold</p>
                         </div>
-                        <p className="text-lg font-bold text-purple-900">{soldUnits}</p>
+                        <p className="text-xl font-bold text-purple-900">{soldUnits}</p>
                     </div>
                 </div>
 

@@ -104,7 +104,23 @@ export default function AdminHeader({ user, profile }) {
                                     </SheetHeader>
                                     <div className="p-4 flex flex-col gap-1">
                                         {navItems.map((item) => {
-                                            const isActive = pathname === item.href || (item.href !== '/dashboard/admin' && pathname.startsWith(item.href))
+                                            // Determine if this nav item is active based on the current path
+                                            let isActive = false
+
+                                            if (item.label === 'Overview') {
+                                                // Overview is active only on exact match
+                                                isActive = pathname === '/dashboard/admin'
+                                            } else if (item.label === 'CRM') {
+                                                // CRM is active for any path starting with /dashboard/admin/crm
+                                                isActive = pathname?.startsWith('/dashboard/admin/crm')
+                                            } else if (item.label === 'Inventory') {
+                                                // Inventory is active for any path starting with /dashboard/admin/inventory
+                                                isActive = pathname?.startsWith('/dashboard/admin/inventory')
+                                            } else if (item.label === 'Analytics') {
+                                                // Analytics is active for exact match (not CRM or Inventory analytics)
+                                                isActive = pathname === '/dashboard/admin/analytics'
+                                            }
+
                                             const Icon = item.icon
                                             return (
                                                 <Link
@@ -187,7 +203,23 @@ export default function AdminHeader({ user, profile }) {
                             {/* Desktop Nav */}
                             <nav className="hidden md:flex items-end h-full">
                                 {navItems.map((item) => {
-                                    const isActive = pathname === item.href || (item.href !== '/dashboard/admin' && pathname.startsWith(item.href))
+                                    // Determine if this nav item is active based on the current path
+                                    let isActive = false
+
+                                    if (item.label === 'Overview') {
+                                        // Overview is active only on exact match
+                                        isActive = pathname === '/dashboard/admin'
+                                    } else if (item.label === 'CRM') {
+                                        // CRM is active for any path starting with /dashboard/admin/crm
+                                        isActive = pathname?.startsWith('/dashboard/admin/crm')
+                                    } else if (item.label === 'Inventory') {
+                                        // Inventory is active for any path starting with /dashboard/admin/inventory
+                                        isActive = pathname?.startsWith('/dashboard/admin/inventory')
+                                    } else if (item.label === 'Analytics') {
+                                        // Analytics is active for exact match (not CRM or Inventory analytics)
+                                        isActive = pathname === '/dashboard/admin/analytics'
+                                    }
+
                                     const Icon = item.icon
 
                                     return (

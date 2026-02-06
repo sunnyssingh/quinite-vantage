@@ -33,7 +33,30 @@ export async function GET(request) {
 
         if (error) throw error
 
-        return corsJSON({ projects: projects || [] })
+        // Fetch all properties for these projects to calculate real stats
+        const { data: properties, error: propsError } = await adminClient
+            .from('properties')
+            .select('id, project_id, status')
+            .eq('organization_id', profile.organization_id)
+
+        if (propsError) throw propsError
+
+        // Calculate real-time stats for each project
+        const projectsWithStats = (projects || []).map(project => {
+            const projectProperties = (properties || []).filter(p => p.project_id === project.id)
+            const soldCount = projectProperties.filter(p => p.status === 'sold').length
+            const reservedCount = projectProperties.filter(p => p.status === 'reserved').length
+            const availableCount = projectProperties.filter(p => p.status === 'available').length
+
+            return {
+                ...project,
+                sold_units: soldCount,
+                reserved_units: reservedCount,
+                available_units: availableCount
+            }
+        })
+
+        return corsJSON({ projects: projectsWithStats })
     } catch (e) {
         console.error('inventory/projects GET error:', e)
         return corsJSON({ error: e.message }, { status: 500 })

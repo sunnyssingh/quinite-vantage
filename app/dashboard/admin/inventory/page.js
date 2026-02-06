@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Search, Building2 } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Plus, Search, Building2, Home, CheckCircle2, TrendingUp } from 'lucide-react'
 import ProjectCard from '@/components/inventory/ProjectCard'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { toast } from 'react-hot-toast'
@@ -11,6 +12,7 @@ import Link from 'next/link'
 
 export default function InventoryOverviewPage() {
     const [inventoryProjects, setInventoryProjects] = useState([])
+    const [properties, setProperties] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
 
@@ -21,9 +23,17 @@ export default function InventoryOverviewPage() {
     const fetchData = async () => {
         try {
             setLoading(true)
-            const res = await fetch('/api/inventory/projects')
-            const data = await res.json()
-            setInventoryProjects(data.projects || [])
+            // Fetch both projects and properties
+            const [projectsRes, propertiesRes] = await Promise.all([
+                fetch('/api/inventory/projects'),
+                fetch('/api/inventory/properties')
+            ])
+
+            const projectsData = await projectsRes.json()
+            const propertiesData = await propertiesRes.json()
+
+            setInventoryProjects(projectsData.projects || [])
+            setProperties(propertiesData.properties || [])
         } catch (error) {
             console.error('Fetch error:', error)
             toast.error('Failed to load projects')
@@ -36,6 +46,48 @@ export default function InventoryOverviewPage() {
         p.name?.toLowerCase().includes(search.toLowerCase())
     )
 
+    // Calculate quick stats from ACTUAL properties, not total_units field
+    const totalProjects = inventoryProjects.length
+    const totalUnits = properties.length // Use actual property count
+    const totalSold = properties.filter(p => p.status === 'sold').length
+    const totalAvailable = properties.filter(p => p.status === 'available').length
+    const totalReserved = properties.filter(p => p.status === 'reserved').length
+
+    const quickStats = [
+        {
+            title: 'Total Projects',
+            value: totalProjects,
+            icon: Building2,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-50',
+            borderColor: 'border-blue-200'
+        },
+        {
+            title: 'Total Units',
+            value: totalUnits,
+            icon: Home,
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-50',
+            borderColor: 'border-purple-200'
+        },
+        {
+            title: 'Available',
+            value: totalAvailable,
+            icon: TrendingUp,
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            borderColor: 'border-emerald-200'
+        },
+        {
+            title: 'Sold',
+            value: totalSold,
+            icon: CheckCircle2,
+            color: 'text-slate-600',
+            bgColor: 'bg-slate-50',
+            borderColor: 'border-slate-200'
+        }
+    ]
+
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-500">
             {/* Header */}
@@ -43,11 +95,36 @@ export default function InventoryOverviewPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Inventory Overview</h1>
-                        <p className="text-muted-foreground mt-1 text-sm">Track active inventory projects.</p>
+                        <p className="text-muted-foreground mt-1 text-sm">Track active inventory projects and properties.</p>
                     </div>
+                    <Link href="/dashboard/admin/inventory/properties">
+                        <Button variant="outline" size="sm">
+                            <Building2 className="w-4 h-4 mr-2" />
+                            View All Properties
+                        </Button>
+                    </Link>
                 </div>
 
-                {/* Filters */}
+                {/* Quick Stats */}
+                {!loading && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {quickStats.map((stat, index) => (
+                            <Card key={index} className={`border ${stat.borderColor} shadow-sm hover:shadow-md transition-shadow`}>
+                                <CardContent className={`p-4 ${stat.bgColor}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{stat.title}</p>
+                                            <p className={`text-2xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
+                                        </div>
+                                        <stat.icon className={`w-8 h-8 ${stat.color} opacity-60`} />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
+
+                {/* Search */}
                 <div className="flex items-center gap-4">
                     <div className="relative flex-1 w-full max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />

@@ -33,11 +33,14 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
         setLoading(true)
 
         try {
+            // Calculate total units from configurations
+            const calculatedTotalUnits = formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)
+
             const response = await fetch(`/api/projects/${project.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    total_units: Number(formData.totalUnits),
+                    total_units: calculatedTotalUnits,
                     project_status: formData.projectStatus,
                     unit_types: formData.unitTypes
                 })
@@ -77,21 +80,20 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
-                    {/* Total Units */}
-                    <div className="space-y-2">
-                        <Label htmlFor="totalUnits">Total Units</Label>
-                        <Input
-                            id="totalUnits"
-                            type="number"
-                            value={formData.totalUnits}
-                            onChange={(e) => setFormData(prev => ({ ...prev, totalUnits: e.target.value }))}
-                            placeholder="e.g., 120"
-                            min="0"
-                            required
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Total number of units in this project
-                        </p>
+                    {/* Total Units - Auto-calculated */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <Label>Total Units in Project</Label>
+                                <p className="text-xs text-muted-foreground mt-1">Auto-calculated from unit configurations</p>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-3xl font-bold text-blue-600">
+                                    {formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)}
+                                </div>
+                                <p className="text-xs text-muted-foreground">units</p>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Project Status */}

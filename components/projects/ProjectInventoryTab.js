@@ -113,47 +113,15 @@ export default function ProjectInventoryTab({ projectId, project, onMetricsUpdat
                 </div>
             </div>
 
-            <div className="flex gap-2">
-                {/* Dynamic Add Buttons based on Unit Types */}
-                {project?.unit_types && project.unit_types.length > 0 ? (
-                    <>
-                        {project.unit_types.map((ut, idx) => {
-                            const typeCount = properties.filter(p => p.type === ut.type || p.title.includes(ut.type)).length
-                            const isFull = typeCount >= ut.count
-
-                            return (
-                                <Button
-                                    key={idx}
-                                    size="sm"
-                                    variant={isFull ? "ghost" : "default"}
-                                    className={isFull ? "opacity-50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}
-                                    disabled={isFull}
-                                    onClick={() => {
-                                        setEditingProperty({ type: ut.type, projectId }) // Pass projectId for creation
-                                        setShowEditModal(true)
-                                    }}
-                                >
-                                    <Plus className="w-3 h-3 mr-1" />
-                                    Add {ut.type}
-                                    <span className="ml-1 text-[10px] opacity-80">({typeCount}/{ut.count})</span>
-                                </Button>
-                            )
-                        })}
-                    </>
-                ) : (
-                    /* Fallback Generic Add Button */
-                    <Button
-                        className="bg-blue-600 hover:bg-blue-700"
-                        onClick={() => {
-                            setEditingProperty({ projectId })
-                            setShowEditModal(true)
-                        }}
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Property
-                    </Button>
-                )}
-            </div>
+            {/* Configuration Summary */}
+            {project?.unit_types && project.unit_types.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs text-blue-700 font-medium">
+                        📋 Configuration-Driven Inventory: Properties are automatically created from unit configurations.
+                        Edit individual properties below to customize pricing or details.
+                    </p>
+                </div>
+            )}
 
 
             {/* Filters */}

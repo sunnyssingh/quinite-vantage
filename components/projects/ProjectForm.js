@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import {
     Loader2,
     Building2,
@@ -25,7 +27,8 @@ import {
     Warehouse,
     Factory,
     Plus,
-    Trash2
+    Trash2,
+    Edit
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import ResidentialConfigForm from '@/components/projects/ResidentialConfigForm'
@@ -33,8 +36,8 @@ import ResidentialConfigForm from '@/components/projects/ResidentialConfigForm'
 const STEPS = [
     { id: 'basic', title: 'Basic Info', icon: Building2, description: 'Project identity & Type' },
     { id: 'location', title: 'Location', icon: MapPin, description: 'Address details' },
-    { id: 'pricing', title: 'Pricing', icon: IndianRupee, description: 'Budget range' },
-    { id: 'inventory', title: 'Inventory', icon: Store, description: 'Units & Status' }
+    { id: 'inventory', title: 'Inventory', icon: Store, description: 'Units & Status' },
+    { id: 'review', title: 'Review', icon: CheckCircle2, description: 'Review & Submit' }
 ]
 
 export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitting }) {
@@ -69,8 +72,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         locCity: '',
         locLocality: '',
         locLandmark: '',
-        priceMin: '',
-        priceMax: '',
+
         // Inventory fields
         totalUnits: '',
         unitTypes: [], // Array of detailed config objects
@@ -107,8 +109,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 locCity: loc.city || '',
                 locLocality: loc.locality || '',
                 locLandmark: loc.landmark || '',
-                priceMin: pricing.min || '',
-                priceMax: pricing.max || '',
                 // Inventory fields
                 totalUnits: initialData.total_units || '',
                 unitTypes: Array.isArray(initialData.unit_types) ? initialData.unit_types : [],
@@ -132,27 +132,20 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
         if (stepIndex === 0) { // Basic
             if (!data.name.trim()) newErrors.name = 'Project name is required'
-            if (!data.address.trim()) newErrors.address = 'Detailed address is required'
             if (!data.description.trim()) newErrors.description = 'Description is required'
             else if (data.description.length < 50) newErrors.description = 'Description must be at least 50 characters'
             if (!data.imageUrl) newErrors.imageUrl = 'Project image is mandatory'
 
-            // Moved from Property step
-            if (!data.propertyCategory) newErrors.propertyCategory = 'Category is required'
+
         }
 
         if (stepIndex === 1) { // Location (was Step 2)
+            if (!data.address.trim()) newErrors.address = 'Detailed address is required'
             if (!data.locCity.trim()) newErrors.locCity = 'City is required'
             if (!data.locLocality.trim()) newErrors.locLocality = 'Locality is required'
         }
 
-        if (stepIndex === 2) { // Pricing
-            if (!data.priceMin) newErrors.priceMin = 'Minimum price is required'
-            if (!data.priceMax) newErrors.priceMax = 'Maximum price is required'
-            if (Number(data.priceMin) > Number(data.priceMax)) {
-                newErrors.priceMin = 'Min price cannot be greater than max'
-            }
-        }
+
 
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0
@@ -222,40 +215,20 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
 
 
-    const handleAddConfiguration = () => {
-        const { bhk, carpetArea, builtUpArea, superBuiltUpArea } = formData
-        if (!carpetArea) {
-            toast.error("Carpet Area is required")
-            return
-        }
 
-        const newConfig = {
-            bhk,
-            carpet_area: Number(carpetArea),
-            built_up_area: Number(builtUpArea || 0),
-            super_built_up_area: Number(superBuiltUpArea || 0)
-        }
-
-        setFormData(prev => ({
-            ...prev,
-            configurations: [...prev.configurations, newConfig],
-            // Reset fields
-            carpetArea: '',
-            builtUpArea: '',
-            superBuiltUpArea: ''
-        }))
-    }
-
-    const handleRemoveConfiguration = (index) => {
-        setFormData(prev => ({
-            ...prev,
-            configurations: prev.configurations.filter((_, i) => i !== index)
-        }))
-    }
 
     const handleSubmit = () => {
         if (validateStep(currentStep)) {
-            onSubmit(formData)
+            // Calculate total units from configurations
+            const calculatedTotalUnits = formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)
+
+            // Add calculated total to formData
+            const submitData = {
+                ...formData,
+                totalUnits: calculatedTotalUnits
+            }
+
+            onSubmit(submitData)
         }
     }
 
@@ -284,27 +257,41 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                         <div className="absolute top-5 left-0 w-full h-0.5 bg-slate-200 -z-10" />
 
                         {STEPS.map((step, idx) => {
-                            const Icon = step.icon
-                            const isActive = idx === currentStep
+                            const StepIcon = step.icon
                             const isCompleted = idx < currentStep
+                            const isCurrent = idx === currentStep
+                            const isUpcoming = idx > currentStep
 
                             return (
-                                <div key={step.id} className="flex flex-col items-center gap-2 bg-gradient-to-br from-slate-50 to-blue-50/30 px-1 md:px-3">
-                                    <div className={`
-                                        w-8 h-8 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300
-                                        ${isActive ? 'border-blue-600 bg-blue-500 text-white scale-110 shadow-lg shadow-blue-200' :
-                                            isCompleted ? 'border-green-500 bg-green-500 text-white shadow-md' :
-                                                'border-slate-300 bg-white text-slate-400'}
-                                    `}>
-                                        {isCompleted ? <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6" /> : <Icon className="w-4 h-4 md:w-5 md:h-5" />}
+                                <button
+                                    key={step.id}
+                                    type="button"
+                                    onClick={() => setCurrentStep(idx)}
+                                    className={`flex flex-col items-center gap-2 relative transition-all duration-300 group cursor-pointer hover:scale-105 ${isCurrent ? 'scale-110' : ''
+                                        }`}
+                                >
+                                    <div
+                                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-md ${isCompleted
+                                            ? 'bg-green-500 text-white'
+                                            : isCurrent
+                                                ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                                                : 'bg-white text-slate-400 border-2 border-slate-200'
+                                            } group-hover:shadow-lg`}
+                                    >
+                                        {isCompleted ? (
+                                            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+                                        ) : (
+                                            <StepIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+                                        )}
                                     </div>
                                     <div className="text-center">
-                                        <p className={`text-xs md:text-sm font-semibold ${isActive ? 'text-blue-700' : isCompleted ? 'text-green-700' : 'text-slate-500'}`}>
+                                        <p className={`text-xs sm:text-sm font-semibold transition-colors ${isCurrent ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-slate-400'
+                                            }`}>
                                             {step.title}
                                         </p>
-                                        <p className="text-[10px] text-slate-400 hidden md:block">{step.description}</p>
+                                        <p className="text-[10px] sm:text-xs text-slate-400 hidden sm:block">{step.description}</p>
                                     </div>
-                                </div>
+                                </button>
                             )
                         })}
                     </div>
@@ -331,20 +318,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 {!errors.name && formData.name && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Looks good!</p>}
                             </div>
 
-                            <div>
-                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-blue-600" />
-                                    Full Address *
-                                </label>
-                                <Input
-                                    value={formData.address}
-                                    onChange={e => handleChange('address', e.target.value)}
-                                    placeholder="e.g. Plot No. 123, Main Street, Near Central Park, Sector 5"
-                                    className={`transition-all text-xs sm:text-sm ${errors.address ? "border-red-300 focus-visible:ring-red-200" : formData.address ? "border-green-400 focus-visible:ring-green-200" : ""}`}
-                                />
-                                {errors.address && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.address}</p>}
-                                {!errors.address && formData.address && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Address saved!</p>}
-                            </div>
+
 
                             <div>
                                 <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
@@ -433,81 +407,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                             </div>
                         </div>
 
-                        {/* Moved from Property Step */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
-                            <div>
-                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Transaction Type</label>
-                                <select
-                                    className="w-full rounded-lg border-2 border-slate-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                    value={formData.transaction}
-                                    onChange={e => handleChange('transaction', e.target.value)}
-                                >
-                                    <option value="sell">Sell</option>
-                                    <option value="rent">Rent</option>
-                                    <option value="lease">Lease</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block">Category</label>
-                                <select
-                                    className="w-full rounded-lg border-2 border-slate-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                    value={formData.propertyCategory}
-                                    onChange={e => handleChange('propertyCategory', e.target.value)}
-                                >
-                                    <option value="residential">Residential</option>
-                                    <option value="commercial">Commercial</option>
-                                    <option value="land">Land/Plot</option>
-                                </select>
-                            </div>
-                        </div>
 
-                        <div>
-                            <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-3 block">Property Type</label>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {(() => {
-                                    // Define property types for each category
-                                    const propertyTypesByCategory = {
-                                        residential: [
-                                            { value: 'apartment', label: 'Apartment', icon: Building2 },
-                                            { value: 'villa_bungalow', label: 'Villa Bungalow', icon: Home },
-                                            { value: 'row_house', label: 'Row House', icon: Building },
-                                            { value: 'penthouse', label: 'Penthouse', icon: Castle }
-                                        ],
-                                        commercial: [
-                                            { value: 'office', label: 'Office Space', icon: Briefcase },
-                                            { value: 'retail', label: 'Retail Shop', icon: ShoppingBag },
-                                            { value: 'warehouse', label: 'Warehouse', icon: Warehouse },
-                                            { value: 'industrial', label: 'Industrial', icon: Factory }
-                                        ],
-                                        land: [
-                                            { value: 'residential_plot', label: 'Residential Plot', icon: Home },
-                                            { value: 'commercial_plot', label: 'Commercial Plot', icon: Building },
-                                            { value: 'agricultural', label: 'Agricultural Land', icon: TreePine },
-                                            { value: 'industrial_plot', label: 'Industrial Plot', icon: Factory }
-                                        ]
-                                    }
-
-                                    const currentTypes = propertyTypesByCategory[formData.propertyCategory] || propertyTypesByCategory.residential
-
-                                    return currentTypes.map(({ value, label, icon: IconComponent }) => (
-                                        <button
-                                            key={value}
-                                            onClick={() => handleChange('propertyUseCase', value)}
-                                            className={`p-4 rounded-xl border-2 text-center transition-all transform hover:scale-105 ${formData.propertyUseCase === value
-                                                ? 'border-blue-600 bg-blue-50 shadow-lg shadow-blue-200 scale-105'
-                                                : 'border-slate-200 hover:border-blue-300 bg-white'
-                                                }`}
-                                        >
-                                            <IconComponent className={`w-8 h-8 mx-auto mb-2 ${formData.propertyUseCase === value ? 'text-blue-600' : 'text-slate-400'}`} />
-                                            <p className={`text-xs font-semibold ${formData.propertyUseCase === value ? 'text-blue-700' : 'text-slate-600'
-                                                }`}>
-                                                {label}
-                                            </p>
-                                        </button>
-                                    ))
-                                })()}
-                            </div>
-                        </div>
 
                         {/* Action Buttons */}
                         <div className="grid grid-cols-2 gap-2 pt-4 border-t mt-6 sm:flex sm:justify-end sm:gap-3">
@@ -519,7 +419,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
                             >
                                 Next Step
-                                <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
                             </Button>
                         </div>
                     </div>
@@ -540,6 +439,17 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     currentStep === 1 && (
                         <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                             <div className="grid gap-6">
+                                <div>
+                                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Full Address *</label>
+                                    <Input
+                                        value={formData.address}
+                                        onChange={e => handleChange('address', e.target.value)}
+                                        placeholder="e.g. Plot No. 123, Main Street, Near Central Park, Sector 5"
+                                        className={`transition-all text-xs sm:text-sm ${errors.address ? "border-red-300 focus-visible:ring-red-200" : formData.address ? "border-green-400 focus-visible:ring-green-200" : ""}`}
+                                    />
+                                    {errors.address && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.address}</p>}
+                                    {!errors.address && formData.address && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Address saved!</p>}
+                                </div>
                                 <div>
                                     <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
                                     <Input
@@ -582,18 +492,11 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                                     Back
                                 </Button>
-                                <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto ml-1 sm:ml-4">
-                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        onClick={handleNext}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
-                                    >
-                                        Next Step
-                                        <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-                                    </Button>
-                                </div>
+                                <Button
+                                    onClick={handleNext}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ml-auto">
+                                    Next Step
+                                </Button>
                             </div>
                         </div>
                     )
@@ -601,137 +504,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
                 {
                     currentStep === 2 && (
-                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-                            <div className="text-center py-8">
-                                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
-                                    <IndianRupee className="w-10 h-10 text-white" />
-                                </div>
-                                <h3 className="text-xl font-bold text-slate-900">Final Step: Set Your Budget</h3>
-                                <p className="text-slate-600 mt-2">Define the price range for your project</p>
-                                <div className="inline-flex items-center gap-2 mt-3 bg-blue-50 px-4 py-2 rounded-full border border-blue-200">
-                                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                                    <span className="text-xs font-semibold text-blue-700">Almost done!</span>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                                <div>
-                                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
-                                        <IndianRupee className="w-4 h-4 text-green-600" />
-                                        Minimum Price *
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
-                                        <Input
-                                            type="number"
-                                            value={formData.priceMin}
-                                            onChange={e => handleChange('priceMin', e.target.value)}
-                                            placeholder="5000000"
-                                            className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMin ? "border-red-300" : formData.priceMin ? "border-green-400" : ""
-                                                }`}
-                                        />
-                                    </div>
-                                    {errors.priceMin && <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.priceMin}</p>}
-                                    {!errors.priceMin && formData.priceMin && (
-                                        <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3 h-3" />
-                                            ₹{Number(formData.priceMin).toLocaleString('en-IN')}
-                                        </p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
-                                        <IndianRupee className="w-4 h-4 text-green-600" />
-                                        Maximum Price *
-                                    </label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">₹</span>
-                                        <Input
-                                            type="number"
-                                            value={formData.priceMax}
-                                            onChange={e => handleChange('priceMax', e.target.value)}
-                                            placeholder="7500000"
-                                            className={`pl-8 text-sm sm:text-lg font-semibold transition-all ${errors.priceMax ? "border-red-300" : formData.priceMax ? "border-green-400" : ""
-                                                }`}
-                                        />
-                                    </div>
-                                    {errors.priceMax && <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.priceMax}</p>}
-                                    {!errors.priceMax && formData.priceMax && (
-                                        <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                                            <CheckCircle2 className="w-3 h-3" />
-                                            ₹{Number(formData.priceMax).toLocaleString('en-IN')}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {formData.priceMin && formData.priceMax && Number(formData.priceMin) < Number(formData.priceMax) && (
-                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-5 mt-6 max-w-2xl mx-auto">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                                            <CheckCircle2 className="w-5 h-5 text-white" />
-                                        </div>
-                                        <h4 className="text-sm font-bold text-green-900">Price Range Confirmed</h4>
-                                    </div>
-                                    <div className="text-center py-3 bg-white rounded-lg border border-green-200">
-                                        <p className="text-2xl font-bold text-green-700">
-                                            ₹{Number(formData.priceMin).toLocaleString('en-IN')} - ₹{Number(formData.priceMax).toLocaleString('en-IN')}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-5 mt-8 max-w-2xl mx-auto">
-                                <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2 mb-3">
-                                    <AlertCircle className="w-4 h-4" />
-                                    Review Before Saving
-                                </h4>
-                                <div className="space-y-2 text-xs">
-                                    <div className="flex justify-between py-2 border-b border-amber-200">
-                                        <span className="text-amber-700">Project Name:</span>
-                                        <span className="font-semibold text-amber-900">{formData.name || 'Not set'}</span>
-                                    </div>
-                                    <div className="flex justify-between py-2 border-b border-amber-200">
-                                        <span className="text-amber-700">Location:</span>
-                                        <span className="font-semibold text-amber-900">{formData.locLocality}, {formData.locCity}</span>
-                                    </div>
-                                    <div className="flex justify-between py-2">
-                                        <span className="text-amber-700">Configuration:</span>
-                                        <span className="font-semibold text-amber-900">{formData.bhk.toUpperCase()}, {formData.propertyUseCase.replace('_', ' ')}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex justify-between gap-1 sm:gap-3 pt-4 border-t mt-6">
-                                <Button
-                                    variant="ghost"
-                                    onClick={handleBack}
-                                    disabled={isSubmitting}
-                                    className="text-slate-500 hover:text-slate-800 text-xs sm:text-sm py-1.5 px-1 sm:py-2 sm:px-4"
-                                >
-                                    <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
-                                    Back
-                                </Button>
-                                <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto ml-1 sm:ml-4">
-                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        onClick={handleNext}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
-                                    >
-                                        Next Step
-                                        <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )
-                }
-
-                {
-                    currentStep === 3 && (
                         <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                             <div className="text-center py-6">
                                 <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
@@ -742,17 +514,20 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                             </div>
 
                             <div className="grid gap-6 max-w-3xl mx-auto">
-                                {/* Total Units */}
-                                <div>
-                                    <label className="text-sm font-semibold text-slate-800 mb-2 block">Total Units in Project</label>
-                                    <Input
-                                        type="number"
-                                        value={formData.totalUnits}
-                                        onChange={e => handleChange('totalUnits', e.target.value)}
-                                        placeholder="e.g., 120"
-                                        className="text-sm"
-                                    />
-                                    <p className="text-xs text-slate-500 mt-1.5">Total number of flats/houses/units in this project</p>
+                                {/* Total Units - Auto-calculated */}
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <label className="text-sm font-semibold text-slate-800 block">Total Units in Project</label>
+                                            <p className="text-xs text-slate-500 mt-1">Auto-calculated from unit configurations</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-3xl font-bold text-blue-600">
+                                                {formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)}
+                                            </div>
+                                            <p className="text-xs text-slate-500">units</p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Unit Types Breakdown */}
@@ -776,7 +551,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         <ResidentialConfigForm
                                             onCancel={() => setShowAddConfig(false)}
                                             category={formData.propertyCategory}
-                                            priceRange={{ min: formData.priceMin, max: formData.priceMax }}
                                             onAdd={(newConfig) => {
                                                 setFormData(prev => ({
                                                     ...prev,
@@ -881,24 +655,162 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                                     Back
                                 </Button>
-                                <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full sm:w-auto ml-1 sm:ml-4">
-                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
+                                <Button
+                                    onClick={handleNext}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ml-auto">
+                                    Next Step
+                                </Button>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {
+                    currentStep === 3 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                            <div className="text-center py-6">
+                                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg">
+                                    <CheckCircle2 className="w-10 h-10 text-white" />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900">Review Your Project</h3>
+                                <p className="text-slate-600 mt-2">Please review all details before submitting</p>
+                            </div>
+
+                            <div className="max-w-3xl mx-auto space-y-4">
+                                {/* Basic Info Summary */}
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                                        <CardTitle className="text-base font-bold">Basic Information</CardTitle>
+                                        <Button variant="ghost" size="sm" onClick={() => setCurrentStep(0)} className="text-blue-600 hover:text-blue-700">
+                                            <Edit className="w-3 h-3 mr-1" />
+                                            Edit
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Project Name</p>
+                                                <p className="text-sm font-semibold">{formData.name || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Status</p>
+                                                <Badge variant="outline" className="text-xs">{formData.projectStatus || 'planning'}</Badge>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Description</p>
+                                            <p className="text-sm">{formData.description || '-'}</p>
+                                        </div>
+                                        {formData.imageUrl && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-2">Project Image</p>
+                                                <img src={formData.imageUrl} alt="Project" className="w-32 h-32 object-cover rounded-lg border" />
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Location Summary */}
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                                        <CardTitle className="text-base font-bold">Location</CardTitle>
+                                        <Button variant="ghost" size="sm" onClick={() => setCurrentStep(1)} className="text-blue-600 hover:text-blue-700">
+                                            <Edit className="w-3 h-3 mr-1" />
+                                            Edit
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">City</p>
+                                                <p className="text-sm font-semibold">{formData.locCity || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Locality</p>
+                                                <p className="text-sm font-semibold">{formData.locLocality || '-'}</p>
+                                            </div>
+                                            {formData.locLandmark && (
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-muted-foreground">Landmark</p>
+                                                    <p className="text-sm">{formData.locLandmark}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Inventory Summary */}
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between pb-3">
+                                        <CardTitle className="text-base font-bold">Inventory</CardTitle>
+                                        <Button variant="ghost" size="sm" onClick={() => setCurrentStep(2)} className="text-blue-600 hover:text-blue-700">
+                                            <Edit className="w-3 h-3 mr-1" />
+                                            Edit
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Total Units</p>
+                                            <p className="text-sm font-semibold">{formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)}</p>
+                                        </div>
+                                        {formData.unitTypes && formData.unitTypes.length > 0 && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-2">Unit Configurations</p>
+                                                <div className="space-y-2">
+                                                    {formData.unitTypes.map((ut, idx) => (
+                                                        <div key={idx} className="bg-slate-50 p-3 rounded-lg border">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <p className="text-sm font-semibold">
+                                                                        {ut.configuration || ut.property_type} {ut.property_type && ut.configuration ? `(${ut.property_type})` : ''}
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {ut.transaction_type} • {ut.category} • {ut.carpet_area} sqft
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-sm font-bold text-green-600">₹{Number(ut.price).toLocaleString('en-IN')}</p>
+                                                                    <p className="text-xs text-muted-foreground">{ut.count} units</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-between gap-3 pt-4 border-t mt-6 max-w-3xl mx-auto">
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleBack}
+                                    disabled={isSubmitting}
+                                    className="text-slate-500 hover:text-slate-800"
+                                >
+                                    <ChevronLeft className="w-4 h-4 mr-2" />
+                                    Back
+                                </Button>
+                                <div className="flex gap-3">
+                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
                                         Cancel
                                     </Button>
                                     <Button
                                         onClick={handleSubmit}
                                         disabled={isSubmitting}
-                                        className={`text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ${initialData ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                                        className="bg-green-600 hover:bg-green-700 text-white"
                                     >
                                         {isSubmitting ? (
                                             <>
-                                                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
-                                                Saving...
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                Creating Project...
                                             </>
                                         ) : (
                                             <>
-                                                <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                                                {initialData ? 'Update' : 'Create'}
+                                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                                {initialData ? 'Update Project' : 'Create Project'}
                                             </>
                                         )}
                                     </Button>

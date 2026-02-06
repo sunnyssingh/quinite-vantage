@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Building2, Home, Store, ConciergeBell, Briefcase, ShoppingBag, Factory } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export default function ResidentialConfigForm({ onAdd, onCancel, category = 'residential', priceRange = {} }) {
+export default function ResidentialConfigForm({ onAdd, onCancel, category = 'residential' }) {
     const [config, setConfig] = useState({
         transaction_type: 'Sell',
         category: category,
@@ -19,19 +19,15 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
         count: ''
     })
 
-    // Set default price if available
+    // Set default property type based on category
     useEffect(() => {
-        if (priceRange.min && !config.price) {
-            setConfig(prev => ({ ...prev, price: priceRange.min }))
-        }
-        // Set default property type based on category
         if (!config.property_type) {
             const types = getPropertyTypes(category)
             if (types.length > 0) {
                 setConfig(prev => ({ ...prev, property_type: types[0].id }))
             }
         }
-    }, [priceRange, category])
+    }, [category])
 
     const getPropertyTypes = (cat) => {
         // Handle case-insensitive check
@@ -59,8 +55,8 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
         }
     }
 
-    const propertyTypes = getPropertyTypes(category)
-    const isResidential = (category || 'residential').toLowerCase() === 'residential'
+    const propertyTypes = getPropertyTypes(config.category)
+    const isResidential = (config.category || 'residential').toLowerCase() === 'residential'
 
     const handleSubmit = (e) => {
         e.preventDefault()
@@ -110,7 +106,19 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
 
                 <div className="space-y-2">
                     <Label>Category</Label>
-                    <Input value={(category || 'Residential').charAt(0).toUpperCase() + (category || 'residential').slice(1)} disabled className="bg-slate-100" />
+                    <Select
+                        value={config.category}
+                        onValueChange={(v) => setConfig(prev => ({ ...prev, category: v, property_type: '', configuration: v === 'residential' ? '3BHK' : '' }))}
+                    >
+                        <SelectTrigger className="bg-white">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="residential">Residential</SelectItem>
+                            <SelectItem value="commercial">Commercial</SelectItem>
+                            <SelectItem value="land">Land</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -183,11 +191,6 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                             className="bg-white pl-7"
                         />
                     </div>
-                    {priceRange.min && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                            Project Range: ₹{Number(priceRange.min).toLocaleString()} - ₹{Number(priceRange.max).toLocaleString()}
-                        </p>
-                    )}
                 </div>
 
                 <div className="space-y-2">
@@ -205,7 +208,7 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
 
             <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-                <Button type="button" onClick={handleSubmit} disabled={!config.count || !config.carpet_area} className="bg-blue-600 hover:bg-blue-700">
+                <Button type="button" onClick={handleSubmit} disabled={!config.count || !config.carpet_area || !config.price} className="bg-blue-600 hover:bg-blue-700">
                     Add Configuration
                 </Button>
             </div>
