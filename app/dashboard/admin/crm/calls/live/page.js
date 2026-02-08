@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Phone, Users, Clock, TrendingUp, PhoneOff, PhoneForwarded, Activity } from 'lucide-react'
+import { Phone, Users, Clock, TrendingUp, PhoneOff, PhoneForwarded, Activity, Sparkles } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 export default function LiveCallMonitor() {
@@ -135,22 +135,27 @@ export default function LiveCallMonitor() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-6 space-y-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4 md:p-6 space-y-4 md:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-600 rounded-lg">
-                            <Activity className="w-6 h-6 text-white" />
+                        <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                            <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Live Call Monitor</h1>
-                            <p className="text-sm text-gray-500">Real-time command center for your AI workforce</p>
+                            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                                Live Call Monitor
+                            </h1>
+                            <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-2">
+                                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500" />
+                                Real-time command center for your AI workforce
+                            </p>
                         </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 rounded-full">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-full shadow-sm">
                         <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></div>
                         <span className="text-xs font-medium text-green-700">Live</span>
                     </div>
@@ -158,55 +163,76 @@ export default function LiveCallMonitor() {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border-l-4 border-l-green-500">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600">Active Calls</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between">
-                            <span className="text-3xl font-bold text-gray-900">{activeCalls.length}</span>
-                            <Phone className="w-8 h-8 text-green-500" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                {/* Active Calls */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Phone className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
+                            <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
                         </div>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-blue-100 text-xs md:text-sm font-medium">Active Calls</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">{activeCalls.length}</p>
+                            <p className="text-blue-100 text-xs">In progress right now</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card className="border-l-4 border-l-purple-500">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600">Agents Available</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between">
-                            <span className="text-3xl font-bold text-gray-900">{agentStats.available}</span>
-                            <Users className="w-8 h-8 text-purple-500" />
+                {/* Agents Available */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Users className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
+                            <div className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 text-white">
+                                {agentStats.onCall} on call
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{agentStats.onCall} on call</p>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-purple-100 text-xs md:text-sm font-medium">Agents Available</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">{agentStats.available}</p>
+                            <p className="text-purple-100 text-xs">Ready to handle calls</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card className="border-l-4 border-l-yellow-500">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600">Queue</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between">
-                            <span className="text-3xl font-bold text-gray-900">{queueStats.queued}</span>
-                            <Clock className="w-8 h-8 text-yellow-500" />
+                {/* Queue */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Clock className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
+                            <div className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 text-white">
+                                {queueStats.processing} processing
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">{queueStats.processing} processing</p>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-amber-100 text-xs md:text-sm font-medium">Queue</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">{queueStats.queued}</p>
+                            <p className="text-amber-100 text-xs">Waiting to be called</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card className="border-l-4 border-l-red-500">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600">Failed</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between">
-                            <span className="text-3xl font-bold text-gray-900">{queueStats.failed}</span>
-                            <PhoneOff className="w-8 h-8 text-red-500" />
+                {/* Failed */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-red-500 to-red-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <PhoneOff className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
                         </div>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-red-100 text-xs md:text-sm font-medium">Failed</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">{queueStats.failed}</p>
+                            <p className="text-red-100 text-xs">Requires attention</p>
+                        </div>
+                    </div>
                 </Card>
             </div>
 
@@ -273,7 +299,7 @@ export default function LiveCallMonitor() {
                                                 <div className="flex-1 bg-gray-200 rounded-full h-2">
                                                     <div
                                                         className={`h-2 rounded-full ${call.sentiment_score > 0.6 ? 'bg-green-500' :
-                                                                call.sentiment_score > 0.3 ? 'bg-yellow-500' : 'bg-red-500'
+                                                            call.sentiment_score > 0.3 ? 'bg-yellow-500' : 'bg-red-500'
                                                             }`}
                                                         style={{ width: `${call.sentiment_score * 100}%` }}
                                                     />

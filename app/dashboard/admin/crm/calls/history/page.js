@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import {
     Phone, Search, Calendar, Clock, User, Building2,
     PhoneForwarded, PhoneOff, Activity, MessageSquare,
-    Flag, ExternalLink
+    Flag, ExternalLink, Sparkles, TrendingUp
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDistanceToNow, format } from 'date-fns'
@@ -125,22 +125,32 @@ export default function CallHistory() {
     }
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4 md:p-6 space-y-4 md:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Call History</h1>
-                    <p className="text-gray-500 mt-1">View and analyze past calls</p>
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                            <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                                Call History
+                            </h1>
+                            <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-2">
+                                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500" />
+                                View and analyze past calls
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-sm">
-                        {calls.length} Total Calls
-                    </Badge>
-                </div>
+                <Badge variant="outline" className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border-purple-200 text-purple-700 bg-purple-50 w-fit">
+                    {calls.length} Total Calls
+                </Badge>
             </div>
 
             {/* Search */}
-            <Card>
+            <Card className="border-0 shadow-lg">
                 <CardContent className="pt-6">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -155,53 +165,78 @@ export default function CallHistory() {
             </Card>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Completed</CardTitle>
-                        <Phone className="h-4 w-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {calls.filter(c => c.call_status === 'completed' || c.call_status === 'transferred').length}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                {/* Completed */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Phone className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
+                            <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
                         </div>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-green-100 text-xs md:text-sm font-medium">Completed</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">
+                                {calls.filter(c => c.call_status === 'completed' || c.call_status === 'transferred').length}
+                            </p>
+                            <p className="text-green-100 text-xs">Successfully finished</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Transferred</CardTitle>
-                        <PhoneForwarded className="h-4 w-4 text-blue-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {calls.filter(c => c.transferred).length}
+                {/* Transferred */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <PhoneForwarded className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
                         </div>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-blue-100 text-xs md:text-sm font-medium">Transferred</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">
+                                {calls.filter(c => c.transferred).length}
+                            </p>
+                            <p className="text-blue-100 text-xs">Escalated to agents</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
-                        <Clock className="h-4 w-4 text-purple-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {formatDuration(Math.round(calls.reduce((acc, c) => acc + (c.duration || 0), 0) / calls.length))}
+                {/* Avg Duration */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Clock className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
                         </div>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-purple-100 text-xs md:text-sm font-medium">Avg Duration</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">
+                                {formatDuration(Math.round(calls.reduce((acc, c) => acc + (c.duration || 0), 0) / calls.length))}
+                            </p>
+                            <p className="text-purple-100 text-xs">Average call length</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">With Insights</CardTitle>
-                        <Activity className="h-4 w-4 text-yellow-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {calls.filter(c => c.insights && c.insights.length > 0).length}
+                {/* With Insights */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
+                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-5 md:p-6 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Activity className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            </div>
                         </div>
-                    </CardContent>
+                        <div className="space-y-1 flex-1">
+                            <p className="text-amber-100 text-xs md:text-sm font-medium">With Insights</p>
+                            <p className="text-3xl md:text-4xl font-bold text-white">
+                                {calls.filter(c => c.insights && c.insights.length > 0).length}
+                            </p>
+                            <p className="text-amber-100 text-xs">AI analyzed calls</p>
+                        </div>
+                    </div>
                 </Card>
             </div>
 
