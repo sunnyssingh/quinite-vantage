@@ -57,9 +57,84 @@ export async function PATCH(request, { params }) {
 
         if (error) throw error
 
+        // Update Images (Delete all and re-insert strategy)
+        if (body.images && Array.isArray(body.images)) {
+            // Delete existing
+            await adminClient
+                .from('property_images')
+                .delete()
+                .eq('property_id', id)
+
+            // Insert new ones
+            if (body.images.length > 0) {
+                const imageInserts = body.images.map((img, index) => ({
+                    property_id: id,
+                    url: img.url,
+                    is_featured: img.is_featured || false,
+                    order_index: index
+                }))
+
+                const { error: imgError } = await adminClient
+                    .from('property_images')
+                    .insert(imageInserts)
+
+                if (imgError) console.error('Failed to update images:', imgError)
+            }
+        }
+
         return corsJSON({ property })
     } catch (e) {
         console.error('properties PATCH error:', e)
+        return corsJSON({ error: e.message }, { status: 500 })
+    }
+}
+
+/**
+ * DELETE /api/inventory/properties/[id]
+ * Delete a property
+ */
+export async function DELETE(request, { params }) {
+    try {
+        const supabase = await createServerSupabaseClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+
+        const adminClient = createAdminClient()
+        const { id } = await params
+
+        // Verify organization ownership
+        const { data: profile } = await adminClient
+            .from('profiles')
+            .select('organization_id')
+            .eq('id', user.id)
+            .single()
+
+        if (!profile?.organization_id) return corsJSON({ error: 'Organization not found' }, { status: 400 })
+
+        // Check ownership
+        const { data: property, error: fetchError } = await adminClient
+            .from('properties')
+            .select('id')
+            .eq('id', id)
+            .eq('organization_id', profile.organization_id)
+            .single()
+
+        if (fetchError || !property) {
+            return corsJSON({ error: 'Property not found or access denied' }, { status: 404 })
+        }
+
+        // Delete (images cascade via FK)
+        const { error: deleteError } = await adminClient
+            .from('properties')
+            .delete()
+            .eq('id', id)
+
+        if (deleteError) throw deleteError
+
+        return corsJSON({ success: true })
+    } catch (e) {
+        console.error('properties DELETE error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
 }

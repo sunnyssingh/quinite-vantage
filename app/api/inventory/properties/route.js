@@ -111,6 +111,22 @@ export async function POST(request) {
 
         if (error) throw error
 
+        // 2. Insert Images if any
+        if (body.images && Array.isArray(body.images) && body.images.length > 0) {
+            const imageInserts = body.images.map((img, index) => ({
+                property_id: property.id,
+                url: img.url,
+                is_featured: img.is_featured || false,
+                order_index: index
+            }))
+
+            const { error: imgError } = await adminClient
+                .from('property_images')
+                .insert(imageInserts)
+
+            if (imgError) console.error('Failed to insert images:', imgError)
+        }
+
         // Audit Log
         try {
             await logAudit(
