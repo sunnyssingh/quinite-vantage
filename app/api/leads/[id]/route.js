@@ -53,7 +53,6 @@ export async function PUT(request, { params }) {
         if (body.name !== undefined) updateData.name = body.name
         if (body.email !== undefined) updateData.email = body.email
         if (body.phone !== undefined) updateData.phone = body.phone
-        if (body.status !== undefined) updateData.status = body.status
         if (body.stageId !== undefined) updateData.stage_id = body.stageId
         if (body.projectId !== undefined) updateData.project_id = body.projectId
         if (body.call_status !== undefined) updateData.call_status = body.call_status

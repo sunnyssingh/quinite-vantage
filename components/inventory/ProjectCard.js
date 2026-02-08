@@ -54,6 +54,57 @@ export default function ProjectCard({ project }) {
             </CardHeader>
 
             <CardContent className="space-y-4">
+                {/* Unit Configurations & Category */}
+                <div className="space-y-2">
+                    {/* Property Category */}
+                    {project.real_estate?.property?.category && (
+                        <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs font-medium">
+                                {project.real_estate.property.category === 'residential' && '🏠 Residential'}
+                                {project.real_estate.property.category === 'commercial' && '🏢 Commercial'}
+                                {project.real_estate.property.category === 'land' && '🌳 Land'}
+                            </Badge>
+                        </div>
+                    )}
+
+                    {/* Unit Configurations */}
+                    {project.unit_types && project.unit_types.length > 0 && (
+                        <div>
+                            <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Configurations</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {[...new Set(project.unit_types.map(ut => ut.configuration || ut.property_type))].map((config, idx) => (
+                                    <Badge key={idx} variant="outline" className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
+                                        {config}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Price Range */}
+                    {project.unit_types && project.unit_types.length > 0 && (() => {
+                        const prices = project.unit_types.map(ut => ut.price).filter(p => p > 0)
+                        if (prices.length > 0) {
+                            const minPrice = Math.min(...prices)
+                            const maxPrice = Math.max(...prices)
+                            const formatPrice = (price) => {
+                                if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)}Cr`
+                                if (price >= 100000) return `₹${(price / 100000).toFixed(2)}L`
+                                return `₹${price.toLocaleString('en-IN')}`
+                            }
+                            return (
+                                <div>
+                                    <p className="text-[10px] font-medium text-muted-foreground mb-1">Price Range</p>
+                                    <p className="text-sm font-bold text-green-600">
+                                        {minPrice === maxPrice ? formatPrice(minPrice) : `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`}
+                                    </p>
+                                </div>
+                            )
+                        }
+                        return null
+                    })()}
+                </div>
+
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-2.5">
                     <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-3 rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-shadow">

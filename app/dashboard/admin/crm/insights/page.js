@@ -17,9 +17,11 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    ResponsiveContainer
+    ResponsiveContainer,
+    RadialBarChart,
+    RadialBar
 } from 'recharts'
-import { Activity, MessageSquare, Banknote, Calendar, AlertTriangle, UserCheck } from 'lucide-react'
+import { Activity, MessageSquare, Banknote, Calendar, AlertTriangle, UserCheck, TrendingUp, Brain, Sparkles } from 'lucide-react'
 
 export default function ConversationInsightsDashboard({ campaignId = null, dateRange = 30 }) {
     const [insights, setInsights] = useState([])
@@ -77,9 +79,9 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
         const negative = insights.filter(i => i.overall_sentiment < -0.3).length
 
         return [
-            { name: 'Positive', value: positive, color: '#10b981' },
-            { name: 'Neutral', value: neutral, color: '#f59e0b' },
-            { name: 'Negative', value: negative, color: '#ef4444' }
+            { name: 'Positive', value: positive, color: '#10b981', fill: '#10b981' },
+            { name: 'Neutral', value: neutral, color: '#f59e0b', fill: '#f59e0b' },
+            { name: 'Negative', value: negative, color: '#ef4444', fill: '#ef4444' }
         ]
     }
 
@@ -90,9 +92,9 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
         const low = insights.filter(i => i.interest_level === 'low').length
 
         return [
-            { name: 'High', value: high },
-            { name: 'Medium', value: medium },
-            { name: 'Low', value: low }
+            { name: 'High', value: high, fill: '#10b981' },
+            { name: 'Medium', value: medium, fill: '#f59e0b' },
+            { name: 'Low', value: low, fill: '#ef4444' }
         ]
     }
 
@@ -104,10 +106,10 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
         const notReady = insights.filter(i => i.purchase_readiness === 'not_ready').length
 
         return [
-            { name: 'Immediate', value: immediate },
-            { name: 'Short Term', value: shortTerm },
-            { name: 'Long Term', value: longTerm },
-            { name: 'Not Ready', value: notReady }
+            { name: 'Immediate', value: immediate, fill: '#10b981' },
+            { name: 'Short Term', value: shortTerm, fill: '#3b82f6' },
+            { name: 'Long Term', value: longTerm, fill: '#f59e0b' },
+            { name: 'Not Ready', value: notReady, fill: '#ef4444' }
         ]
     }
 
@@ -125,7 +127,7 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
         return Object.entries(objectionCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 10)
-            .map(([name, count]) => ({ name, count }))
+            .map(([name, count]) => ({ name, count, fill: '#ef4444' }))
     }
 
     // Budget Ranges
@@ -150,134 +152,267 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
             }
         })
 
-        return Object.entries(ranges).map(([name, value]) => ({ name, value }))
+        return Object.entries(ranges).map(([name, value], index) => ({
+            name,
+            value,
+            fill: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6b7280'][index]
+        }))
     }
 
     if (loading) {
         return <InsightsSkeleton />
     }
 
-    const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+    const CustomTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                    <p className="font-semibold text-gray-900">{payload[0].name}</p>
+                    <p className="text-sm text-gray-600">Count: <span className="font-bold">{payload[0].value}</span></p>
+                </div>
+            )
+        }
+        return null
+    }
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-6 space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">Conversation Insights</h1>
-                <p className="text-gray-500 mt-1">AI-powered analysis of customer conversations</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg">
+                            <Brain className="w-7 h-7 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                                Conversation Insights
+                            </h1>
+                            <p className="text-gray-500 mt-1 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-purple-500" />
+                                AI-powered analysis of customer conversations
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <Badge variant="outline" className="px-4 py-2 text-sm border-purple-200 text-purple-700 bg-purple-50">
+                    Last {dateRange} days
+                </Badge>
             </div>
 
             {/* Summary Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Conversations</CardTitle>
-                        <MessageSquare className="h-4 w-4 text-blue-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalInsights}</div>
-                        <p className="text-xs text-muted-foreground">Last {dateRange} days</p>
-                    </CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Total Conversations */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <MessageSquare className="h-6 w-6 text-white" />
+                            </div>
+                            <TrendingUp className="h-5 w-5 text-white/60" />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-blue-100 text-sm font-medium">Total Conversations</p>
+                            <p className="text-4xl font-bold text-white">{stats.totalInsights}</p>
+                            <p className="text-blue-100 text-xs">Analyzed interactions</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Avg Sentiment</CardTitle>
-                        <Activity className="h-4 w-4 text-green-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.avgSentiment}</div>
-                        <p className="text-xs text-muted-foreground">
-                            {stats.avgSentiment > 0 ? 'Positive' : stats.avgSentiment < 0 ? 'Negative' : 'Neutral'}
-                        </p>
-                    </CardContent>
+                {/* Avg Sentiment */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Activity className="h-6 w-6 text-white" />
+                            </div>
+                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${stats.avgSentiment > 0 ? 'bg-green-100 text-green-700' :
+                                stats.avgSentiment < 0 ? 'bg-red-100 text-red-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                {stats.avgSentiment > 0 ? 'Positive' : stats.avgSentiment < 0 ? 'Negative' : 'Neutral'}
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-green-100 text-sm font-medium">Avg Sentiment</p>
+                            <p className="text-4xl font-bold text-white">{stats.avgSentiment}</p>
+                            <div className="w-full bg-white/20 rounded-full h-1.5 mt-2">
+                                <div
+                                    className="bg-white h-1.5 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(Math.abs(stats.avgSentiment) * 100, 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">High Interest</CardTitle>
-                        <UserCheck className="h-4 w-4 text-emerald-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.highInterest}</div>
-                        <p className="text-xs text-muted-foreground">
-                            {stats.totalInsights > 0 ? Math.round((stats.highInterest / stats.totalInsights) * 100) : 0}% of total
-                        </p>
-                    </CardContent>
+                {/* High Interest */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <UserCheck className="h-6 w-6 text-white" />
+                            </div>
+                            <Badge className="bg-white/20 text-white border-0">
+                                {stats.totalInsights > 0 ? Math.round((stats.highInterest / stats.totalInsights) * 100) : 0}%
+                            </Badge>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-purple-100 text-sm font-medium">High Interest</p>
+                            <p className="text-4xl font-bold text-white">{stats.highInterest}</p>
+                            <p className="text-purple-100 text-xs">Qualified leads</p>
+                        </div>
+                    </div>
                 </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Budget Mentioned</CardTitle>
-                        <Banknote className="h-4 w-4 text-yellow-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.budgetMentioned}</div>
-                        <p className="text-xs text-muted-foreground">
-                            {stats.totalInsights > 0 ? Math.round((stats.budgetMentioned / stats.totalInsights) * 100) : 0}% of total
-                        </p>
-                    </CardContent>
+                {/* Budget Mentioned */}
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+                                <Banknote className="h-6 w-6 text-white" />
+                            </div>
+                            <Badge className="bg-white/20 text-white border-0">
+                                {stats.totalInsights > 0 ? Math.round((stats.budgetMentioned / stats.totalInsights) * 100) : 0}%
+                            </Badge>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-amber-100 text-sm font-medium">Budget Mentioned</p>
+                            <p className="text-4xl font-bold text-white">{stats.budgetMentioned}</p>
+                            <p className="text-amber-100 text-xs">Ready to invest</p>
+                        </div>
+                    </div>
                 </Card>
             </div>
 
             {/* Charts */}
-            <Tabs defaultValue="sentiment" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
-                    <TabsTrigger value="interest">Interest Level</TabsTrigger>
-                    <TabsTrigger value="readiness">Purchase Readiness</TabsTrigger>
-                    <TabsTrigger value="objections">Objections</TabsTrigger>
-                    <TabsTrigger value="budget">Budget</TabsTrigger>
+            <Tabs defaultValue="sentiment" className="space-y-6">
+                <TabsList className="bg-white shadow-md border-0 p-1">
+                    <TabsTrigger value="sentiment" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white">
+                        Sentiment
+                    </TabsTrigger>
+                    <TabsTrigger value="interest" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+                        Interest Level
+                    </TabsTrigger>
+                    <TabsTrigger value="readiness" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white">
+                        Purchase Readiness
+                    </TabsTrigger>
+                    <TabsTrigger value="objections" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white">
+                        Objections
+                    </TabsTrigger>
+                    <TabsTrigger value="budget" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-amber-600 data-[state=active]:text-white">
+                        Budget
+                    </TabsTrigger>
                 </TabsList>
 
                 {/* Sentiment Distribution */}
-                <TabsContent value="sentiment">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Sentiment Distribution</CardTitle>
-                            <CardDescription>Overall customer sentiment across conversations</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <PieChart>
-                                    <Pie
-                                        data={getSentimentData().filter(i => i.value > 0)}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={true}
-                                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="value"
-                                    >
-                                        {getSentimentData().map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
+                <TabsContent value="sentiment" className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card className="border-0 shadow-lg">
+                            <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50">
+                                <CardTitle className="flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-blue-600" />
+                                    Sentiment Distribution
+                                </CardTitle>
+                                <CardDescription>Overall customer sentiment across conversations</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <ResponsiveContainer width="100%" height={350}>
+                                    <PieChart>
+                                        <Pie
+                                            data={getSentimentData().filter(i => i.value > 0)}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                            outerRadius={120}
+                                            innerRadius={60}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                            paddingAngle={5}
+                                        >
+                                            {getSentimentData().map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-0 shadow-lg">
+                            <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50">
+                                <CardTitle>Sentiment Breakdown</CardTitle>
+                                <CardDescription>Detailed sentiment analysis</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <div className="space-y-6">
+                                    {getSentimentData().map((item, index) => (
+                                        <div key={index} className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                                                    <span className="font-medium text-gray-700">{item.name}</span>
+                                                </div>
+                                                <span className="text-2xl font-bold text-gray-900">{item.value}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                                <div
+                                                    className="h-3 rounded-full transition-all duration-500"
+                                                    style={{
+                                                        width: `${stats.totalInsights > 0 ? (item.value / stats.totalInsights) * 100 : 0}%`,
+                                                        backgroundColor: item.color
+                                                    }}
+                                                />
+                                            </div>
+                                            <p className="text-sm text-gray-500">
+                                                {stats.totalInsights > 0 ? ((item.value / stats.totalInsights) * 100).toFixed(1) : 0}% of total
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
 
                 {/* Interest Level */}
                 <TabsContent value="interest">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Interest Level Breakdown</CardTitle>
+                    <Card className="border-0 shadow-lg">
+                        <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50">
+                            <CardTitle className="flex items-center gap-2">
+                                <UserCheck className="w-5 h-5 text-purple-600" />
+                                Interest Level Breakdown
+                            </CardTitle>
                             <CardDescription>Customer interest in the product/service</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                        <CardContent className="pt-6">
+                            <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={getInterestData()}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="value" fill="#3b82f6" name="Count" />
+                                    <defs>
+                                        <linearGradient id="colorHigh" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0.3} />
+                                        </linearGradient>
+                                        <linearGradient id="colorMedium" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.3} />
+                                        </linearGradient>
+                                        <linearGradient id="colorLow" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0.3} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                    <XAxis dataKey="name" stroke="#6b7280" />
+                                    <YAxis stroke="#6b7280" />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Bar dataKey="value" radius={[8, 8, 0, 0]} name="Count">
+                                        {getInterestData().map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -286,20 +421,26 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
 
                 {/* Purchase Readiness */}
                 <TabsContent value="readiness">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Purchase Readiness Timeline</CardTitle>
+                    <Card className="border-0 shadow-lg">
+                        <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
+                            <CardTitle className="flex items-center gap-2">
+                                <Calendar className="w-5 h-5 text-green-600" />
+                                Purchase Readiness Timeline
+                            </CardTitle>
                             <CardDescription>When customers are ready to make a decision</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                        <CardContent className="pt-6">
+                            <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={getPurchaseReadinessData()}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="value" fill="#10b981" name="Count" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                    <XAxis dataKey="name" stroke="#6b7280" />
+                                    <YAxis stroke="#6b7280" />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Bar dataKey="value" radius={[8, 8, 0, 0]} name="Count">
+                                        {getPurchaseReadinessData().map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -308,20 +449,26 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
 
                 {/* Common Objections */}
                 <TabsContent value="objections">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Common Objections</CardTitle>
+                    <Card className="border-0 shadow-lg">
+                        <CardHeader className="border-b bg-gradient-to-r from-red-50 to-orange-50">
+                            <CardTitle className="flex items-center gap-2">
+                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                                Common Objections
+                            </CardTitle>
                             <CardDescription>Most frequently raised concerns</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                        <CardContent className="pt-6">
+                            <ResponsiveContainer width="100%" height={400}>
                                 <BarChart data={getCommonObjections()} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis type="number" />
-                                    <YAxis dataKey="name" type="category" width={150} />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="count" fill="#ef4444" name="Occurrences" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                                    <XAxis type="number" stroke="#6b7280" />
+                                    <YAxis dataKey="name" type="category" width={180} stroke="#6b7280" />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Bar dataKey="count" radius={[0, 8, 8, 0]} name="Occurrences">
+                                        {getCommonObjections().map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -330,13 +477,16 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
 
                 {/* Budget Ranges */}
                 <TabsContent value="budget">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Budget Range Distribution</CardTitle>
+                    <Card className="border-0 shadow-lg">
+                        <CardHeader className="border-b bg-gradient-to-r from-amber-50 to-yellow-50">
+                            <CardTitle className="flex items-center gap-2">
+                                <Banknote className="w-5 h-5 text-amber-600" />
+                                Budget Range Distribution
+                            </CardTitle>
                             <CardDescription>Customer budget preferences</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
+                        <CardContent className="pt-6">
+                            <ResponsiveContainer width="100%" height={400}>
                                 <PieChart>
                                     <Pie
                                         data={getBudgetRanges().filter(i => i.value > 0)}
@@ -344,16 +494,17 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                                         cy="50%"
                                         labelLine={true}
                                         label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                                        outerRadius={80}
+                                        outerRadius={130}
+                                        innerRadius={70}
                                         fill="#8884d8"
                                         dataKey="value"
+                                        paddingAngle={3}
                                     >
                                         {getBudgetRanges().map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
                                         ))}
                                     </Pie>
-                                    <Tooltip />
-                                    <Legend />
+                                    <Tooltip content={<CustomTooltip />} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </CardContent>
@@ -366,43 +517,41 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
 
 function InsightsSkeleton() {
     return (
-        <div className="space-y-6 p-6">
-            <div className="space-y-2">
-                <Skeleton className="h-8 w-64" />
-                <Skeleton className="h-4 w-96" />
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-6 space-y-6">
+            <div className="flex items-center gap-3">
+                <Skeleton className="h-14 w-14 rounded-xl" />
+                <div className="space-y-2">
+                    <Skeleton className="h-10 w-80" />
+                    <Skeleton className="h-4 w-96" />
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[1, 2, 3, 4].map((i) => (
-                    <Card key={i}>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-4 w-4 rounded-full" />
-                        </CardHeader>
-                        <CardContent>
-                            <Skeleton className="h-8 w-16 mb-2" />
-                            <Skeleton className="h-3 w-32" />
+                    <Card key={i} className="border-0 shadow-lg">
+                        <CardContent className="p-6">
+                            <Skeleton className="h-12 w-12 rounded-lg mb-4" />
+                            <Skeleton className="h-4 w-32 mb-2" />
+                            <Skeleton className="h-10 w-20 mb-2" />
+                            <Skeleton className="h-3 w-24" />
                         </CardContent>
                     </Card>
                 ))}
             </div>
 
             <div className="space-y-4">
-                <div className="flex gap-2">
-                    <Skeleton className="h-10 w-24" />
-                    <Skeleton className="h-10 w-24" />
-                    <Skeleton className="h-10 w-32" />
-                </div>
-                <Card>
-                    <CardHeader>
+                <Skeleton className="h-12 w-full max-w-2xl rounded-lg" />
+                <Card className="border-0 shadow-lg">
+                    <CardHeader className="border-b">
                         <Skeleton className="h-6 w-48 mb-2" />
                         <Skeleton className="h-4 w-64" />
                     </CardHeader>
-                    <CardContent>
-                        <Skeleton className="h-[300px] w-full" />
+                    <CardContent className="pt-6">
+                        <Skeleton className="h-[400px] w-full" />
                     </CardContent>
                 </Card>
             </div>
         </div>
     )
 }
+

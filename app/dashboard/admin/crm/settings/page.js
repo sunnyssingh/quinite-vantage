@@ -10,10 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 
-function SortableStage({ id, stage, onChange, onDelete }) {
+function SortableStage({ id, stage, onChange, onDelete, canDelete }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
 
     const style = {
@@ -51,7 +50,9 @@ function SortableStage({ id, stage, onChange, onDelete }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => onDelete(id)}
-                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                disabled={!canDelete}
+                className="text-red-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                title={!canDelete ? "Minimum 3 stages required" : "Delete stage"}
             >
                 <Trash2 className="h-4 w-4" />
             </Button>
@@ -128,6 +129,12 @@ export default function CrmSettingsPage() {
     }
 
     const handleDeleteStage = async (id) => {
+        // Prevent deletion if fewer than 3 stages would remain
+        if (stages.length <= 3) {
+            toast.error('Cannot delete stage. Minimum 3 stages required for pipeline.')
+            return
+        }
+
         if (!confirm('Are you sure? This will remove the stage permanently.')) return
 
         if (String(id).startsWith('temp-')) {
@@ -213,9 +220,9 @@ export default function CrmSettingsPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <Settings2 className="h-6 w-6 text-blue-600" />
-                        CRM Settings
+                        Pipeline Stages
                     </h1>
-                    <p className="text-gray-500 mt-1">Configure pipeline stages, lead sources, and automation rules.</p>
+                    <p className="text-gray-500 mt-1">Customize your sales pipeline by adding, removing, and reordering stages.</p>
                 </div>
                 <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
                     <SelectTrigger className="w-full md:w-[250px]">
@@ -229,92 +236,55 @@ export default function CrmSettingsPage() {
                 </Select>
             </div>
 
-            {/* Tabs */}
-            <Tabs defaultValue="pipeline" className="w-full">
-                <TabsList className="grid w-full md:w-auto grid-cols-3 md:inline-flex">
-                    <TabsTrigger value="pipeline">Pipeline Stages</TabsTrigger>
-                    <TabsTrigger value="sources">Lead Sources</TabsTrigger>
-                    <TabsTrigger value="automation">Automation</TabsTrigger>
-                </TabsList>
+            {/* Pipeline Stages Card */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Manage Stages</CardTitle>
+                    <CardDescription>
+                        Drag and drop to reorder stages. Minimum 3 stages required. Changes apply to the selected pipeline.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={stages.map(s => s.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            {stages.map((stage) => (
+                                <SortableStage
+                                    key={stage.id}
+                                    id={stage.id}
+                                    stage={stage}
+                                    onChange={handleStageChange}
+                                    onDelete={handleDeleteStage}
+                                    canDelete={stages.length > 3}
+                                />
+                            ))}
+                        </SortableContext>
+                    </DndContext>
 
-                {/* Pipeline Stages Tab */}
-                <TabsContent value="pipeline" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Pipeline Stages</CardTitle>
-                            <CardDescription>Drag and drop to reorder stages. Changes apply to the selected pipeline.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragEnd={handleDragEnd}
-                            >
-                                <SortableContext
-                                    items={stages.map(s => s.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {stages.map((stage) => (
-                                        <SortableStage
-                                            key={stage.id}
-                                            id={stage.id}
-                                            stage={stage}
-                                            onChange={handleStageChange}
-                                            onDelete={handleDeleteStage}
-                                        />
-                                    ))}
-                                </SortableContext>
-                            </DndContext>
+                    <Button
+                        variant="outline"
+                        className="w-full mt-4 border-dashed hover:border-blue-400 hover:text-blue-600 transition-colors"
+                        onClick={handleAddStage}
+                    >
+                        <Plus className="h-4 w-4 mr-2" /> Add New Stage
+                    </Button>
+                </CardContent>
+            </Card>
 
-                            <Button
-                                variant="outline"
-                                className="w-full mt-4 border-dashed"
-                                onClick={handleAddStage}
-                            >
-                                <Plus className="h-4 w-4 mr-2" /> Add Stage
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    <div className="flex justify-end mt-6">
-                        <Button onClick={handleSave} disabled={saving}>
-                            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Changes
-                        </Button>
-                    </div>
-                </TabsContent>
-
-                {/* Lead Sources Tab */}
-                <TabsContent value="sources" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Lead Sources</CardTitle>
-                            <CardDescription>Manage where your leads come from</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-center py-12 text-gray-500">
-                                <p>Lead source management coming soon...</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                {/* Automation Tab */}
-                <TabsContent value="automation" className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Automation Rules</CardTitle>
-                            <CardDescription>Set up automated workflows and triggers</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-center py-12 text-gray-500">
-                                <p>Automation rules coming soon...</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            {/* Save Button */}
+            <div className="flex justify-end">
+                <Button onClick={handleSave} disabled={saving} size="lg" className="min-w-[140px]">
+                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {!saving && <Save className="h-4 w-4 mr-2" />}
+                    {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+            </div>
         </div>
     )
 }

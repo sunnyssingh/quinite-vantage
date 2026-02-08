@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from "@/components/ui/skeleton"
+import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Building2, Megaphone, Package } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import ProjectMetrics from '@/components/projects/ProjectMetrics'
@@ -110,21 +111,114 @@ export default function ProjectDetailsPage() {
 
                 {/* Overview Tab */}
                 <TabsContent value="overview" className="space-y-6">
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold text-foreground mb-4">Project Details</h3>
-                        {project.description && (
-                            <div className="mb-4">
-                                <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
-                                <p className="text-sm text-foreground">{project.description}</p>
+                    <div className="grid gap-6 md:grid-cols-2">
+                        {/* Project Details */}
+                        <Card className="p-6">
+                            <h3 className="text-lg font-semibold text-foreground mb-4">Project Details</h3>
+                            {project.description && (
+                                <div className="mb-4">
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
+                                    <p className="text-sm text-foreground">{project.description}</p>
+                                </div>
+                            )}
+                            {project.project_status && (
+                                <div className="mb-4">
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">Status</p>
+                                    <Badge variant="outline" className="capitalize">
+                                        {project.project_status.replace('_', ' ')}
+                                    </Badge>
+                                </div>
+                            )}
+                            {project.real_estate?.property?.category && (
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">Property Category</p>
+                                    <Badge variant="secondary" className="capitalize">
+                                        {project.real_estate.property.category === 'residential' && '🏠 Residential'}
+                                        {project.real_estate.property.category === 'commercial' && '🏢 Commercial'}
+                                        {project.real_estate.property.category === 'land' && '🌳 Land'}
+                                    </Badge>
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* Location Details */}
+                        <Card className="p-6">
+                            <h3 className="text-lg font-semibold text-foreground mb-4">Location Details</h3>
+                            {project.real_estate?.location?.city && (
+                                <div className="mb-3">
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">City</p>
+                                    <p className="text-sm text-foreground">{project.real_estate.location.city}</p>
+                                </div>
+                            )}
+                            {project.real_estate?.location?.locality && (
+                                <div className="mb-3">
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">Locality</p>
+                                    <p className="text-sm text-foreground">{project.real_estate.location.locality}</p>
+                                </div>
+                            )}
+                            {project.real_estate?.location?.landmark && (
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">Landmark</p>
+                                    <p className="text-sm text-foreground">{project.real_estate.location.landmark}</p>
+                                </div>
+                            )}
+                            {!project.real_estate?.location && project.address && (
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">Address</p>
+                                    <p className="text-sm text-foreground">{project.address}</p>
+                                </div>
+                            )}
+                        </Card>
+                    </div>
+
+                    {/* Unit Configurations */}
+                    {project.unit_types && project.unit_types.length > 0 && (
+                        <Card className="p-6">
+                            <h3 className="text-lg font-semibold text-foreground mb-4">Unit Configurations</h3>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {project.unit_types.map((unitType, idx) => (
+                                    <div key={idx} className="border rounded-lg p-4 bg-gradient-to-br from-white to-slate-50 hover:shadow-md transition-shadow">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h4 className="font-semibold text-foreground">
+                                                    {unitType.configuration || unitType.property_type}
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground mt-0.5">
+                                                    {unitType.property_type && unitType.configuration && `${unitType.property_type}`}
+                                                </p>
+                                            </div>
+                                            <Badge variant="outline" className="text-xs">
+                                                {unitType.transaction_type || 'Sell'}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                            {unitType.carpet_area && (
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">Area</p>
+                                                    <p className="font-medium">{unitType.carpet_area} sqft</p>
+                                                </div>
+                                            )}
+                                            {unitType.count && (
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">Units</p>
+                                                    <p className="font-medium">{unitType.count} units</p>
+                                                </div>
+                                            )}
+                                            {unitType.price && unitType.price > 0 && (
+                                                <div className="col-span-2">
+                                                    <p className="text-xs text-muted-foreground">Price</p>
+                                                    <p className="font-bold text-green-600">
+                                                        ₹{unitType.price.toLocaleString('en-IN')}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        )}
-                        {project.project_status && (
-                            <div>
-                                <p className="text-sm font-medium text-muted-foreground mb-1">Status</p>
-                                <p className="text-sm text-foreground capitalize">{project.project_status.replace('_', ' ')}</p>
-                            </div>
-                        )}
-                    </Card>
+                        </Card>
+                    )}
 
                     {/* Project Metrics */}
                     <div>

@@ -46,6 +46,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
     const [currentStep, setCurrentStep] = useState(0)
     const [touched, setTouched] = useState({})
     const [errors, setErrors] = useState({})
+    const [completedSteps, setCompletedSteps] = useState(new Set())
 
     const [showAddConfig, setShowAddConfig] = useState(false)
 
@@ -115,6 +116,11 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 projectStatus: initialData.project_status || 'planning',
                 showInInventory: initialData.show_in_inventory !== false
             })
+
+            // Mark all steps as completed for edit mode
+            if (initialData.id) {
+                setCompletedSteps(new Set([0, 1, 2, 3]))
+            }
         }
     }, [initialData])
 
@@ -130,22 +136,35 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         const newErrors = {}
         const data = formData
 
-        if (stepIndex === 0) { // Basic
+        if (stepIndex === 0) { // Basic Info
             if (!data.name.trim()) newErrors.name = 'Project name is required'
             if (!data.description.trim()) newErrors.description = 'Description is required'
             else if (data.description.length < 50) newErrors.description = 'Description must be at least 50 characters'
             if (!data.imageUrl) newErrors.imageUrl = 'Project image is mandatory'
-
-
         }
 
-        if (stepIndex === 1) { // Location (was Step 2)
+        if (stepIndex === 1) { // Location
             if (!data.address.trim()) newErrors.address = 'Detailed address is required'
             if (!data.locCity.trim()) newErrors.locCity = 'City is required'
             if (!data.locLocality.trim()) newErrors.locLocality = 'Locality is required'
         }
 
-
+        if (stepIndex === 2) { // Inventory
+            if (!data.unitTypes || data.unitTypes.length === 0) {
+                newErrors.unitTypes = 'At least one unit configuration is required'
+            } else {
+                // Validate each unit type - they have configuration/property_type, not name
+                data.unitTypes.forEach((ut, idx) => {
+                    if (!ut.configuration && !ut.property_type) {
+                        newErrors[`unitType_${idx}_config`] = 'Configuration or property type is required'
+                    }
+                    if (!ut.count || ut.count <= 0) {
+                        newErrors[`unitType_${idx}_count`] = 'Unit count must be greater than 0'
+                    }
+                    // Price is optional
+                })
+            }
+        }
 
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0
@@ -153,19 +172,69 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
     const handleNext = () => {
         if (validateStep(currentStep)) {
+            // Mark current step as completed
+            setCompletedSteps(prev => new Set([...prev, currentStep]))
             setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1))
         } else {
             const stepErrors = Object.keys(errors)
             if (stepErrors.length > 0) {
-                if (stepErrors.length > 0) {
-                    toast.error("Please fill all required fields before proceeding.")
-                }
+                toast.error("Please fill all required fields before proceeding.")
             }
         }
     }
 
     const handleBack = () => {
         setCurrentStep(prev => Math.max(prev - 1, 0))
+    }
+
+    // Check if current step is valid (for button states)
+    const isCurrentStepValid = () => {
+        const newErrors = {}
+        const data = formData
+
+        if (currentStep === 0) { // Basic Info
+            if (!data.name.trim()) return false
+            if (!data.description.trim()) return false
+            if (data.description.length < 50) return false
+            if (!data.imageUrl) return false
+        }
+
+        if (currentStep === 1) { // Location
+            if (!data.address.trim()) return false
+            if (!data.locCity.trim()) return false
+            if (!data.locLocality.trim()) return false
+        }
+
+        if (currentStep === 2) { // Inventory
+            if (!data.unitTypes || data.unitTypes.length === 0) return false
+            // Check each unit type is valid - they have configuration/property_type, not name
+            for (const ut of data.unitTypes) {
+                // Must have either configuration or property_type
+                if (!ut.configuration && !ut.property_type) return false
+                if (!ut.count || ut.count <= 0) return false
+                // Price is optional for some configurations
+            }
+        }
+
+        return true
+    }
+
+    // Check if entire form is valid (for Create button)
+    const isFormValid = () => {
+        return (
+            formData.name?.trim() &&
+            formData.description?.trim() &&
+            formData.description.length >= 50 &&
+            formData.imageUrl &&
+            formData.address?.trim() &&
+            formData.locCity?.trim() &&
+            formData.locLocality?.trim() &&
+            formData.unitTypes?.length > 0 &&
+            formData.unitTypes.every(ut =>
+                (ut.configuration || ut.property_type) &&
+                ut.count > 0
+            )
+        )
     }
 
     const handleImageUpload = async (e) => {
@@ -258,34 +327,64 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
                         {STEPS.map((step, idx) => {
                             const StepIcon = step.icon
-                            const isCompleted = idx < currentStep
+                            const isCompleted = completedSteps.has(idx)
                             const isCurrent = idx === currentStep
-                            const isUpcoming = idx > currentStep
+                            const isVisited = idx < currentStep
+                            const showWarning = isVisited && !isCompleted
 
                             return (
                                 <button
                                     key={step.id}
                                     type="button"
-                                    onClick={() => setCurrentStep(idx)}
+                                    onClick={() => {
+                                        // Allow navigation to current step (no-op)
+                                        if (idx === currentStep) return
+
+                                        // Going backward - always allowed
+                                        if (idx < currentStep) {
+                                            setCurrentStep(idx)
+                                            return
+                                        }
+
+                                        // Going forward - must validate current step first
+                                        if (idx > currentStep) {
+                                            if (validateStep(currentStep)) {
+                                                setCompletedSteps(prev => new Set([...prev, currentStep]))
+                                                setCurrentStep(idx)
+                                            } else {
+                                                toast.error("Please complete the current step before proceeding")
+                                            }
+                                        }
+                                    }}
                                     className={`flex flex-col items-center gap-2 relative transition-all duration-300 group cursor-pointer hover:scale-105 ${isCurrent ? 'scale-110' : ''
                                         }`}
                                 >
                                     <div
                                         className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-md ${isCompleted
                                             ? 'bg-green-500 text-white'
-                                            : isCurrent
-                                                ? 'bg-blue-600 text-white ring-4 ring-blue-100'
-                                                : 'bg-white text-slate-400 border-2 border-slate-200'
+                                            : showWarning
+                                                ? 'bg-amber-500 text-white'
+                                                : isCurrent
+                                                    ? 'bg-blue-600 text-white ring-4 ring-blue-100'
+                                                    : 'bg-white text-slate-400 border-2 border-slate-200'
                                             } group-hover:shadow-lg`}
                                     >
                                         {isCompleted ? (
                                             <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+                                        ) : showWarning ? (
+                                            <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                                         ) : (
                                             <StepIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                                         )}
                                     </div>
                                     <div className="text-center">
-                                        <p className={`text-xs sm:text-sm font-semibold transition-colors ${isCurrent ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-slate-400'
+                                        <p className={`text-xs sm:text-sm font-semibold transition-colors ${isCurrent
+                                            ? 'text-blue-600'
+                                            : isCompleted
+                                                ? 'text-green-600'
+                                                : showWarning
+                                                    ? 'text-amber-600'
+                                                    : 'text-slate-400'
                                             }`}>
                                             {step.title}
                                         </p>
@@ -649,7 +748,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 <Button
                                     variant="ghost"
                                     onClick={handleBack}
-                                    disabled={isSubmitting}
+                                    disabled={isSubmitting || currentStep === 0}
                                     className="text-slate-500 hover:text-slate-800 text-xs sm:text-sm py-1.5 px-1 sm:py-2 sm:px-4"
                                 >
                                     <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
@@ -657,7 +756,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 </Button>
                                 <Button
                                     onClick={handleNext}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ml-auto">
+                                    disabled={!isCurrentStepValid() || isSubmitting}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ml-auto">
                                     Next Step
                                 </Button>
                             </div>
@@ -799,13 +899,13 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     </Button>
                                     <Button
                                         onClick={handleSubmit}
-                                        disabled={isSubmitting}
-                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                        disabled={!isFormValid() || isSubmitting}
+                                        className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Creating Project...
+                                                {initialData ? 'Updating...' : 'Creating Project...'}
                                             </>
                                         ) : (
                                             <>

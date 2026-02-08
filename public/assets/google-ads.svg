@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" rx="20" fill="white"/>
+  <text x="100" y="85" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#4285F4" text-anchor="middle">Google</text>
+  <text x="100" y="130" font-family="Arial, sans-serif" font-size="32" font-weight="600" fill="#34A853" text-anchor="middle">Ads</text>
+</svg>

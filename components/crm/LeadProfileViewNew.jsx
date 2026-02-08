@@ -372,7 +372,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                             {/* Secondary Row */}
                             <div className="grid grid-cols-12 gap-6">
                                 <div className="col-span-12 md:col-span-4">
-                                    <PropertyDealsCard deals={lead.deals || []} />
+                                    <PropertyDealsCard deals={lead.deals || []} currency={organization?.currency || 'USD'} />
                                 </div>
                                 <div className="col-span-12 md:col-span-4">
                                     <ComingUpNextCard leadId={leadId} />

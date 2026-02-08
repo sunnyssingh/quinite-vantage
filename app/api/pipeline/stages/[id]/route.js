@@ -5,7 +5,7 @@ import { corsJSON } from '@/lib/cors'
 
 export async function DELETE(request, { params }) {
     try {
-        const stageId = params.id
+        const { id: stageId } = await params
         const supabase = await createServerSupabaseClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -44,6 +44,18 @@ export async function DELETE(request, { params }) {
 
         if (!pipeline || pipeline.organization_id !== profile.organization_id) {
             return corsJSON({ error: 'Unauthorized access to stage' }, { status: 403 })
+        }
+
+        // Check if pipeline has more than 3 stages
+        const { count: stageCount } = await adminClient
+            .from('pipeline_stages')
+            .select('*', { count: 'exact', head: true })
+            .eq('pipeline_id', stage.pipeline_id)
+
+        if (stageCount <= 3) {
+            return corsJSON({
+                error: 'Cannot delete stage. Minimum 3 stages required for pipeline.'
+            }, { status: 400 })
         }
 
         // Delete stage

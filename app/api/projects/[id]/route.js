@@ -284,21 +284,33 @@ export async function DELETE(request, { params }) {
             )
         }
 
-        // 5️⃣ Delete DB row
+        // 5️⃣ Delete associated properties first (cascade delete)
+        const { error: propsDeleteError } = await adminClient
+            .from('properties')
+            .delete()
+            .eq('project_id', id)
+            .eq('organization_id', profile.organization_id)
+
+        if (propsDeleteError) {
+            console.error('Error deleting properties:', propsDeleteError)
+            // Continue anyway - we still want to delete the project
+        }
+
+        // 6️⃣ Delete DB row
         await adminClient
             .from('projects')
             .delete()
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
 
-        // 6️⃣ Delete image from storage
+        // 7️⃣ Delete image from storage
         if (project.image_path) {
             await supabase.storage
                 .from('project-images')
                 .remove([project.image_path])
         }
 
-        // 7️⃣ Audit
+        // 8️⃣ Audit
         try {
             await logAudit(
                 supabase,

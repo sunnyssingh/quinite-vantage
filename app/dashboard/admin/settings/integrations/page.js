@@ -13,6 +13,7 @@ const INTEGRATIONS = [
         description: "Receive leads instantly from MagicBricks property listings.",
         logo: "/assets/magicbricks.svg",
         color: "bg-red-100 text-red-600",
+        status: "available",
         docs: {
             step1: "Contact your MagicBricks Account Manager.",
             step2: "Ask them to enable 'Real-time Webhook Integration'.",
@@ -31,6 +32,7 @@ const INTEGRATIONS = [
         description: "Sync potential buyer leads from 99Acres automatically.",
         logo: "/assets/99acres.webp",
         color: "bg-blue-100 text-blue-600",
+        status: "available",
         docs: {
             step1: "Login to your 99Acres Advertiser Dashboard.",
             step2: "Navigate to 'Manage Responses' -> 'Settings' -> 'Webhook'.",
@@ -45,11 +47,28 @@ const INTEGRATIONS = [
         }
     },
     {
+        id: "meta-ads",
+        name: "Meta Ads",
+        description: "Auto-sync leads from Meta advertising campaigns.",
+        logo: "/assets/meta.svg",
+        color: "bg-purple-100 text-purple-600",
+        status: "coming-soon"
+    },
+    {
+        id: "google-ads",
+        name: "Google Ads",
+        description: "Auto-sync leads from Google advertising campaigns.",
+        logo: "/assets/google-ads.svg",
+        color: "bg-yellow-100 text-yellow-600",
+        status: "coming-soon"
+    },
+    {
         id: "facebook",
-        name: "Facebook Ads",
+        name: "Facebook Leads",
         description: "Connect Meta Lead Forms directly to your dashboard.",
         logo: "/assets/facebook.svg",
         color: "bg-indigo-100 text-indigo-600",
+        status: "available",
         docs: {
             step1: "Go to Meta Business Suite -> Leads Setup.",
             step2: "Choose 'Webhooks' integration.",
@@ -58,6 +77,62 @@ const INTEGRATIONS = [
 // We automatically parse 'field_data' 
 // to extract full_name, phone_number, etc.`
         }
+    },
+    {
+        id: "google-forms",
+        name: "Google Forms",
+        description: "Capture leads from Google Forms submissions.",
+        logo: "/assets/google-forms.svg",
+        color: "bg-green-100 text-green-600",
+        status: "coming-soon"
+    },
+    {
+        id: "typeform",
+        name: "Typeform",
+        description: "Sync form responses from Typeform automatically.",
+        logo: "/assets/typeform.svg",
+        color: "bg-slate-100 text-slate-600",
+        status: "coming-soon"
+    },
+    {
+        id: "zapier",
+        name: "Zapier",
+        description: "Connect 5000+ apps through Zapier automation.",
+        logo: "/assets/zapier.svg",
+        color: "bg-orange-100 text-orange-600",
+        status: "coming-soon"
+    },
+    {
+        id: "webhooks",
+        name: "Webhooks",
+        description: "Create custom webhook integrations for any platform.",
+        logo: "/assets/webhooks.svg",
+        color: "bg-teal-100 text-teal-600",
+        status: "coming-soon"
+    },
+    {
+        id: "linkedin",
+        name: "LinkedIn Lead Gen",
+        description: "Sync leads from LinkedIn advertising campaigns.",
+        logo: "/assets/linkedin.svg",
+        color: "bg-blue-100 text-blue-700",
+        status: "coming-soon"
+    },
+    {
+        id: "whatsapp",
+        name: "WhatsApp Business",
+        description: "Capture leads from WhatsApp Business conversations.",
+        logo: "/assets/whatsapp.svg",
+        color: "bg-green-100 text-green-700",
+        status: "coming-soon"
+    },
+    {
+        id: "custom-api",
+        name: "Custom API",
+        description: "Build custom integrations using our REST API.",
+        logo: "/assets/api.svg",
+        color: "bg-gray-100 text-gray-700",
+        status: "coming-soon"
     }
 ]
 
@@ -98,6 +173,10 @@ export default function IntegrationsPage() {
                                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-full tracking-wide">
                                     Active
                                 </span>
+                            ) : tool.status === 'coming-soon' ? (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold uppercase rounded-full tracking-wide">
+                                    Coming Soon
+                                </span>
                             ) : (
                                 <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium uppercase rounded-full tracking-wide">
                                     Available
@@ -111,12 +190,13 @@ export default function IntegrationsPage() {
                         <Button
                             variant={tool.connected ? "outline" : "default"}
                             className="w-full"
+                            disabled={tool.status === 'coming-soon'}
                             onClick={() => {
                                 if (tool.docs) setSelectedIntegration(tool)
                                 else toast.success(`${tool.name} is already configured via Environment Variables.`)
                             }}
                         >
-                            {tool.connected ? "Configure" : "Connect"}
+                            {tool.status === 'coming-soon' ? 'Coming Soon' : (tool.connected ? "Configure" : "Connect")}
                         </Button>
                     </div>
                 ))}

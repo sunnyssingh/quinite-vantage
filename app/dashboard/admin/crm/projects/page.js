@@ -15,6 +15,7 @@ import {
 import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectForm from '@/components/projects/ProjectForm'
 import ProjectList from '@/components/projects/ProjectList'
@@ -439,14 +440,14 @@ export default function ProjectsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Modal */}
-      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      {/* View Project Details Modal */}
+      <Dialog open={!!viewingProject} onOpenChange={() => setViewingProject(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Project Details</DialogTitle>
           </DialogHeader>
           {viewingProject && (
-            <div className="space-y-4">
+            <div className="mt-4">
               <div className="space-y-6">
                 <div className="aspect-video w-full rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shadow-sm relative group">
                   {viewingProject.image_url ? (
@@ -461,12 +462,43 @@ export default function ProjectsPage() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                    <div>
-                      <h2 className="text-white text-xl font-bold">{viewingProject.name}</h2>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="text-white text-xl font-bold">{viewingProject.name}</h2>
+                        {viewingProject.project_status && (
+                          <Badge
+                            variant={
+                              viewingProject.project_status === 'ready_to_move' ? 'default' :
+                                viewingProject.project_status === 'under_construction' ? 'secondary' :
+                                  viewingProject.project_status === 'completed' ? 'outline' : 'secondary'
+                            }
+                            className={
+                              viewingProject.project_status === 'ready_to_move' ? 'bg-green-600 text-white' :
+                                viewingProject.project_status === 'under_construction' ? 'bg-yellow-600 text-white' :
+                                  viewingProject.project_status === 'completed' ? 'bg-gray-600 text-white' : 'bg-blue-600 text-white'
+                            }
+                          >
+                            {viewingProject.project_status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </Badge>
+                        )}
+                        {viewingProject.project_type && (
+                          <Badge variant="outline" className="bg-white/20 text-white border-white/40">
+                            {viewingProject.project_type}
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-white/90 text-sm">{viewingProject.address}</p>
                     </div>
                   </div>
                 </div>
+
+                {/* Description */}
+                {viewingProject.description && (
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h3 className="font-semibold text-slate-900 mb-2">About This Project</h3>
+                    <p className="text-slate-600 text-sm leading-relaxed">{viewingProject.description}</p>
+                  </div>
+                )}
 
                 {(() => {
                   let meta = {}
@@ -484,10 +516,57 @@ export default function ProjectsPage() {
                   const res = prop.residential || {}
                   const comm = prop.commercial || {}
                   const land = prop.land || {}
+                  const amenities = meta.amenities || []
+
+                  // Use direct price_range column if available, fallback to metadata
+                  const priceRange = viewingProject.price_range || price
 
                   return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Key Info Card */}
+                      {/* Inventory Stats Card */}
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100 space-y-3">
+                        <h3 className="font-semibold text-slate-900 border-b border-blue-200 pb-2 mb-2">Inventory Overview</h3>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="bg-white p-3 rounded-md shadow-sm">
+                            <p className="text-slate-500 text-xs">Total Units</p>
+                            <p className="font-bold text-2xl text-slate-900">{viewingProject.total_units || 0}</p>
+                          </div>
+                          <div className="bg-white p-3 rounded-md shadow-sm">
+                            <p className="text-slate-500 text-xs">Available</p>
+                            <p className="font-bold text-2xl text-green-600">{viewingProject.available_units || 0}</p>
+                          </div>
+                          <div className="bg-white p-3 rounded-md shadow-sm">
+                            <p className="text-slate-500 text-xs">Sold</p>
+                            <p className="font-bold text-2xl text-red-600">{viewingProject.sold_units || 0}</p>
+                          </div>
+                          <div className="bg-white p-3 rounded-md shadow-sm">
+                            <p className="text-slate-500 text-xs">Reserved</p>
+                            <p className="font-bold text-2xl text-yellow-600">{viewingProject.reserved_units || 0}</p>
+                          </div>
+                        </div>
+                        {viewingProject.total_units > 0 && (
+                          <div className="mt-2">
+                            <div className="flex justify-between text-xs text-slate-600 mb-1">
+                              <span>Occupancy</span>
+                              <span>{Math.round(((viewingProject.sold_units + viewingProject.reserved_units) / viewingProject.total_units) * 100)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                              <div className="h-full flex">
+                                <div
+                                  className="bg-red-500"
+                                  style={{ width: `${(viewingProject.sold_units / viewingProject.total_units) * 100}%` }}
+                                />
+                                <div
+                                  className="bg-yellow-500"
+                                  style={{ width: `${(viewingProject.reserved_units / viewingProject.total_units) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Property Highlights */}
                       <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
                         <h3 className="font-semibold text-slate-900 border-b pb-2 mb-2">Property Highlights</h3>
 
@@ -497,16 +576,16 @@ export default function ProjectsPage() {
                             <p className="font-medium text-slate-900 capitalize">{re.transaction || 'N/A'}</p>
                           </div>
                           <div>
-                            <p className="text-slate-500">Type</p>
+                            <p className="text-slate-500">Category</p>
                             <p className="font-medium text-slate-900 capitalize">
                               {[prop.category, prop.use_case].filter(Boolean).join(' - ') || 'N/A'}
                             </p>
                           </div>
-                          <div>
+                          <div className="col-span-2">
                             <p className="text-slate-500">Price Range</p>
-                            <p className="font-medium text-green-700">
-                              {price.min && price.max
-                                ? `₹${price.min.toLocaleString()} - ₹${price.max.toLocaleString()}`
+                            <p className="font-medium text-green-700 text-lg">
+                              {priceRange.min && priceRange.max
+                                ? `₹${priceRange.min.toLocaleString()} - ₹${priceRange.max.toLocaleString()}`
                                 : 'Price on Request'}
                             </p>
                           </div>
@@ -531,6 +610,31 @@ export default function ProjectsPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Unit Types Breakdown */}
+                      {viewingProject.unit_types && viewingProject.unit_types.length > 0 && (
+                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
+                          <h3 className="font-semibold text-slate-900 border-b pb-2 mb-2">Unit Configuration</h3>
+                          <div className="space-y-2">
+                            {viewingProject.unit_types.map((unit, idx) => (
+                              <div key={idx} className="flex justify-between items-center py-2 px-3 bg-white rounded-md text-sm border border-slate-100">
+                                <div className="flex-1">
+                                  <p className="font-medium text-slate-900">{unit.configuration || unit.property_type}</p>
+                                  {unit.carpet_area && (
+                                    <p className="text-xs text-slate-500">{unit.carpet_area} sq.ft</p>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-semibold text-slate-900">{unit.count} units</p>
+                                  {unit.price && (
+                                    <p className="text-xs text-green-600">₹{unit.price.toLocaleString()}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Specifications */}
                       <div className="md:col-span-2 bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
@@ -566,13 +670,19 @@ export default function ProjectsPage() {
                         </div>
                       </div>
 
-                      {/* Description */}
-                      <div className="md:col-span-2">
-                        <h3 className="font-semibold text-slate-900 mb-2">Description</h3>
-                        <p className="text-slate-600 text-sm leading-relaxed border-l-4 border-blue-100 pl-4 py-1">
-                          {viewingProject.description || 'No description provided.'}
-                        </p>
-                      </div>
+                      {/* Amenities */}
+                      {amenities && amenities.length > 0 && (
+                        <div className="md:col-span-2 bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
+                          <h3 className="font-semibold text-slate-900 border-b pb-2 mb-2">Amenities</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {amenities.map((amenity, idx) => (
+                              <Badge key={idx} variant="outline" className="bg-white">
+                                {amenity}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })()}

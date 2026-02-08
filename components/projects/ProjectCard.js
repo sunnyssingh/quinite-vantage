@@ -48,6 +48,15 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
     // Determine category-specific details string
     const getDetailsString = () => {
         const category = property.category
+
+        // If unit_types exist, show total units count
+        if (project.unit_types && project.unit_types.length > 0) {
+            const totalUnits = project.unit_types.reduce((sum, ut) => sum + (parseInt(ut.count) || 0), 0)
+            const configCount = project.unit_types.length
+            return `${totalUnits} Units • ${configCount} Configuration${configCount > 1 ? 's' : ''}`
+        }
+
+        // Fallback to old structure if no unit_types
         if (category === 'residential') {
             const res = property.residential || {}
             return `${res.bhk || ''} • ${res.carpet_area || 0} sqft`
@@ -109,16 +118,59 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                     </div>
                 </div>
 
-                <div className="flex items-baseline gap-1 text-foreground">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Range:</span>
-                    <span className="text-base font-semibold">
-                        {formatPrice(pricing.min)}
-                    </span>
-                    <span className="text-muted-foreground text-sm">-</span>
-                    <span className="text-base font-semibold">
-                        {formatPrice(pricing.max)}
-                    </span>
-                </div>
+                {/* Unit Configurations */}
+                {project.unit_types && project.unit_types.length > 0 && (
+                    <div>
+                        <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Configurations</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {[...new Set(project.unit_types.map(ut => ut.configuration || ut.property_type))].map((config, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
+                                    {config}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Price Range - prioritize unit_types pricing over real_estate.pricing */}
+                {(() => {
+                    // Try to get price from unit_types first
+                    if (project.unit_types && project.unit_types.length > 0) {
+                        const prices = project.unit_types.map(ut => ut.price).filter(p => p > 0)
+                        if (prices.length > 0) {
+                            const minPrice = Math.min(...prices)
+                            const maxPrice = Math.max(...prices)
+                            return (
+                                <div className="flex items-baseline gap-1 text-foreground">
+                                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Range:</span>
+                                    <span className="text-base font-semibold">
+                                        {formatPrice(minPrice)}
+                                    </span>
+                                    <span className="text-muted-foreground text-sm">-</span>
+                                    <span className="text-base font-semibold">
+                                        {formatPrice(maxPrice)}
+                                    </span>
+                                </div>
+                            )
+                        }
+                    }
+                    // Fallback to real_estate.pricing
+                    if (pricing.min || pricing.max) {
+                        return (
+                            <div className="flex items-baseline gap-1 text-foreground">
+                                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Range:</span>
+                                <span className="text-base font-semibold">
+                                    {formatPrice(pricing.min)}
+                                </span>
+                                <span className="text-muted-foreground text-sm">-</span>
+                                <span className="text-base font-semibold">
+                                    {formatPrice(pricing.max)}
+                                </span>
+                            </div>
+                        )
+                    }
+                    return null
+                })()}
 
                 <div className="grid grid-cols-2 gap-2 pt-1.5">
                     <Button

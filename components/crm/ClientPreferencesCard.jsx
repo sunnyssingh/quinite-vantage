@@ -1,24 +1,40 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Star, Edit2, Save, X, Loader2, MapPin, Calendar, Building, Layers, Wallet } from 'lucide-react'
+import { Star, MapPin, Calendar, Building, Layers, Wallet, Check } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 export default function ClientPreferencesCard({ profile, leadId, onUpdate, currency = 'USD' }) {
-    const [isEditing, setIsEditing] = useState(false)
-    const [saving, setSaving] = useState(false)
     const [formData, setFormData] = useState({
-        location: '',
-        property_type_interest: '',
-        sub_category_interest: '',
-        timeline: '',
-        min_budget: '',
-        max_budget: ''
+        location: profile?.location || '',
+        property_type_interest: profile?.property_type_interest || '',
+        sub_category_interest: profile?.sub_category_interest || '',
+        timeline: profile?.timeline || '',
+        min_budget: profile?.min_budget || '',
+        max_budget: profile?.max_budget || ''
     })
+    const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved'
+    const saveTimeoutRef = useRef(null)
+    const lastSavedRef = useRef(formData)
+
+    // Update formData when profile changes (from parent refresh)
+    useEffect(() => {
+        if (profile) {
+            const newData = {
+                location: profile.location || '',
+                property_type_interest: profile.property_type_interest || '',
+                sub_category_interest: profile.sub_category_interest || '',
+                timeline: profile.timeline || '',
+                min_budget: profile.min_budget || '',
+                max_budget: profile.max_budget || ''
+            }
+            setFormData(newData)
+            lastSavedRef.current = newData
+        }
+    }, [profile])
 
     const formatCurrency = (amount) => {
         if (!amount) return 'N/A'
@@ -29,24 +45,13 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
         }).format(amount)
     }
 
-    const handleEdit = () => {
-        setFormData({
-            location: profile.location || '',
-            property_type_interest: profile.property_type_interest || '',
-            sub_category_interest: profile.sub_category_interest || '',
-            timeline: profile.timeline || '',
-            min_budget: profile.min_budget || '',
-            max_budget: profile.max_budget || ''
-        })
-        setIsEditing(true)
-    }
-
-    const handleSave = async () => {
+    // Debounced auto-save function
+    const autoSave = useCallback(async (data) => {
         try {
-            setSaving(true)
+            setSaveStatus('saving')
 
             // Prepare payload - convert empty strings for numbers to null
-            const payload = { ...formData }
+            const payload = { ...data }
             if (payload.min_budget === '') payload.min_budget = null
             if (payload.max_budget === '') payload.max_budget = null
 
@@ -58,16 +63,59 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
 
             if (!res.ok) throw new Error('Failed to update preferences')
 
-            toast.success('Preferences updated')
-            setIsEditing(false)
-            if (onUpdate) onUpdate()
+            lastSavedRef.current = data
+            setSaveStatus('saved')
+
+            // Show saved indicator briefly
+            setTimeout(() => setSaveStatus('idle'), 2000)
+
+            // Call onUpdate without full page reload - just refresh the specific data
+            if (onUpdate) {
+                onUpdate() // This will re-fetch lead data without page reload
+            }
         } catch (error) {
             console.error(error)
             toast.error('Failed to save changes')
-        } finally {
-            setSaving(false)
+            setSaveStatus('idle')
+            // Revert to last saved state on error
+            setFormData(lastSavedRef.current)
         }
-    }
+    }, [leadId, onUpdate])
+
+    // Debounced save trigger
+    const triggerAutoSave = useCallback((newData) => {
+        // Clear existing timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
+        }
+
+        // Set new timeout for debounced save (500ms after last change)
+        saveTimeoutRef.current = setTimeout(() => {
+            autoSave(newData)
+        }, 500)
+    }, [autoSave])
+
+    // Handle field changes with optimistic update
+    const handleFieldChange = useCallback((field, value) => {
+        setFormData(prev => {
+            const newData = { ...prev, [field]: value }
+            triggerAutoSave(newData)
+            return newData
+        })
+    }, [triggerAutoSave])
+
+    // Handle property type change (resets sub-category)
+    const handlePropertyTypeChange = useCallback((value) => {
+        setFormData(prev => {
+            const newData = {
+                ...prev,
+                property_type_interest: value,
+                sub_category_interest: '' // Reset sub-category on type change
+            }
+            triggerAutoSave(newData)
+            return newData
+        })
+    }, [triggerAutoSave])
 
     const PROPERTY_OPTS = {
         "Residential": [
@@ -113,14 +161,6 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
         ]
     }
 
-    const handlePropertyTypeChange = (value) => {
-        setFormData({
-            ...formData,
-            property_type_interest: value,
-            sub_category_interest: '' // Reset sub-category on type change
-        })
-    }
-
     return (
         <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200">
             <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-100 mb-4 bg-gradient-to-r from-emerald-50/50 to-transparent">
@@ -133,18 +173,21 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                         <p className="text-xs text-muted-foreground mt-0.5">Key requirements & criteria</p>
                     </div>
                 </div>
-                {!isEditing ? (
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full" onClick={handleEdit}>
-                        <Edit2 className="w-4 h-4" />
-                    </Button>
-                ) : (
-                    <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-50 rounded-full" onClick={() => setIsEditing(false)}>
-                            <X className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-emerald-600 hover:bg-emerald-50 rounded-full" onClick={handleSave} disabled={saving}>
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        </Button>
+                {/* Save Status Indicator */}
+                {saveStatus !== 'idle' && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                        {saveStatus === 'saving' && (
+                            <>
+                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                                <span className="text-blue-600 font-medium">Saving...</span>
+                            </>
+                        )}
+                        {saveStatus === 'saved' && (
+                            <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-600 font-medium">Saved</span>
+                            </>
+                        )}
                     </div>
                 )}
             </CardHeader>
@@ -156,18 +199,12 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                             <MapPin className="w-3.5 h-3.5" />
                             <span className="text-xs font-semibold uppercase tracking-wide">Location</span>
                         </div>
-                        {isEditing ? (
-                            <Input
-                                value={formData.location}
-                                onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                className="h-9 bg-gray-50/50"
-                                placeholder="Preferred location"
-                            />
-                        ) : (
-                            <p className="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors">
-                                {profile.location || 'Any'}
-                            </p>
-                        )}
+                        <Input
+                            value={formData.location}
+                            onChange={e => handleFieldChange('location', e.target.value)}
+                            className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors"
+                            placeholder="Preferred location"
+                        />
                     </div>
 
                     {/* Timeline */}
@@ -176,27 +213,21 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                             <Calendar className="w-3.5 h-3.5" />
                             <span className="text-xs font-semibold uppercase tracking-wide">Timeline</span>
                         </div>
-                        {isEditing ? (
-                            <Select
-                                value={formData.timeline}
-                                onValueChange={(val) => setFormData({ ...formData, timeline: val })}
-                            >
-                                <SelectTrigger className="h-9 bg-gray-50/50">
-                                    <SelectValue placeholder="Select timeline" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Immediate">Immediate</SelectItem>
-                                    <SelectItem value="1-3 Months">1-3 Months</SelectItem>
-                                    <SelectItem value="3-6 Months">3-6 Months</SelectItem>
-                                    <SelectItem value="6+ Months">6+ Months</SelectItem>
-                                    <SelectItem value="Investment">Investment Only</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-sm font-medium border border-blue-100">
-                                {profile.timeline || 'Not specified'}
-                            </div>
-                        )}
+                        <Select
+                            value={formData.timeline}
+                            onValueChange={(val) => handleFieldChange('timeline', val)}
+                        >
+                            <SelectTrigger className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors">
+                                <SelectValue placeholder="Select timeline" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Immediate">Immediate</SelectItem>
+                                <SelectItem value="1-3 Months">1-3 Months</SelectItem>
+                                <SelectItem value="3-6 Months">3-6 Months</SelectItem>
+                                <SelectItem value="6+ Months">6+ Months</SelectItem>
+                                <SelectItem value="Investment">Investment Only</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Property Type */}
@@ -205,25 +236,19 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                             <Building className="w-3.5 h-3.5" />
                             <span className="text-xs font-semibold uppercase tracking-wide">Property Type</span>
                         </div>
-                        {isEditing ? (
-                            <Select
-                                value={formData.property_type_interest}
-                                onValueChange={handlePropertyTypeChange}
-                            >
-                                <SelectTrigger className="h-9 bg-gray-50/50">
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {Object.keys(PROPERTY_OPTS).map((type) => (
-                                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <p className="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors">
-                                {profile.property_type_interest || 'Any'}
-                            </p>
-                        )}
+                        <Select
+                            value={formData.property_type_interest}
+                            onValueChange={handlePropertyTypeChange}
+                        >
+                            <SelectTrigger className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors">
+                                <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.keys(PROPERTY_OPTS).map((type) => (
+                                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     {/* Sub-category */}
@@ -232,26 +257,20 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                             <Layers className="w-3.5 h-3.5" />
                             <span className="text-xs font-semibold uppercase tracking-wide">Category</span>
                         </div>
-                        {isEditing ? (
-                            <Select
-                                value={formData.sub_category_interest}
-                                onValueChange={(val) => setFormData({ ...formData, sub_category_interest: val })}
-                                disabled={!formData.property_type_interest}
-                            >
-                                <SelectTrigger className="h-9 bg-gray-50/50">
-                                    <SelectValue placeholder="Select sub-category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {formData.property_type_interest && PROPERTY_OPTS[formData.property_type_interest]?.map((sub) => (
-                                        <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <p className="font-medium text-gray-900 group-hover:text-emerald-700 transition-colors">
-                                {profile.sub_category_interest || 'Any'}
-                            </p>
-                        )}
+                        <Select
+                            value={formData.sub_category_interest}
+                            onValueChange={(val) => handleFieldChange('sub_category_interest', val)}
+                            disabled={!formData.property_type_interest}
+                        >
+                            <SelectTrigger className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors disabled:opacity-50">
+                                <SelectValue placeholder="Select sub-category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {formData.property_type_interest && PROPERTY_OPTS[formData.property_type_interest]?.map((sub) => (
+                                    <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
@@ -267,38 +286,26 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                     <div className="grid grid-cols-2 gap-4 bg-orange-50/50 p-4 rounded-xl border border-orange-100/50">
                         <div>
                             <p className="text-xs text-orange-600/70 font-semibold mb-1">Minimum</p>
-                            {isEditing ? (
-                                <Input
-                                    type="number"
-                                    value={formData.min_budget}
-                                    onChange={e => setFormData({ ...formData, min_budget: e.target.value })}
-                                    className="h-9 bg-white border-orange-200 focus-visible:ring-orange-500/20"
-                                    placeholder="Min"
-                                />
-                            ) : (
-                                <p className="text-lg font-bold text-gray-900">
-                                    {formatCurrency(profile.min_budget)}
-                                </p>
-                            )}
+                            <Input
+                                type="number"
+                                value={formData.min_budget}
+                                onChange={e => handleFieldChange('min_budget', e.target.value)}
+                                className="h-9 bg-white border-orange-200 focus-visible:ring-orange-500/20 hover:border-orange-300 transition-colors"
+                                placeholder="Min"
+                            />
                         </div>
                         <div className="relative">
                             {/* Decorative Separator */}
                             <div className="absolute -left-2 top-1/2 -translate-y-1/2 h-8 w-[1px] bg-orange-200 sm:block hidden"></div>
 
                             <p className="text-xs text-orange-600/70 font-semibold mb-1">Maximum</p>
-                            {isEditing ? (
-                                <Input
-                                    type="number"
-                                    value={formData.max_budget}
-                                    onChange={e => setFormData({ ...formData, max_budget: e.target.value })}
-                                    className="h-9 bg-white border-orange-200 focus-visible:ring-orange-500/20"
-                                    placeholder="Max"
-                                />
-                            ) : (
-                                <p className="text-lg font-bold text-gray-900">
-                                    {formatCurrency(profile.max_budget)}
-                                </p>
-                            )}
+                            <Input
+                                type="number"
+                                value={formData.max_budget}
+                                onChange={e => handleFieldChange('max_budget', e.target.value)}
+                                className="h-9 bg-white border-orange-200 focus-visible:ring-orange-500/20 hover:border-orange-300 transition-colors"
+                                placeholder="Max"
+                            />
                         </div>
                     </div>
                 </div>

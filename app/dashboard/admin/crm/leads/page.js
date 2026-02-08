@@ -706,33 +706,46 @@ export default function LeadsPage() {
 
                       {/* Status Dropdown (Compact) */}
                       <TableCell>
-                        {stages.length > 0 ? (
-                          <Select
-                            defaultValue={lead.stage_id || 'none'}
-                            onValueChange={(v) => handleStageUpdate(lead.id, v)}
-                            disabled={updatingStatus}
-                          >
-                            <SelectTrigger className="w-[140px] h-7 text-xs border-0 bg-transparent hover:bg-muted/50 p-0 shadow-none data-[placeholder]:text-muted-foreground ring-0 focus:ring-0">
-                              <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary w-fit">
-                                {lead.stage_id && lead.stage?.color && (
-                                  <div className="w-1.5 h-1.5 rounded-full mr-2" style={{ backgroundColor: lead.stage.color }} />
-                                )}
-                                {lead.stage?.name || (lead.stage_id ? 'Unknown Stage' : 'Set Stage')}
-                              </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {stages.map(s => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                                    {s.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        {lead.stage ? (
+                          // Lead has stage data - show it
+                          stages.length > 0 ? (
+                            // Stages available - show dropdown
+                            <Select
+                              defaultValue={lead.stage_id || 'none'}
+                              onValueChange={(v) => handleStageUpdate(lead.id, v)}
+                              disabled={updatingStatus}
+                            >
+                              <SelectTrigger className="w-[140px] h-7 text-xs border-0 bg-transparent hover:bg-muted/50 p-0 shadow-none data-[placeholder]:text-muted-foreground ring-0 focus:ring-0">
+                                <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary w-fit">
+                                  {lead.stage.color && (
+                                    <div className="w-1.5 h-1.5 rounded-full mr-2" style={{ backgroundColor: lead.stage.color }} />
+                                  )}
+                                  {lead.stage.name}
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {stages.map(s => (
+                                  <SelectItem key={s.id} value={s.id}>
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
+                                      {s.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            // No stages array but lead has stage - show badge only
+                            <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary w-fit">
+                              {lead.stage.color && (
+                                <div className="w-1.5 h-1.5 rounded-full mr-2" style={{ backgroundColor: lead.stage.color }} />
+                              )}
+                              {lead.stage.name}
+                            </div>
+                          )
                         ) : (
-                          <div className="text-xs text-muted-foreground italic">No Stages</div>
+                          // No stage data at all
+                          <div className="text-xs text-muted-foreground italic">No Stage</div>
                         )}
                       </TableCell>
 

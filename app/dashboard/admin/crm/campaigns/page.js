@@ -317,7 +317,12 @@ export default function CampaignsPage() {
       // Show results
       setCampaignResults(data.summary)
       setResultsDialogOpen(true)
-      toast.success("Campaign completed successfully!")
+      toast.success("Campaign started! Redirecting to live monitor...")
+
+      // Redirect to live call monitor
+      setTimeout(() => {
+        router.push('/dashboard/admin/crm/calls/live')
+      }, 1500)
     } catch (err) {
       console.error(err)
       toast.error(err.message || 'Failed to start campaign')
