@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DollarSign, TrendingUp, Users, CreditCard, MoreHorizontal, CheckCircle, XCircle, Clock, Plus, Edit, Archive } from 'lucide-react'
+import { DollarSign, TrendingUp, Users, CreditCard, MoreHorizontal, CheckCircle, XCircle, Clock, Plus, Edit, Archive, IndianRupee } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -37,11 +37,30 @@ export default function PlatformSubscriptionsPage() {
         price_monthly: 0,
         price_yearly: 0,
         features: {
+            // User & Team Limits
             max_users: 5,
+
+            // CRM Limits
+            max_projects: 2,
+            max_campaigns: 5,
+            max_leads: 500,
+
+            // AI Calling Limits
+            ai_calls_per_month: 50,
+
+            // Storage
             max_storage_gb: 1,
-            custom_domain: false,
-            api_access: false,
-            priority_support: false
+
+            // Support Tier
+            support: 'community',
+
+            // Feature Flags
+            custom_branding: false,
+            advanced_analytics: false,
+            dedicated_account_manager: false,
+            sla: false,
+            custom_integrations: false,
+            custom_pricing: false
         },
         sort_order: 0,
         is_active: true
@@ -118,10 +137,18 @@ export default function PlatformSubscriptionsPage() {
             price_yearly: 0,
             features: {
                 max_users: 5,
+                max_projects: 2,
+                max_campaigns: 5,
+                max_leads: 500,
+                ai_calls_per_month: 50,
                 max_storage_gb: 1,
-                custom_domain: false,
-                api_access: false,
-                priority_support: false
+                support: 'community',
+                custom_branding: false,
+                advanced_analytics: false,
+                dedicated_account_manager: false,
+                sla: false,
+                custom_integrations: false,
+                custom_pricing: false
             },
             sort_order: 0,
             is_active: true
@@ -130,13 +157,28 @@ export default function PlatformSubscriptionsPage() {
 
     const openEditPlan = (plan) => {
         setEditingPlan(plan)
+        const defaultFeatures = {
+            max_users: 5,
+            max_projects: 2,
+            max_campaigns: 5,
+            max_leads: 500,
+            ai_calls_per_month: 50,
+            max_storage_gb: 1,
+            support: 'community',
+            custom_branding: false,
+            advanced_analytics: false,
+            dedicated_account_manager: false,
+            sla: false,
+            custom_integrations: false,
+            custom_pricing: false
+        }
         setPlanFormData({
             name: plan.name,
             slug: plan.slug,
             description: plan.description || '',
             price_monthly: plan.price_monthly,
             price_yearly: plan.price_yearly,
-            features: plan.features || {},
+            features: { ...defaultFeatures, ...plan.features },
             sort_order: plan.sort_order,
             is_active: plan.is_active
         })
@@ -571,144 +613,353 @@ export default function PlatformSubscriptionsPage() {
 
             {/* Plan Dialog */}
             <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editingPlan ? 'Edit Plan' : 'Create New Plan'}</DialogTitle>
                         <DialogDescription>
-                            Configure subscription plan details, pricing, and limits.
+                            Configure subscription plan details, pricing, usage limits, and features.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-2 gap-6 py-4">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Plan Name</Label>
-                                <Input
-                                    id="name"
-                                    value={planFormData.name}
-                                    onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
-                                    placeholder="e.g. Pro Plan"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="slug">Slug (Unique ID)</Label>
-                                <Input
-                                    id="slug"
-                                    value={planFormData.slug}
-                                    onChange={(e) => setPlanFormData({ ...planFormData, slug: e.target.value })}
-                                    placeholder="e.g. pro-plan"
-                                    disabled={!!editingPlan}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="price_monthly">Monthly Price (INR)</Label>
-                                <Input
-                                    id="price_monthly"
-                                    type="number"
-                                    value={planFormData.price_monthly}
-                                    onChange={(e) => setPlanFormData({ ...planFormData, price_monthly: Number(e.target.value) })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="price_yearly">Yearly Price (INR)</Label>
-                                <Input
-                                    id="price_yearly"
-                                    type="number"
-                                    value={planFormData.price_yearly}
-                                    onChange={(e) => setPlanFormData({ ...planFormData, price_yearly: Number(e.target.value) })}
-                                />
-                            </div>
-                        </div>
+                    <Tabs defaultValue="basic" className="w-full">
+                        <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                            <TabsTrigger value="limits">Usage Limits</TabsTrigger>
+                            <TabsTrigger value="features">Features</TabsTrigger>
+                            <TabsTrigger value="support">Support & Status</TabsTrigger>
+                        </TabsList>
 
-                        <div className="space-y-4">
+                        {/* Basic Info Tab */}
+                        <TabsContent value="basic" className="space-y-4 pt-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Plan Name *</Label>
+                                    <Input
+                                        id="name"
+                                        value={planFormData.name}
+                                        onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
+                                        placeholder="e.g. Pro Plan"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="slug">Slug (Unique ID) *</Label>
+                                    <Input
+                                        id="slug"
+                                        value={planFormData.slug}
+                                        onChange={(e) => setPlanFormData({ ...planFormData, slug: e.target.value })}
+                                        placeholder="e.g. pro-plan"
+                                        disabled={!!editingPlan}
+                                    />
+                                    {editingPlan && <p className="text-xs text-gray-500">Slug cannot be changed after creation</p>}
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
-                                <Label>Limits & Features</Label>
-                                <div className="grid grid-cols-2 gap-2">
+                                <Label htmlFor="description">Description</Label>
+                                <Textarea
+                                    id="description"
+                                    value={planFormData.description}
+                                    onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
+                                    placeholder="Brief description of the plan"
+                                    rows={3}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="price_monthly" className="flex items-center gap-1">
+                                        <IndianRupee className="w-3 h-3" />
+                                        Monthly Price (INR)
+                                    </Label>
+                                    <Input
+                                        id="price_monthly"
+                                        type="number"
+                                        value={planFormData.price_monthly}
+                                        onChange={(e) => setPlanFormData({ ...planFormData, price_monthly: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="price_yearly" className="flex items-center gap-1">
+                                        <IndianRupee className="w-3 h-3" />
+                                        Yearly Price (INR)
+                                    </Label>
+                                    <Input
+                                        id="price_yearly"
+                                        type="number"
+                                        value={planFormData.price_yearly}
+                                        onChange={(e) => setPlanFormData({ ...planFormData, price_yearly: Number(e.target.value) })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="sort_order">Sort Order</Label>
+                                <Input
+                                    id="sort_order"
+                                    type="number"
+                                    value={planFormData.sort_order}
+                                    onChange={(e) => setPlanFormData({ ...planFormData, sort_order: Number(e.target.value) })}
+                                    placeholder="0"
+                                />
+                                <p className="text-xs text-gray-500">Lower numbers appear first</p>
+                            </div>
+                        </TabsContent>
+
+                        {/* Usage Limits Tab */}
+                        <TabsContent value="limits" className="space-y-4 pt-4">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                <p className="text-sm text-blue-800">
+                                    💡 <strong>Tip:</strong> Use <code className="bg-blue-100 px-1 rounded">-1</code> for unlimited access (Enterprise plans)
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="font-medium mb-3">User & Team Limits</h4>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="max_users">Max Users</Label>
+                                            <Input
+                                                id="max_users"
+                                                type="number"
+                                                value={planFormData.features.max_users}
+                                                onChange={(e) => setPlanFormData({
+                                                    ...planFormData,
+                                                    features: { ...planFormData.features, max_users: Number(e.target.value) }
+                                                })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="max_storage_gb">Storage (GB)</Label>
+                                            <Input
+                                                id="max_storage_gb"
+                                                type="number"
+                                                value={planFormData.features.max_storage_gb}
+                                                onChange={(e) => setPlanFormData({
+                                                    ...planFormData,
+                                                    features: { ...planFormData.features, max_storage_gb: Number(e.target.value) }
+                                                })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <h4 className="font-medium mb-3">CRM Limits</h4>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="max_projects">Max Projects</Label>
+                                            <Input
+                                                id="max_projects"
+                                                type="number"
+                                                value={planFormData.features.max_projects}
+                                                onChange={(e) => setPlanFormData({
+                                                    ...planFormData,
+                                                    features: { ...planFormData.features, max_projects: Number(e.target.value) }
+                                                })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="max_campaigns">Max Campaigns</Label>
+                                            <Input
+                                                id="max_campaigns"
+                                                type="number"
+                                                value={planFormData.features.max_campaigns}
+                                                onChange={(e) => setPlanFormData({
+                                                    ...planFormData,
+                                                    features: { ...planFormData.features, max_campaigns: Number(e.target.value) }
+                                                })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="max_leads">Max Leads</Label>
+                                            <Input
+                                                id="max_leads"
+                                                type="number"
+                                                value={planFormData.features.max_leads}
+                                                onChange={(e) => setPlanFormData({
+                                                    ...planFormData,
+                                                    features: { ...planFormData.features, max_leads: Number(e.target.value) }
+                                                })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <h4 className="font-medium mb-3">AI Calling Limits</h4>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="ai_calls_per_month">AI Calls per Month</Label>
+                                            <Input
+                                                id="ai_calls_per_month"
+                                                type="number"
+                                                value={planFormData.features.ai_calls_per_month}
+                                                onChange={(e) => setPlanFormData({
+                                                    ...planFormData,
+                                                    features: { ...planFormData.features, ai_calls_per_month: Number(e.target.value) }
+                                                })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* Features Tab */}
+                        <TabsContent value="features" className="space-y-4 pt-4">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                     <div>
-                                        <Label className="text-xs">Max Users</Label>
-                                        <Input
-                                            type="number"
-                                            value={planFormData.features.max_users}
-                                            onChange={(e) => setPlanFormData({
-                                                ...planFormData,
-                                                features: { ...planFormData.features, max_users: Number(e.target.value) }
-                                            })}
+                                        <Label htmlFor="custom_branding" className="font-medium">Custom Branding</Label>
+                                        <p className="text-xs text-gray-500">Allow custom logo and colors</p>
+                                    </div>
+                                    <Switch
+                                        id="custom_branding"
+                                        checked={planFormData.features.custom_branding}
+                                        onCheckedChange={(checked) => setPlanFormData({
+                                            ...planFormData,
+                                            features: { ...planFormData.features, custom_branding: checked }
+                                        })}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <Label htmlFor="advanced_analytics" className="font-medium">Advanced Analytics</Label>
+                                        <p className="text-xs text-gray-500">Access to detailed reports and insights</p>
+                                    </div>
+                                    <Switch
+                                        id="advanced_analytics"
+                                        checked={planFormData.features.advanced_analytics}
+                                        onCheckedChange={(checked) => setPlanFormData({
+                                            ...planFormData,
+                                            features: { ...planFormData.features, advanced_analytics: checked }
+                                        })}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <Label htmlFor="dedicated_account_manager" className="font-medium">Dedicated Account Manager</Label>
+                                        <p className="text-xs text-gray-500">Personal account manager support</p>
+                                    </div>
+                                    <Switch
+                                        id="dedicated_account_manager"
+                                        checked={planFormData.features.dedicated_account_manager}
+                                        onCheckedChange={(checked) => setPlanFormData({
+                                            ...planFormData,
+                                            features: { ...planFormData.features, dedicated_account_manager: checked }
+                                        })}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <Label htmlFor="sla" className="font-medium">SLA (Service Level Agreement)</Label>
+                                        <p className="text-xs text-gray-500">Guaranteed uptime and response times</p>
+                                    </div>
+                                    <Switch
+                                        id="sla"
+                                        checked={planFormData.features.sla}
+                                        onCheckedChange={(checked) => setPlanFormData({
+                                            ...planFormData,
+                                            features: { ...planFormData.features, sla: checked }
+                                        })}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <Label htmlFor="custom_integrations" className="font-medium">Custom Integrations</Label>
+                                        <p className="text-xs text-gray-500">Build custom API integrations</p>
+                                    </div>
+                                    <Switch
+                                        id="custom_integrations"
+                                        checked={planFormData.features.custom_integrations}
+                                        onCheckedChange={(checked) => setPlanFormData({
+                                            ...planFormData,
+                                            features: { ...planFormData.features, custom_integrations: checked }
+                                        })}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <Label htmlFor="custom_pricing" className="font-medium">Custom Pricing</Label>
+                                        <p className="text-xs text-gray-500">Negotiated pricing for enterprise</p>
+                                    </div>
+                                    <Switch
+                                        id="custom_pricing"
+                                        checked={planFormData.features.custom_pricing}
+                                        onCheckedChange={(checked) => setPlanFormData({
+                                            ...planFormData,
+                                            features: { ...planFormData.features, custom_pricing: checked }
+                                        })}
+                                    />
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* Support & Status Tab */}
+                        <TabsContent value="support" className="space-y-4 pt-4">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="support">Support Tier</Label>
+                                    <Select
+                                        value={planFormData.features.support}
+                                        onValueChange={(value) => setPlanFormData({
+                                            ...planFormData,
+                                            features: { ...planFormData.features, support: value }
+                                        })}
+                                    >
+                                        <SelectTrigger id="support">
+                                            <SelectValue placeholder="Select support tier" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="community">Community Support</SelectItem>
+                                            <SelectItem value="email">Email Support</SelectItem>
+                                            <SelectItem value="priority">Priority Support (24/7)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-gray-500">
+                                        {planFormData.features.support === 'community' && 'Community forums and documentation'}
+                                        {planFormData.features.support === 'email' && 'Email support with 24-48 hour response time'}
+                                        {planFormData.features.support === 'priority' && '24/7 priority support with dedicated channels'}
+                                    </p>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                        <div>
+                                            <Label htmlFor="is_active" className="font-medium">Plan Active</Label>
+                                            <p className="text-xs text-gray-500">
+                                                {planFormData.is_active ? 'Plan is visible and available for subscription' : 'Plan is archived and hidden from users'}
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            id="is_active"
+                                            checked={planFormData.is_active}
+                                            onCheckedChange={(checked) => setPlanFormData({ ...planFormData, is_active: checked })}
                                         />
                                     </div>
-                                    <div>
-                                        <Label className="text-xs">Storage (GB)</Label>
-                                        <Input
-                                            type="number"
-                                            value={planFormData.features.max_storage_gb}
-                                            onChange={(e) => setPlanFormData({
-                                                ...planFormData,
-                                                features: { ...planFormData.features, max_storage_gb: Number(e.target.value) }
-                                            })}
-                                        />
-                                    </div>
                                 </div>
                             </div>
+                        </TabsContent>
+                    </Tabs>
 
-                            <div className="space-y-3 pt-2">
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="custom_domain">Custom Domain</Label>
-                                    <Switch
-                                        id="custom_domain"
-                                        checked={planFormData.features.custom_domain}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, custom_domain: checked }
-                                        })}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="api_access">API Access</Label>
-                                    <Switch
-                                        id="api_access"
-                                        checked={planFormData.features.api_access}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, api_access: checked }
-                                        })}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="priority_support">Priority Support</Label>
-                                    <Switch
-                                        id="priority_support"
-                                        checked={planFormData.features.priority_support}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, priority_support: checked }
-                                        })}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between pt-2 border-t">
-                                    <Label htmlFor="is_active">Plan Active</Label>
-                                    <Switch
-                                        id="is_active"
-                                        checked={planFormData.is_active}
-                                        onCheckedChange={(checked) => setPlanFormData({ ...planFormData, is_active: checked })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="col-span-2 space-y-2">
-                            <Label htmlFor="description">Description</Label>
-                            <Textarea
-                                id="description"
-                                value={planFormData.description}
-                                onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
-                                placeholder="Brief description of the plan..."
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-6 sm:flex sm:justify-end">
-                        <Button variant="outline" onClick={() => setIsPlanDialogOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-                        <Button onClick={handleSavePlan} className="w-full sm:w-auto">{editingPlan ? 'Update Plan' : 'Create Plan'}</Button>
-                    </div>
+                    <DialogFooter className="mt-6">
+                        <Button variant="outline" onClick={() => {
+                            setIsPlanDialogOpen(false)
+                            setEditingPlan(null)
+                            resetPlanForm()
+                        }}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSavePlan}>
+                            {editingPlan ? 'Update Plan' : 'Create Plan'}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
