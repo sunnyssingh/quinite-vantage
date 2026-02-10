@@ -100,7 +100,8 @@ export default function AdminLayout({ children }) {
     }
 
     const isFullScreenModule = pathname?.startsWith('/dashboard/admin/crm') ||
-        pathname?.startsWith('/dashboard/admin/inventory')
+        pathname?.startsWith('/dashboard/admin/inventory') ||
+        pathname?.startsWith('/dashboard/admin/settings')
 
     return (
         <div className="h-screen bg-secondary/20 flex flex-col overflow-hidden">

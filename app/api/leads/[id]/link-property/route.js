@@ -17,25 +17,22 @@ export async function POST(request, { params }) {
 
         const adminClient = createAdminClient()
 
-        // 1. Verify Property is available (optional strict check, but good UX)
+        // 1. Verify Property is available
         const { data: property } = await adminClient
             .from('properties')
-            .select('status, id')
+            .select('status, id, project_id')
             .eq('id', property_id)
             .single()
 
         if (!property) return corsJSON({ error: 'Property not found' }, { status: 404 })
-        if (property.status !== 'available') {
-            // We allow linking even if not available? Maybe warn?
-            // For now, let's allow it but maybe the UI filters it out.
-            // The UI Dialog filters by 'available', so this is a double check.
-            // return corsJSON({ error: 'Property is not available' }, { status: 400 })
-        }
 
-        // 2. Link to Lead
+        // 2. Link to Lead (and sync project_id)
+        const updateData = { property_id }
+        if (property.project_id) updateData.project_id = property.project_id
+
         const { error: updateError } = await adminClient
             .from('leads')
-            .update({ property_id })
+            .update(updateData)
             .eq('id', leadId)
 
         if (updateError) throw updateError

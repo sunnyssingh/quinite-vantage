@@ -1,52 +1,79 @@
-'use client'
-
-import { useState } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Edit2, Save, X, Loader2, Clock, Phone } from 'lucide-react'
+import { Clock, Phone, Check } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 export default function BestTimeToContactCard({ profile, leadId, onUpdate }) {
-    const [isEditing, setIsEditing] = useState(false)
-    const [saving, setSaving] = useState(false)
     const [formData, setFormData] = useState({
-        best_contact_time: '',
-        preferred_contact_method: ''
+        best_contact_time: profile?.best_contact_time || '',
+        preferred_contact_method: profile?.preferred_contact_method || ''
     })
+    const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved'
+    const saveTimeoutRef = useRef(null)
+    const lastSavedRef = useRef(formData)
 
-    const handleEdit = () => {
-        setFormData({
-            best_contact_time: profile.best_contact_time || '',
-            preferred_contact_method: profile.preferred_contact_method || 'phone'
-        })
-        setIsEditing(true)
-    }
+    useEffect(() => {
+        if (profile) {
+            const newData = {
+                best_contact_time: profile.best_contact_time || '',
+                preferred_contact_method: profile.preferred_contact_method || ''
+            }
+            setFormData(newData)
+            lastSavedRef.current = newData
+        }
+    }, [profile])
 
-    const handleSave = async () => {
+    // Debounced auto-save function
+    const autoSave = useCallback(async (data) => {
         try {
-            setSaving(true)
+            setSaveStatus('saving')
+
             const res = await fetch(`/api/leads/${leadId}/profile`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(data)
             })
 
             if (!res.ok) throw new Error('Failed to update contact preferences')
 
-            toast.success('Contact preferences updated')
-            setIsEditing(false)
-            if (onUpdate) onUpdate()
+            lastSavedRef.current = data
+            setSaveStatus('saved')
+
+            // Show saved indicator briefly
+            setTimeout(() => setSaveStatus('idle'), 2000)
+
+            if (onUpdate) {
+                onUpdate()
+            }
         } catch (error) {
             console.error(error)
             toast.error('Failed to save changes')
-        } finally {
-            setSaving(false)
+            setSaveStatus('idle')
+            setFormData(lastSavedRef.current)
         }
-    }
+    }, [leadId, onUpdate])
 
+    // Debounced save trigger
+    const triggerAutoSave = useCallback((newData) => {
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
+        }
 
+        saveTimeoutRef.current = setTimeout(() => {
+            autoSave(newData)
+        }, 500)
+    }, [autoSave])
+
+    // Handle field changes
+    const handleFieldChange = useCallback((field, value) => {
+        setFormData(prev => {
+            const newData = { ...prev, [field]: value }
+            triggerAutoSave(newData)
+            return newData
+        })
+    }, [triggerAutoSave])
 
     return (
         <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200">
@@ -60,18 +87,21 @@ export default function BestTimeToContactCard({ profile, leadId, onUpdate }) {
                         <p className="text-xs text-muted-foreground mt-0.5">Availability & method</p>
                     </div>
                 </div>
-                {!isEditing ? (
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-full" onClick={handleEdit}>
-                        <Edit2 className="w-4 h-4" />
-                    </Button>
-                ) : (
-                    <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-rose-500 hover:bg-rose-50 rounded-full" onClick={() => setIsEditing(false)}>
-                            <X className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-purple-600 hover:bg-purple-50 rounded-full" onClick={handleSave} disabled={saving}>
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        </Button>
+                {/* Save Status Indicator */}
+                {saveStatus !== 'idle' && (
+                    <div className="flex items-center gap-1.5 text-xs">
+                        {saveStatus === 'saving' && (
+                            <>
+                                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse" />
+                                <span className="text-purple-600 font-medium">Saving...</span>
+                            </>
+                        )}
+                        {saveStatus === 'saved' && (
+                            <>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-600 font-medium">Saved</span>
+                            </>
+                        )}
                     </div>
                 )}
             </CardHeader>
@@ -83,18 +113,12 @@ export default function BestTimeToContactCard({ profile, leadId, onUpdate }) {
                             <Clock className="w-3.5 h-3.5" />
                             <span className="text-xs font-semibold uppercase tracking-wide">Preferred Time</span>
                         </div>
-                        {isEditing ? (
-                            <Input
-                                value={formData.best_contact_time}
-                                onChange={(e) => setFormData({ ...formData, best_contact_time: e.target.value })}
-                                placeholder="e.g. Weekdays 9am-11am"
-                                className="h-9 bg-gray-50/50"
-                            />
-                        ) : (
-                            <div className="font-medium text-gray-900 group-hover:text-purple-700 transition-colors">
-                                {profile.best_contact_time || 'Not specified'}
-                            </div>
-                        )}
+                        <Input
+                            value={formData.best_contact_time}
+                            onChange={(e) => handleFieldChange('best_contact_time', e.target.value)}
+                            placeholder="e.g. Weekdays 9am-11am"
+                            className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors"
+                        />
                     </div>
 
                     {/* Preferred Method */}
@@ -103,25 +127,19 @@ export default function BestTimeToContactCard({ profile, leadId, onUpdate }) {
                             <Phone className="w-3.5 h-3.5" />
                             <span className="text-xs font-semibold uppercase tracking-wide">Preferred Method</span>
                         </div>
-                        {isEditing ? (
-                            <Select
-                                value={formData.preferred_contact_method}
-                                onValueChange={(val) => setFormData({ ...formData, preferred_contact_method: val })}
-                            >
-                                <SelectTrigger className="h-9 bg-gray-50/50">
-                                    <SelectValue placeholder="Select method" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="phone">Phone Call</SelectItem>
-                                    <SelectItem value="email">Email</SelectItem>
-                                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-sm font-medium border border-purple-100 capitalize">
-                                {profile.preferred_contact_method || 'Phone'}
-                            </div>
-                        )}
+                        <Select
+                            value={formData.preferred_contact_method}
+                            onValueChange={(val) => handleFieldChange('preferred_contact_method', val)}
+                        >
+                            <SelectTrigger className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors">
+                                <SelectValue placeholder="Select method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="phone">Phone Call</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
             </CardContent>

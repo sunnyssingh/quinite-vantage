@@ -12,6 +12,13 @@ export async function GET(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Extract date range parameter
+        const { searchParams } = new URL(request.url)
+        const range = searchParams.get('range') || 'this_month'
+
+        // Calculate date range
+        const { startDate, endDate } = getDateRange(range)
+
         // Get user's organization with currency settings
         // Use admin client for reliable profile fetch
         const adminClient = createAdminClient()
@@ -56,23 +63,29 @@ export async function GET(request) {
             { data: recentActivities },
             { data: allTasks }
         ] = await Promise.all([
-            // 1. Total Leads Count
+            // 1. Total Leads Count (filtered by date)
             adminClient
                 .from('leads')
                 .select('*', { count: 'exact', head: true })
-                .eq('organization_id', organizationId),
+                .eq('organization_id', organizationId)
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString()),
 
-            // 2. Fetch all leads (id, stage_id) for aggregation
+            // 2. Fetch all leads (id, stage_id) for aggregation (filtered by date)
             adminClient
                 .from('leads')
                 .select('id, stage_id')
-                .eq('organization_id', organizationId),
+                .eq('organization_id', organizationId)
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString()),
 
-            // 3. Fetch all deals (lead_id, amount, status) for revenue calc
+            // 3. Fetch all deals (lead_id, amount, status) for revenue calc (filtered by date)
             adminClient
                 .from('deals')
-                .select('lead_id, amount, status')
-                .eq('organization_id', organizationId),
+                .select('lead_id, amount, status, created_at')
+                .eq('organization_id', organizationId)
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString()),
 
             // 4. Fetch Pipeline Stages (Scoped to Default Pipeline)
             pipelineId ? adminClient
@@ -273,4 +286,65 @@ function getActivityStatus(action) {
         'scheduled': 'scheduled'
     }
     return statusMap[action] || 'updated'
+}
+
+function getDateRange(range) {
+    const now = new Date()
+    const startDate = new Date()
+    const endDate = new Date()
+
+    switch (range) {
+        case 'this_month':
+            startDate.setDate(1)
+            startDate.setHours(0, 0, 0, 0)
+            endDate.setHours(23, 59, 59, 999)
+            break
+
+        case 'last_month':
+            startDate.setMonth(now.getMonth() - 1)
+            startDate.setDate(1)
+            startDate.setHours(0, 0, 0, 0)
+            endDate.setMonth(now.getMonth())
+            endDate.setDate(0) // Last day of previous month
+            endDate.setHours(23, 59, 59, 999)
+            break
+
+        case 'this_quarter':
+            const currentQuarter = Math.floor(now.getMonth() / 3)
+            startDate.setMonth(currentQuarter * 3)
+            startDate.setDate(1)
+            startDate.setHours(0, 0, 0, 0)
+            endDate.setHours(23, 59, 59, 999)
+            break
+
+        case 'last_quarter':
+            const lastQuarter = Math.floor(now.getMonth() / 3) - 1
+            const lastQuarterYear = lastQuarter < 0 ? now.getFullYear() - 1 : now.getFullYear()
+            const lastQuarterMonth = lastQuarter < 0 ? 9 : lastQuarter * 3
+            startDate.setFullYear(lastQuarterYear)
+            startDate.setMonth(lastQuarterMonth)
+            startDate.setDate(1)
+            startDate.setHours(0, 0, 0, 0)
+            endDate.setFullYear(lastQuarterYear)
+            endDate.setMonth(lastQuarterMonth + 3)
+            endDate.setDate(0) // Last day of quarter
+            endDate.setHours(23, 59, 59, 999)
+            break
+
+        case 'this_year':
+            startDate.setMonth(0)
+            startDate.setDate(1)
+            startDate.setHours(0, 0, 0, 0)
+            endDate.setHours(23, 59, 59, 999)
+            break
+
+        case 'all_time':
+        default:
+            startDate.setFullYear(2000, 0, 1) // Set to a very old date
+            startDate.setHours(0, 0, 0, 0)
+            endDate.setHours(23, 59, 59, 999)
+            break
+    }
+
+    return { startDate, endDate }
 }

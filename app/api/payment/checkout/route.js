@@ -76,6 +76,8 @@ export async function POST(request) {
             })
 
             // Create Razorpay order
+            // NOTE: Currency is hardcoded to INR as Razorpay only supports Indian Rupees.
+            // For international payments, integrate Stripe or PayPal.
             const order = await razorpay.orders.create({
                 amount: amount * 100, // Razorpay expects amount in paise
                 currency: 'INR',
@@ -99,7 +101,7 @@ export async function POST(request) {
                 .insert({
                     organization_id: profile.organization_id,
                     amount: amount,
-                    currency: 'INR',
+                    currency: 'INR', // Razorpay limitation
                     status: 'open',
                     due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     metadata: {
@@ -124,7 +126,7 @@ export async function POST(request) {
                 .insert({
                     organization_id: profile.organization_id,
                     amount: amount,
-                    currency: 'INR',
+                    currency: 'INR', // Simulation mode - matches Razorpay
                     status: 'open',
                     due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     metadata: {
@@ -202,7 +204,7 @@ export async function POST(request) {
         return corsJSON({
             order_id: order_id,
             amount: amount,
-            currency: 'INR',
+            currency: 'INR', // Razorpay only supports INR
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'simulation_key',
             name: org?.company_name || org?.name || 'Your Organization',
             description: `${plan.name} Plan - ${billing_cycle === 'monthly' ? 'Monthly' : 'Yearly'} Subscription`,

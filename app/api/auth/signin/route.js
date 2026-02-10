@@ -41,15 +41,15 @@ export async function POST(request) {
         details: profileError.details,
         hint: profileError.hint
       })
-      
+
       // If profile doesn't exist, return specific error
       if (profileError.code === 'PGRST116') {
         await supabase.auth.signOut()
-        return corsJSON({ 
-          error: 'Profile not found. Please contact support to set up your account.' 
+        return corsJSON({
+          error: 'Profile not found. Please contact support to set up your account.'
         }, { status: 404 })
       }
-      
+
       // For other profile errors, still try to continue but log the issue
       console.warn('[Signin] Continuing despite profile error')
     }
@@ -67,7 +67,7 @@ export async function POST(request) {
       if (profile?.role !== 'platform_admin') {
         console.warn('[Signin] Access denied - user is not platform_admin')
         await supabase.auth.signOut()
-        return corsJSON({ 
+        return corsJSON({
           error: 'Not authorized as platform admin. Your role is: ' + (profile?.role || 'unknown')
         }, { status: 403 })
       }
@@ -75,13 +75,19 @@ export async function POST(request) {
     }
 
     // Determine if user needs onboarding
-    const needsOnboarding = !profile?.organization_id ||
-      profile?.organization?.onboarding_status === 'pending'
+    // Only send to onboarding if:
+    // 1. User has no organization assigned, OR
+    // 2. Organization exists but onboarding is still pending
+    const hasOrganization = !!profile?.organization_id
+    const onboardingStatus = profile?.organization?.onboarding_status
+    const needsOnboarding = !hasOrganization || onboardingStatus === 'pending'
 
-    console.log('[Signin] Onboarding status:', {
+    console.log('[Signin] Onboarding check:', {
       needsOnboarding,
-      hasOrganization: !!profile?.organization_id,
-      onboardingStatus: profile?.organization?.onboarding_status
+      hasOrganization,
+      organizationId: profile?.organization_id,
+      onboardingStatus,
+      rawOrganizationData: profile?.organization
     })
 
     console.log('[Signin] Login successful for:', email)
@@ -90,7 +96,8 @@ export async function POST(request) {
       message: 'Login successful',
       user: {
         ...data.user,
-        role: profile?.role
+        role: profile?.role,
+        organization_id: profile?.organization_id
       },
       session: data.session,
       needsOnboarding

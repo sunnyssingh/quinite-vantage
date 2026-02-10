@@ -16,19 +16,40 @@ import {
     Mail,
     CheckCircle2,
     Clock,
-    AlertCircle
+    AlertCircle,
+    ChevronDown
 } from 'lucide-react'
 import Link from 'next/link'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export default function CRMDashboardPage() {
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [dateRange, setDateRange] = useState('this_month')
+
+    const dateRangeOptions = [
+        { value: 'this_month', label: 'This Month' },
+        { value: 'last_month', label: 'Last Month' },
+        { value: 'this_quarter', label: 'This Quarter' },
+        { value: 'last_quarter', label: 'Last Quarter' },
+        { value: 'this_year', label: 'This Year' },
+        { value: 'all_time', label: 'All Time' },
+    ]
+
+    const getDateRangeLabel = () => {
+        return dateRangeOptions.find(opt => opt.value === dateRange)?.label || 'This Month'
+    }
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                const res = await fetch('/api/crm/dashboard')
+                const res = await fetch(`/api/crm/dashboard?range=${dateRange}`)
                 if (res.ok) {
                     const data = await res.json()
                     setStats(data)
@@ -40,7 +61,7 @@ export default function CRMDashboardPage() {
             }
         }
         fetchDashboardData()
-    }, [])
+    }, [dateRange])
 
     const metrics = [
         {
@@ -175,10 +196,29 @@ export default function CRMDashboardPage() {
                     <p className="text-muted-foreground mt-1">Overview of your sales pipeline and activities</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" className="gap-2">
-                        <Calendar className="w-4 h-4" />
-                        This Month
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                                <Calendar className="w-4 h-4" />
+                                {getDateRangeLabel()}
+                                <ChevronDown className="w-4 h-4 ml-1" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            {dateRangeOptions.map((option) => (
+                                <DropdownMenuItem
+                                    key={option.value}
+                                    onClick={() => {
+                                        setDateRange(option.value)
+                                        setLoading(true)
+                                    }}
+                                    className={dateRange === option.value ? 'bg-accent' : ''}
+                                >
+                                    {option.label}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Link href="/dashboard/admin/crm/leads">
                         <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
                             <Plus className="w-4 h-4" />

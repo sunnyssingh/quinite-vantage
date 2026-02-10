@@ -352,7 +352,7 @@ export default function PlatformSubscriptionsPage() {
                                 <Card className="border-l-4 border-l-green-500">
                                     <CardHeader className="pb-3">
                                         <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                            <DollarSign className="w-4 h-4" />
+                                            <IndianRupee className="w-4 h-4" />
                                             Monthly Recurring Revenue
                                         </CardTitle>
                                     </CardHeader>
@@ -365,7 +365,7 @@ export default function PlatformSubscriptionsPage() {
                                 <Card className="border-l-4 border-l-purple-500">
                                     <CardHeader className="pb-3">
                                         <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                            <TrendingUp className="w-4 h-4" />
+                                            <IndianRupee className="w-4 h-4" />
                                             Annual Recurring Revenue
                                         </CardTitle>
                                     </CardHeader>

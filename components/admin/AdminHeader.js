@@ -21,7 +21,10 @@ import {
     Megaphone,
     Search,
     Zap,
-    HelpCircle
+    HelpCircle,
+    Phone,
+    Clock,
+    TrendingUp
 } from 'lucide-react'
 import {
     DropdownMenu,
@@ -68,12 +71,22 @@ export default function AdminHeader({ user, profile }) {
         { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone },
         { label: 'Leads', href: '/dashboard/admin/crm/leads', icon: Users },
         { label: 'Pipeline', href: '/dashboard/admin/crm?tab=pipeline', icon: KanbanSquare },
+        { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone },
+        { label: 'Call History', href: '/dashboard/admin/crm/calls/history', icon: Clock },
+        { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp },
         { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: BarChart3 },
         { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText },
         { label: 'Settings', href: '/dashboard/admin/crm/settings', icon: Settings },
     ]
 
+    const inventoryNavItems = [
+        { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard },
+        { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building },
+        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3 },
+    ]
+
     const isCrmModule = pathname?.startsWith('/dashboard/admin/crm')
+    const isInventoryModule = pathname?.startsWith('/dashboard/admin/inventory')
 
     return (
         <header className="sticky top-0 z-30 w-full  border-border bg-white">
@@ -148,6 +161,36 @@ export default function AdminHeader({ user, profile }) {
                                                 </div>
                                                 {crmNavItems.map((item) => {
                                                     const isActive = pathname === item.href || (item.label === 'Pipeline' && pathname === '/dashboard/admin/crm')
+                                                    const Icon = item.icon
+                                                    return (
+                                                        <Link
+                                                            key={item.href}
+                                                            href={item.href}
+                                                            onClick={() => setOpen(false)}
+                                                            className={cn(
+                                                                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                                                                isActive
+                                                                    ? "bg-blue-50 text-blue-700"
+                                                                    : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
+                                                            )}
+                                                        >
+                                                            <Icon className="w-4 h-4" />
+                                                            {item.label}
+                                                        </Link>
+                                                    )
+                                                })}
+                                            </>
+                                        )}
+
+                                        {/* Inventory Module Sub-Navigation */}
+                                        {isInventoryModule && (
+                                            <>
+                                                <div className="my-2 border-t border-border" />
+                                                <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+                                                    Inventory Module
+                                                </div>
+                                                {inventoryNavItems.map((item) => {
+                                                    const isActive = pathname === item.href
                                                     const Icon = item.icon
                                                     return (
                                                         <Link

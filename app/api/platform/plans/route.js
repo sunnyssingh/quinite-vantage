@@ -20,18 +20,26 @@ export async function GET(request) {
             .eq('id', user.id)
             .single()
 
-        if (profile?.role !== 'platform_admin') {
-            return corsJSON({ error: 'Platform Admin access required' }, { status: 403 })
+        if (profile?.role === 'platform_admin') {
+            // Admin sees all plans
+            const { data: plans, error } = await adminClient
+                .from('subscription_plans')
+                .select('*')
+                .order('sort_order', { ascending: true })
+
+            if (error) throw error
+            return corsJSON({ plans })
+        } else {
+            // Regular users see only active plans
+            const { data: plans, error } = await adminClient
+                .from('subscription_plans')
+                .select('*')
+                .eq('is_active', true)
+                .order('sort_order', { ascending: true })
+
+            if (error) throw error
+            return corsJSON({ plans })
         }
-
-        const { data: plans, error } = await adminClient
-            .from('subscription_plans')
-            .select('*')
-            .order('sort_order', { ascending: true })
-
-        if (error) throw error
-
-        return corsJSON({ plans })
     } catch (e) {
         console.error('platform/plans GET error:', e)
         return corsJSON({ error: e.message }, { status: 500 })

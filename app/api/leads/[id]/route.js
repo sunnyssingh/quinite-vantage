@@ -18,7 +18,8 @@ export async function GET(request, { params }) {
             .select(`
                 *,
                 project:projects(id, name, image_url, address, project_type),
-                deals(*)
+                property:properties(id, title, address, price, type, project_id, project:projects(name)),
+                deals(*, property:properties(id, title, project:projects(name)), project:projects(id, name))
             `)
             .eq('id', id)
             .single()
