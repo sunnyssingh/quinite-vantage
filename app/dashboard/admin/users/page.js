@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import CredentialsModal from '@/components/dashboard/CredentialsModal'
-import { Pencil, Trash2, Plus } from 'lucide-react'
+import { Pencil, Trash2, Plus, Shield } from 'lucide-react'
+import PermissionManager from '@/components/admin/PermissionManager'
 
 export default function UsersPage() {
     const [users, setUsers] = useState([])
@@ -12,6 +13,7 @@ export default function UsersPage() {
     const [showCredentials, setShowCredentials] = useState(false)
     const [newCredentials, setNewCredentials] = useState(null)
     const [editingUser, setEditingUser] = useState(null)
+    const [managingPermissions, setManagingPermissions] = useState(null) // User whose permissions are being managed
 
     useEffect(() => {
         fetchUsers()
@@ -178,6 +180,13 @@ export default function UsersPage() {
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end gap-3">
                                                 <button
+                                                    onClick={() => setManagingPermissions(user)}
+                                                    className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
+                                                    title="Manage Permissions"
+                                                >
+                                                    <Shield className="w-4 h-4" />
+                                                </button>
+                                                <button
                                                     onClick={() => openEditModal(user)}
                                                     className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
                                                     title="Edit User"
@@ -233,6 +242,19 @@ export default function UsersPage() {
                 onOpenChange={setShowCredentials}
                 credentials={newCredentials}
             />
+
+            {/* Permission Manager Modal */}
+            {managingPermissions && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
+                        <PermissionManager
+                            userId={managingPermissions.id}
+                            userRole={managingPermissions.role}
+                            onClose={() => setManagingPermissions(null)}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

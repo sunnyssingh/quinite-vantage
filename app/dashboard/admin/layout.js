@@ -68,9 +68,11 @@ export default function AdminLayout({ children }) {
             const userProfile = profileData.user.profile
             setProfile(userProfile)
 
-            // Only super_admin can access this dashboard
-            if (userProfile?.role !== 'super_admin') {
-                console.log('⛔ [Admin] Access denied - not super_admin')
+            // Allow all organization roles (employee, manager, super_admin)
+            // Platform admins should use /dashboard/platform
+            const allowedRoles = ['employee', 'manager', 'super_admin']
+            if (!allowedRoles.includes(userProfile?.role)) {
+                console.log(`⛔ [Admin] Access denied - role: ${userProfile?.role}`)
                 router.push('/')
                 return
             }

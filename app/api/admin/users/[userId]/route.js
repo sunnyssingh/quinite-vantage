@@ -9,14 +9,14 @@ export async function GET(request, { params }) {
         if (auth instanceof NextResponse) return auth
 
         const { profile } = auth
-        const { id } = await params
+        const { userId } = await params
         const admin = createAdminClient()
 
         // Get user details
         const { data: user, error } = await admin
             .from('profiles')
             .select('*')
-            .eq('id', id)
+            .eq('id', userId)
             .eq('organization_id', profile.organization_id)
             .single()
 
@@ -38,7 +38,7 @@ export async function PUT(request, { params }) {
         if (auth instanceof NextResponse) return auth
 
         const { profile } = auth
-        const { id } = await params
+        const { userId } = await params
         const body = await request.json()
         const admin = createAdminClient()
 
@@ -46,7 +46,7 @@ export async function PUT(request, { params }) {
         const { data: targetUser } = await admin
             .from('profiles')
             .select('organization_id')
-            .eq('id', id)
+            .eq('id', userId)
             .single()
 
         if (!targetUser || targetUser.organization_id !== profile.organization_id) {
@@ -63,7 +63,7 @@ export async function PUT(request, { params }) {
                 role: body.role,
                 updated_at: new Date().toISOString()
             })
-            .eq('id', id)
+            .eq('id', userId)
             .select()
             .single()
 
@@ -78,7 +78,7 @@ export async function PUT(request, { params }) {
             user_name: profile.full_name,
             action: 'user.updated',
             entity_type: 'user',
-            entity_id: id,
+            entity_id: userId,
             metadata: {
                 updated_fields: Object.keys(body),
                 new_role: body.role
@@ -99,14 +99,14 @@ export async function DELETE(request, { params }) {
         if (auth instanceof NextResponse) return auth
 
         const { profile } = auth
-        const { id } = await params
+        const { userId } = await params
         const admin = createAdminClient()
 
         // Verify user belongs to same organization
         const { data: targetUser } = await admin
             .from('profiles')
             .select('organization_id')
-            .eq('id', id)
+            .eq('id', userId)
             .single()
 
         if (!targetUser || targetUser.organization_id !== profile.organization_id) {
@@ -114,7 +114,7 @@ export async function DELETE(request, { params }) {
         }
 
         // Delete user from auth.users (will cascade to profiles)
-        const { error: deleteError } = await admin.auth.admin.deleteUser(id)
+        const { error: deleteError } = await admin.auth.admin.deleteUser(userId)
 
         if (deleteError) {
             throw new Error('Failed to delete user')
@@ -127,8 +127,8 @@ export async function DELETE(request, { params }) {
             user_name: profile.full_name,
             action: 'user.deleted',
             entity_type: 'user',
-            entity_id: id,
-            metadata: { deleted_user_id: id }
+            entity_id: userId,
+            metadata: { deleted_user_id: userId }
         })
 
         return NextResponse.json({ success: true })

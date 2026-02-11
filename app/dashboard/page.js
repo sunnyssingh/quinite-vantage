@@ -1,26 +1,55 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient as createClientSupabaseClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { FolderKanban, Megaphone, Users2, TrendingUp, Activity, PhoneForwarded } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [stats, setStats] = useState(null)
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchDashboardData(true) // Initial load
-
-    // Auto-refresh every 30 seconds (without showing skeleton)
-    const interval = setInterval(() => {
-      fetchDashboardData(false) // Background refresh
-    }, 30000)
-
-    return () => clearInterval(interval)
+    checkRoleAndRedirect()
   }, [])
+
+  async function checkRoleAndRedirect() {
+    try {
+      const supabase = createClientSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        // Get user profile to check role
+        const profileResponse = await fetch('/api/auth/user')
+        const profileData = await profileResponse.json()
+
+        if (profileData.user?.profile) {
+          const role = profileData.user.profile.role
+
+          // Redirect based on role - ALL use unified CRM dashboard
+          if (role === 'platform_admin') {
+            router.push('/dashboard/platform')
+            return
+          } else {
+            // All other roles (employee, manager, super_admin) use unified CRM dashboard
+            router.push('/dashboard/admin/crm/dashboard')
+            return
+          }
+        }
+      }
+
+      // If no specific role, show generic dashboard
+      fetchDashboardData(true)
+    } catch (err) {
+      console.error('Error checking role:', err)
+      fetchDashboardData(true)
+    }
+  }
 
   const fetchDashboardData = async (showLoading = true) => {
     try {

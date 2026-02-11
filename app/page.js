@@ -42,12 +42,12 @@ export default function AuthPage() {
         const role = profile?.role || 'employee'
         const dashboardRoutes = {
           platform_admin: '/dashboard/platform',
-          super_admin: '/dashboard/admin',
-          manager: '/dashboard/manager',
-          employee: '/dashboard/employee'
+          super_admin: '/dashboard/admin/crm/dashboard',
+          manager: '/dashboard/admin/crm/dashboard',
+          employee: '/dashboard/admin/crm/dashboard'
         }
 
-        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
+        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin/crm/dashboard'
 
         toast.success(`Welcome back! Redirecting to dashboard...`)
         router.push(dashboardRoute)
@@ -192,16 +192,16 @@ export default function AuthPage() {
         toast.success('Complete your onboarding to get started.')
         setTimeout(() => router.push('/onboarding'), 1000)
       } else {
-        // Role-based redirect
+        // Role-based redirect - ALL use unified CRM dashboard
         const role = data.user?.role || 'employee'
         const dashboardRoutes = {
           platform_admin: '/dashboard/platform',
-          super_admin: '/dashboard/admin',
-          manager: '/dashboard/manager',
-          employee: '/dashboard/employee'
+          super_admin: '/dashboard/admin/crm/dashboard',
+          manager: '/dashboard/admin/crm/dashboard',
+          employee: '/dashboard/admin/crm/dashboard'
         }
 
-        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
+        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin/crm/dashboard'
 
         toast.success('Welcome back! Redirecting to dashboard...')
         setTimeout(() => router.push(dashboardRoute), 1000)

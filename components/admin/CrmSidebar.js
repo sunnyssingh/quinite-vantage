@@ -24,47 +24,48 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { PermissionGate } from '@/components/permissions/PermissionGate'
 
 export default function CrmSidebar() {
     const pathname = usePathname()
     const [isCollapsed, setIsCollapsed] = useState(false)
 
-    // Grouped navigation structure
+    // Grouped navigation structure with permissions
     const navigationSections = [
         {
             title: 'Overview',
             items: [
-                { label: 'Dashboard', href: '/dashboard/admin/crm/dashboard', icon: LayoutDashboard },
+                { label: 'Dashboard', href: '/dashboard/admin/crm/dashboard', icon: LayoutDashboard, permission: null },
             ]
         },
         {
             title: 'Sales Management',
             items: [
-                { label: 'Pipeline', href: '/dashboard/admin/crm?tab=pipeline', icon: KanbanSquare },
-                { label: 'Leads', href: '/dashboard/admin/crm/leads', icon: Users },
-                { label: 'Projects', href: '/dashboard/admin/crm/projects', icon: FolderKanban },
+                { label: 'Pipeline', href: '/dashboard/admin/crm?tab=pipeline', icon: KanbanSquare, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
+                { label: 'Leads', href: '/dashboard/admin/crm/leads', icon: Users, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
+                { label: 'Projects', href: '/dashboard/admin/crm/projects', icon: FolderKanban, permission: 'view_projects' },
             ]
         },
         {
             title: 'Marketing',
             items: [
-                { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone },
+                { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone, permission: 'view_campaigns' },
             ]
         },
         {
             title: 'Call Management',
             items: [
-                { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone },
-                { label: 'Call History', href: '/dashboard/admin/crm/calls/history', icon: Clock },
-                { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp },
+                { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone, permission: 'make_calls' },
+                { label: 'Call History', href: '/dashboard/admin/crm/calls/history', icon: Clock, permission: ['view_own_calls', 'view_team_calls', 'view_all_calls'] },
+                { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp, permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics'] },
             ]
         },
         {
             title: 'Insights & Admin',
             items: [
-                { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: BarChart3 },
-                { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText },
-                { label: 'Settings', href: '/dashboard/admin/crm/settings', icon: Settings },
+                { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: BarChart3, permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics'] },
+                { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText, permission: 'view_audit_logs' },
+                { label: 'Settings', href: '/dashboard/admin/crm/settings', icon: Settings, permission: 'view_settings' },
             ]
         }
     ]
@@ -123,20 +124,40 @@ export default function CrmSidebar() {
                                             </Link>
                                         )
 
-                                        if (isCollapsed) {
-                                            return (
-                                                <Tooltip key={item.href}>
-                                                    <TooltipTrigger asChild>
-                                                        {LinkContent}
-                                                    </TooltipTrigger>
-                                                    <TooltipContent side="right" className="font-medium bg-slate-900 text-white border-slate-800">
-                                                        {item.label}
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            )
-                                        }
+                                        // Wrap with PermissionGate if permission is specified
+                                        const GatedContent = item.permission ? (
+                                            <PermissionGate key={item.href} feature={item.permission}>
+                                                {isCollapsed ? (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            {LinkContent}
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="right" className="font-medium bg-slate-900 text-white border-slate-800">
+                                                            {item.label}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ) : (
+                                                    LinkContent
+                                                )}
+                                            </PermissionGate>
+                                        ) : (
+                                            <div key={item.href}>
+                                                {isCollapsed ? (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            {LinkContent}
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="right" className="font-medium bg-slate-900 text-white border-slate-800">
+                                                            {item.label}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ) : (
+                                                    LinkContent
+                                                )}
+                                            </div>
+                                        )
 
-                                        return <div key={item.href}>{LinkContent}</div>
+                                        return GatedContent
                                     })}
                                 </div>
                             </div>

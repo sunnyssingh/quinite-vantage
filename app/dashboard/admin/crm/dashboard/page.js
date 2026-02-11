@@ -27,6 +27,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { PermissionGate } from '@/components/permissions/PermissionGate'
 
 export default function CRMDashboardPage() {
     const [stats, setStats] = useState(null)
@@ -72,6 +73,7 @@ export default function CRMDashboardPage() {
             icon: Users,
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
+            permission: 'view_own_leads', // Correct permission key
         },
         {
             title: 'Active Deals',
@@ -81,6 +83,7 @@ export default function CRMDashboardPage() {
             icon: Target,
             color: 'text-purple-600',
             bgColor: 'bg-purple-50',
+            permission: 'view_own_leads', // Correct permission key
         },
         {
             title: 'Conversion Rate',
@@ -90,6 +93,7 @@ export default function CRMDashboardPage() {
             icon: TrendingUp,
             color: 'text-green-600',
             bgColor: 'bg-green-50',
+            permission: 'view_own_analytics', // Correct permission key
         },
         {
             title: 'Revenue (MTD)',
@@ -100,6 +104,7 @@ export default function CRMDashboardPage() {
             currencySymbol: loading ? '₹' : (stats?.revenue?.match(/^[^\d]+/)?.[0] || '₹'),
             color: 'text-emerald-600',
             bgColor: 'bg-emerald-50',
+            permission: 'view_own_analytics', // Correct permission key
         },
     ]
 
@@ -111,10 +116,10 @@ export default function CRMDashboardPage() {
     ]
 
     const quickActions = [
-        { label: 'Add Lead', href: '/dashboard/admin/crm/leads', icon: Plus, color: 'bg-blue-600 hover:bg-blue-700' },
-        { label: 'View Pipeline', href: '/dashboard/admin/crm', icon: Target, color: 'bg-purple-600 hover:bg-purple-700' },
-        { label: 'New Campaign', href: '/dashboard/admin/crm/campaigns', icon: Activity, color: 'bg-green-600 hover:bg-green-700' },
-        { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: TrendingUp, color: 'bg-orange-600 hover:bg-orange-700' },
+        { label: 'Add Lead', href: '/dashboard/admin/crm/leads', icon: Plus, color: 'bg-blue-600 hover:bg-blue-700', permission: 'create_leads' },
+        { label: 'View Pipeline', href: '/dashboard/admin/crm', icon: Target, color: 'bg-purple-600 hover:bg-purple-700', permission: 'view_own_leads' },
+        { label: 'New Campaign', href: '/dashboard/admin/crm/campaigns', icon: Activity, color: 'bg-green-600 hover:bg-green-700', permission: 'create_campaigns' },
+        { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: TrendingUp, color: 'bg-orange-600 hover:bg-orange-700', permission: 'view_own_analytics' },
     ]
 
     const getActivityIcon = (type) => {
@@ -219,12 +224,14 @@ export default function CRMDashboardPage() {
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Link href="/dashboard/admin/crm/leads">
-                        <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
-                            <Plus className="w-4 h-4" />
-                            Add Lead
-                        </Button>
-                    </Link>
+                    <PermissionGate feature="create_leads">
+                        <Link href="/dashboard/admin/crm/leads">
+                            <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+                                <Plus className="w-4 h-4" />
+                                Add Lead
+                            </Button>
+                        </Link>
+                    </PermissionGate>
                 </div>
             </div>
 
@@ -235,29 +242,31 @@ export default function CRMDashboardPage() {
                     const TrendIcon = metric.trend === 'up' ? TrendingUp : TrendingDown
 
                     return (
-                        <Card key={index} className="overflow-hidden border-border hover:shadow-md transition-all duration-200">
-                            <CardContent className="p-6">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className={`p-3 rounded-lg ${metric.bgColor} w-12 h-12 flex items-center justify-center`}>
-                                        {Icon ? (
-                                            <Icon className={`w-6 h-6 ${metric.color}`} />
-                                        ) : (
-                                            <span className={`text-2xl font-bold ${metric.color}`}>
-                                                {metric.currencySymbol}
-                                            </span>
-                                        )}
+                        <PermissionGate key={index} feature={metric.permission}>
+                            <Card className="overflow-hidden border-border hover:shadow-md transition-all duration-200">
+                                <CardContent className="p-6">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className={`p-3 rounded-lg ${metric.bgColor} w-12 h-12 flex items-center justify-center`}>
+                                            {Icon ? (
+                                                <Icon className={`w-6 h-6 ${metric.color}`} />
+                                            ) : (
+                                                <span className={`text-2xl font-bold ${metric.color}`}>
+                                                    {metric.currencySymbol}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${metric.trend === 'up' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                                            <TrendIcon className="w-3 h-3" />
+                                            {metric.change}
+                                        </div>
                                     </div>
-                                    <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${metric.trend === 'up' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
-                                        <TrendIcon className="w-3 h-3" />
-                                        {metric.change}
+                                    <div>
+                                        <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
+                                        <h3 className="text-3xl font-bold text-foreground mt-1">{metric.value}</h3>
                                     </div>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
-                                    <h3 className="text-3xl font-bold text-foreground mt-1">{metric.value}</h3>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        </PermissionGate>
                     )
                 })}
             </div>
@@ -277,17 +286,19 @@ export default function CRMDashboardPage() {
                                 {quickActions.map((action, index) => {
                                     const Icon = action.icon
                                     return (
-                                        <Link key={index} href={action.href}>
-                                            <Button
-                                                variant="outline"
-                                                className="w-full h-auto flex-col gap-3 p-6 hover:bg-secondary/50 transition-all group"
-                                            >
-                                                <div className={`p-3 rounded-lg ${action.color} text-white group-hover:scale-110 transition-transform`}>
-                                                    <Icon className="w-5 h-5" />
-                                                </div>
-                                                <span className="text-sm font-medium">{action.label}</span>
-                                            </Button>
-                                        </Link>
+                                        <PermissionGate key={index} feature={action.permission}>
+                                            <Link href={action.href}>
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full h-auto flex-col gap-3 p-6 hover:bg-secondary/50 transition-all group"
+                                                >
+                                                    <div className={`p-3 rounded-lg ${action.color} text-white group-hover:scale-110 transition-transform`}>
+                                                        <Icon className="w-5 h-5" />
+                                                    </div>
+                                                    <span className="text-sm font-medium">{action.label}</span>
+                                                </Button>
+                                            </Link>
+                                        </PermissionGate>
                                     )
                                 })}
                             </div>
@@ -295,56 +306,58 @@ export default function CRMDashboardPage() {
                     </Card>
 
                     {/* Pipeline Stages */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Pipeline Overview</CardTitle>
-                            <CardDescription>Deals by stage</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {(stats?.pipelineOverview || []).length > 0 ? (
-                                    stats.pipelineOverview.map((stage, index) => {
-                                        // Calculate percentage relative to max or total
-                                        const total = stats?.totalLeads || 1
-                                        const percentage = (stage.count / total) * 100
+                    <PermissionGate feature="view_own_leads">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">Pipeline Overview</CardTitle>
+                                <CardDescription>Deals by stage</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {(stats?.pipelineOverview || []).length > 0 ? (
+                                        stats.pipelineOverview.map((stage, index) => {
+                                            // Calculate percentage relative to max or total
+                                            const total = stats?.totalLeads || 1
+                                            const percentage = (stage.count / total) * 100
 
-                                        return (
-                                            <div key={index} className="flex items-center gap-4">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-sm font-medium text-foreground">{stage.stage}</span>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-sm text-muted-foreground">{stage.count} deals</span>
-                                                            <span className="text-sm font-semibold text-foreground">{stage.value !== '$0' ? stage.value : ''}</span>
+                                            return (
+                                                <div key={index} className="flex items-center gap-4">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <span className="text-sm font-medium text-foreground">{stage.stage}</span>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-sm text-muted-foreground">{stage.count} deals</span>
+                                                                <span className="text-sm font-semibold text-foreground">{stage.value !== '$0' ? stage.value : ''}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full transition-all duration-500`}
+                                                                style={{
+                                                                    width: `${percentage}%`,
+                                                                    backgroundColor: stage.color || '#3b82f6'
+                                                                }}
+                                                            />
                                                         </div>
                                                     </div>
-                                                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full transition-all duration-500`}
-                                                            style={{
-                                                                width: `${percentage}%`,
-                                                                backgroundColor: stage.color || '#3b82f6'
-                                                            }}
-                                                        />
-                                                    </div>
                                                 </div>
-                                            </div>
-                                        )
-                                    })
-                                ) : (
-                                    <div className="text-center py-6 text-muted-foreground text-sm">
-                                        No pipeline data available.
-                                    </div>
-                                )}
-                            </div>
-                            <Link href="/dashboard/admin/crm">
-                                <Button variant="ghost" className="w-full mt-4 gap-2">
-                                    View Full Pipeline
-                                    <ArrowUpRight className="w-4 h-4" />
-                                </Button>
-                            </Link>
-                        </CardContent>
-                    </Card>
+                                            )
+                                        })
+                                    ) : (
+                                        <div className="text-center py-6 text-muted-foreground text-sm">
+                                            No pipeline data available.
+                                        </div>
+                                    )}
+                                </div>
+                                <Link href="/dashboard/admin/crm">
+                                    <Button variant="ghost" className="w-full mt-4 gap-2">
+                                        View Full Pipeline
+                                        <ArrowUpRight className="w-4 h-4" />
+                                    </Button>
+                                </Link>
+                            </CardContent>
+                        </Card>
+                    </PermissionGate>
                 </div>
 
                 {/* Recent Activities */}
