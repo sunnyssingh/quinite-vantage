@@ -1,35 +1,46 @@
-import { NextResponse } from 'next/server'
-import { requireRole } from '@/lib/middleware/requireRole'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { corsJSON } from '@/lib/cors'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request) {
     try {
-        // Only super_admin can invite users
-        const auth = await requireRole(request, ['super_admin'])
-        if (auth instanceof NextResponse) return auth
+        const supabase = await createServerSupabaseClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        const { profile } = auth
+        if (authError || !user) {
+            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check permission
+        const canInvite = await hasDashboardPermission(user.id, 'invite_users')
+        if (!canInvite) {
+            return corsJSON({ error: 'Forbidden - Missing "invite_users" permission' }, { status: 403 })
+        }
+
+        const admin = createAdminClient()
+
+        // Get user's organization first
+        const { data: profile } = await admin.from('profiles').select('*').eq('id', user.id).single()
+
+        if (!profile?.organization_id) {
+            return corsJSON({ error: 'Organization not found' }, { status: 404 })
+        }
         const body = await request.json()
         const { email, phone, fullName, role = 'employee' } = body
 
         // Validate input
         if (!email || !fullName || !phone) {
-            return NextResponse.json(
-                { error: 'Email, phone, and full name are required' },
-                { status: 400 }
-            )
+            return corsJSON({ error: 'Email, phone, and full name are required' }, { status: 400 })
         }
 
         // Validate role
         const validRoles = ['employee', 'manager', 'super_admin']
         if (!validRoles.includes(role)) {
-            return NextResponse.json(
-                { error: 'Invalid role' },
-                { status: 400 }
-            )
+            return corsJSON({ error: 'Invalid role' }, { status: 400 })
         }
 
-        const admin = createAdminClient()
+
 
         // Generate a random 12-char password
         const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4)
@@ -48,10 +59,7 @@ export async function POST(request) {
 
         if (createError) {
             console.error('[POST /api/admin/users/invite] Create error:', createError)
-            return NextResponse.json(
-                { error: createError.message || 'Failed to create user' },
-                { status: 400 }
-            )
+            return corsJSON({ error: createError.message || 'Failed to create user' }, { status: 400 })
         }
 
         // Update profile with organization and role
@@ -69,10 +77,7 @@ export async function POST(request) {
             console.error('[POST /api/admin/users/invite] Update error:', updateError)
             // Rollback: delete the auth user
             await admin.auth.admin.deleteUser(newUser.user.id)
-            return NextResponse.json(
-                { error: 'Failed to set up user profile' },
-                { status: 500 }
-            )
+            return corsJSON({ error: 'Failed to set up user profile' }, { status: 500 })
         }
 
         // Create audit log
@@ -90,7 +95,7 @@ export async function POST(request) {
             }
         })
 
-        return NextResponse.json({
+        return corsJSON({
             success: true,
             user: {
                 id: newUser.user.id,
@@ -103,9 +108,6 @@ export async function POST(request) {
 
     } catch (error) {
         console.error('[POST /api/admin/users/invite] Error:', error)
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        )
+        return corsJSON({ error: 'Internal server error' }, { status: 500 })
     }
 }

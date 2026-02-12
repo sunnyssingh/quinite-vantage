@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +17,15 @@ export async function POST(request, { params }) {
 
         if (authError || !user) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check permission
+        const canEdit = await hasDashboardPermission(user.id, 'edit_campaigns')
+        if (!canEdit) {
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to edit campaigns'
+            }, { status: 200 })
         }
 
         const { id } = await params

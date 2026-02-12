@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 import { NextResponse } from 'next/server'
 
@@ -64,35 +65,48 @@ export async function GET() {
         }
 
         // Run queries in parallel
+        // Check permissions
+        const [canViewUsers, canViewProjects, canViewLeads, canViewCampaigns] = await Promise.all([
+            hasDashboardPermission(user.id, 'view_users'),
+            hasDashboardPermission(user.id, 'view_projects'),
+            hasDashboardPermission(user.id, 'view_all_leads'), // Strict check for Org stats
+            hasDashboardPermission(user.id, 'view_campaigns')
+        ])
+
+        // Run queries in parallel ONLY if permitted
         const [
             usersNow, usersPast,
             projectsNow, projectsPast,
             leadsNow, leadsPast,
             campaignsNow, campaignsPast
         ] = await Promise.all([
-            getCount('profiles'), getPastCount('profiles', dateStr),
-            getCount('projects'), getPastCount('projects', dateStr),
-            getCount('leads'), getPastCount('leads', dateStr),
-            getCount('campaigns'), getPastCount('campaigns', dateStr)
+            canViewUsers ? getCount('profiles') : 0,
+            canViewUsers ? getPastCount('profiles', dateStr) : 0,
+            canViewProjects ? getCount('projects') : 0,
+            canViewProjects ? getPastCount('projects', dateStr) : 0,
+            canViewLeads ? getCount('leads') : 0,
+            canViewLeads ? getPastCount('leads', dateStr) : 0,
+            canViewCampaigns ? getCount('campaigns') : 0,
+            canViewCampaigns ? getPastCount('campaigns', dateStr) : 0
         ])
 
         return NextResponse.json({
-            users: {
+            users: canViewUsers ? {
                 value: usersNow,
                 trend: calculateTrend(usersNow, usersPast)
-            },
-            projects: {
+            } : null,
+            projects: canViewProjects ? {
                 value: projectsNow,
                 trend: calculateTrend(projectsNow, projectsPast)
-            },
-            leads: {
+            } : null,
+            leads: canViewLeads ? {
                 value: leadsNow,
                 trend: calculateTrend(leadsNow, leadsPast)
-            },
-            activeCampaigns: {
+            } : null,
+            activeCampaigns: canViewCampaigns ? {
                 value: campaignsNow,
                 trend: calculateTrend(campaignsNow, campaignsPast)
-            }
+            } : null
         })
 
     } catch (error) {

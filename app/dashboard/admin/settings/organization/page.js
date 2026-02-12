@@ -11,12 +11,16 @@ import { toast } from 'react-hot-toast'
 import Image from 'next/image'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Skeleton } from '@/components/ui/skeleton'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+import { Lock } from 'lucide-react'
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { COUNTRIES } from '@/lib/constants/countries'
 
 export default function OrganizationSettingsPage() {
     const supabase = createClient()
+    const canEdit = usePermission('manage_settings')
     const [loading, setLoading] = useState(true)
     const [uploading, setUploading] = useState(false)
     const [organization, setOrganization] = useState(null)
@@ -236,31 +240,42 @@ export default function OrganizationSettingsPage() {
                                     )}
                                 </div>
                                 <div>
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleLogoUpload}
-                                        className="hidden"
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={uploading}
+                                    <PermissionTooltip
+                                        hasPermission={canEdit}
+                                        message="You need 'Manage Settings' permission to upload a logo."
                                     >
-                                        {uploading ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Uploading...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload className="w-4 h-4 mr-2" />
-                                                Upload Logo
-                                            </>
-                                        )}
-                                    </Button>
+                                        <div className="relative">
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleLogoUpload}
+                                                className="hidden"
+                                                disabled={!canEdit}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    if (!canEdit) return
+                                                    fileInputRef.current?.click()
+                                                }}
+                                                disabled={uploading || !canEdit}
+                                            >
+                                                {uploading ? (
+                                                    <>
+                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                        Uploading...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        {!canEdit ? <Lock className="w-4 h-4 mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+                                                        Upload Logo
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </PermissionTooltip>
                                     <p className="text-xs text-gray-500 mt-1">
                                         PNG, JPG up to 2MB
                                     </p>
@@ -314,9 +329,9 @@ export default function OrganizationSettingsPage() {
                                 <Select
                                     value={organization.country || ''}
                                     onValueChange={handleCountryChange}
-                                    disabled={!!organization.country}
+                                    disabled={!!organization.country || !canEdit}
                                 >
-                                    <SelectTrigger className={`mt-2 ${organization.country ? 'bg-gray-50 cursor-not-allowed' : ''}`}>
+                                    <SelectTrigger className={`mt-2 ${(organization.country || !canEdit) ? 'bg-gray-50 cursor-not-allowed' : ''}`}>
                                         <SelectValue placeholder="Select Country" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -384,20 +399,31 @@ export default function OrganizationSettingsPage() {
                         )}
 
                         <div className="pt-4 flex justify-end">
-                            <Button
-                                onClick={handleSave}
-                                disabled={loading || uploading}
-                                className="min-w-[120px]"
+                            <PermissionTooltip
+                                hasPermission={canEdit}
+                                message="You need 'Manage Settings' permission to save changes."
                             >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    'Save Changes'
-                                )}
-                            </Button>
+                                <Button
+                                    onClick={() => {
+                                        if (!canEdit) return
+                                        handleSave()
+                                    }}
+                                    disabled={loading || uploading || !canEdit}
+                                    className="min-w-[120px]"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            {!canEdit && <Lock className="w-4 h-4 mr-2" />}
+                                            Save Changes
+                                        </>
+                                    )}
+                                </Button>
+                            </PermissionTooltip>
                         </div>
                     </CardContent>
                 </Card>

@@ -5,24 +5,27 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from 'sonner'
-import { GripVertical, Trash2, Plus, Save, Loader2 } from 'lucide-react'
+import { GripVertical, Trash2, Plus, Save, Loader2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-function SortableStage({ id, stage, onChange, onDelete }) {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
+function SortableStage({ id, stage, onChange, onDelete, canEdit }) {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled: !canEdit })
 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
+        opacity: canEdit ? 1 : 0.7
     }
 
     return (
         <div ref={setNodeRef} style={style} className="flex items-center gap-4 p-3 bg-white border rounded-lg mb-2 shadow-sm group">
-            <div {...attributes} {...listeners} className="cursor-grab hover:text-blue-600 outline-none">
-                <GripVertical className="h-5 w-5 text-gray-400" />
+            <div {...attributes} {...listeners} className={`outline-none ${canEdit ? 'cursor-grab hover:text-blue-600' : 'cursor-not-allowed text-gray-300'}`}>
+                <GripVertical className="h-5 w-5" />
             </div>
 
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -31,6 +34,7 @@ function SortableStage({ id, stage, onChange, onDelete }) {
                     onChange={(e) => onChange(id, 'name', e.target.value)}
                     placeholder="Stage Name"
                     className="h-9"
+                    disabled={!canEdit}
                 />
                 <div className="flex gap-2">
                     <div className="relative w-full">
@@ -40,24 +44,36 @@ function SortableStage({ id, stage, onChange, onDelete }) {
                             onChange={(e) => onChange(id, 'color', e.target.value)}
                             placeholder="#Color"
                             className="h-9 pl-8 font-mono"
+                            disabled={!canEdit}
                         />
                     </div>
                 </div>
             </div>
 
-            <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDelete(id)}
-                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+            <PermissionTooltip
+                hasPermission={canEdit}
+                message="You need 'Manage CRM Settings' permission to delete stages."
             >
-                <Trash2 className="h-4 w-4" />
-            </Button>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                        if (!canEdit) return
+                        onDelete(id)
+                    }}
+                    disabled={!canEdit}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 relative"
+                >
+                    {!canEdit && <Lock className="w-3 h-3 absolute" />}
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </PermissionTooltip>
         </div>
     )
 }
 
 export default function PipelineSettingsPage() {
+    const canEdit = usePermission('manage_crm_settings')
     const [pipelines, setPipelines] = useState([])
     const [selectedPipelineId, setSelectedPipelineId] = useState(null)
     const [stages, setStages] = useState([])
@@ -301,26 +317,52 @@ export default function PipelineSettingsPage() {
                                     stage={stage}
                                     onChange={handleStageChange}
                                     onDelete={handleDeleteStage}
+                                    canEdit={canEdit}
                                 />
                             ))}
                         </SortableContext>
                     </DndContext>
 
-                    <Button
-                        variant="outline"
-                        className="w-full mt-4 border-dashed"
-                        onClick={handleAddStage}
+                    <PermissionTooltip
+                        hasPermission={canEdit}
+                        message="You need 'Manage CRM Settings' permission to add new stages."
                     >
-                        <Plus className="h-4 w-4 mr-2" /> Add Stage
-                    </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full mt-4 border-dashed"
+                            onClick={() => {
+                                if (!canEdit) return
+                                handleAddStage()
+                            }}
+                            disabled={!canEdit}
+                        >
+                            {!canEdit ? <Lock className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                            Add Stage
+                        </Button>
+                    </PermissionTooltip>
                 </CardContent>
             </Card>
 
             <div className="flex justify-end mt-6">
-                <Button onClick={handleSave} disabled={saving}>
-                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Changes
-                </Button>
+                <PermissionTooltip
+                    hasPermission={canEdit}
+                    message="You need 'Manage CRM Settings' permission to save changes."
+                >
+                    <Button
+                        onClick={() => {
+                            if (!canEdit) return
+                            handleSave()
+                        }}
+                        disabled={saving || !canEdit}
+                    >
+                        {saving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            !canEdit && <Lock className="mr-2 h-4 w-4" />
+                        )}
+                        Save Changes
+                    </Button>
+                </PermissionTooltip>
             </div>
         </div>
     )

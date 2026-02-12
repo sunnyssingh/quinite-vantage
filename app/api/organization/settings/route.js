@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,11 @@ export async function GET() {
 
         if (error || !user) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const canView = await hasDashboardPermission(user.id, 'view_settings')
+        if (!canView) {
+            return corsJSON({ error: 'Forbidden - Missing "view_settings" permission' }, { status: 403 })
         }
 
         // Use admin client to fetch profile with organization
@@ -74,6 +80,11 @@ export async function PUT(request) {
 
         if (error || !user) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const canManage = await hasDashboardPermission(user.id, 'manage_settings')
+        if (!canManage) {
+            return corsJSON({ error: 'Forbidden - Missing "manage_settings" permission' }, { status: 403 })
         }
 
         const body = await request.json()

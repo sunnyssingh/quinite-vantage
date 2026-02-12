@@ -36,7 +36,10 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, UserPlus, Mail, Phone, Edit, Search, Volume2, Trash2, FileDown, RefreshCw, User } from 'lucide-react'
+
+import { Plus, UserPlus, Mail, Phone, Edit, Search, Volume2, Trash2, FileDown, RefreshCw, User, Lock, Shield } from 'lucide-react'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 import CallRecordingPlayer from '@/components/CallRecordingPlayer'
 import {
   AlertDialog,
@@ -78,6 +81,25 @@ export default function LeadsPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [leadToDelete, setLeadToDelete] = useState(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Permissions
+  const canCreate = usePermission('create_leads')
+  const canDelete = usePermission('delete_leads')
+  const canEditAll = usePermission('edit_all_leads')
+  const canEditTeam = usePermission('edit_team_leads')
+  const canEditOwn = usePermission('edit_own_leads')
+  const canAssign = usePermission('assign_leads')
+
+  // Helper to check if user can edit a specific lead
+  const canEditLead = (lead) => {
+    if (canEditAll || canEditTeam) return true
+    return canEditOwn // Simplified
+  }
 
   // Bulk Selection
   const [selectedLeads, setSelectedLeads] = useState(new Set())
@@ -86,6 +108,9 @@ export default function LeadsPage() {
   // Stages for the edit form
   const [stages, setStages] = useState([])
   const [loadingStages, setLoadingStages] = useState(false)
+
+  // Users for Assignment
+  const [users, setUsers] = useState([])
 
   // Organization settings for currency
   const [organization, setOrganization] = useState(null)
@@ -111,6 +136,18 @@ export default function LeadsPage() {
     }
   }
 
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users')
+      if (res.ok) {
+        const data = await res.json()
+        setUsers(data.users || [])
+      }
+    } catch (e) {
+      console.error('Failed to fetch users', e)
+    }
+  }
+
   // Effect to fetch stages when editing a lead with a project
   useEffect(() => {
     if (editingLead?.project_id) {
@@ -119,6 +156,13 @@ export default function LeadsPage() {
       setStages([])
     }
   }, [editingLead])
+
+  // Fetch initial data
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+
 
   // Fetch stages if we are in a project context (for Table Dropdowns)
   useEffect(() => {
@@ -241,7 +285,8 @@ export default function LeadsPage() {
       status: formData.get('status'),
       stageId: formData.get('stageId') === 'none' ? null : formData.get('stageId'),
       dealValue: formData.get('dealValue'),
-      notes: formData.get('notes')
+      notes: formData.get('notes'),
+      assignedTo: formData.get('assignedTo') === 'unassigned' ? null : formData.get('assignedTo')
     }
 
     try {
@@ -276,6 +321,7 @@ export default function LeadsPage() {
   }
 
   const handleEdit = (lead) => {
+    if (!canEditLead(lead)) return
     setEditingLead(lead)
     setDialogOpen(true)
   }
@@ -337,6 +383,7 @@ export default function LeadsPage() {
   }
 
   const handleBulkDelete = async () => {
+    if (!canDelete) return
     if (selectedLeads.size === 0 || !confirm(`Are you sure you want to delete ${selectedLeads.size} leads?`)) return
 
     setBulkDeleting(true)
@@ -359,6 +406,44 @@ export default function LeadsPage() {
       toast.error("Some leads failed to delete")
     } finally {
       setBulkDeleting(false)
+    }
+  }
+
+  const [bulkAssigning, setBulkAssigning] = useState(false)
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+
+  const handleBulkAssign = async (assigneeId) => {
+    if (!canAssign) return
+    if (selectedLeads.size === 0) return
+
+    setBulkAssigning(true)
+    try {
+      const promises = Array.from(selectedLeads).map(id => {
+        const lead = leads.find(l => l.id === id)
+        return fetch(`/api/leads/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: lead.name,
+            assignedTo: assigneeId === 'unassigned' ? null : assigneeId
+          })
+        }).then(res => {
+          if (!res.ok) throw new Error(`Failed to assign lead ${id}`)
+          return id
+        })
+      })
+
+      await Promise.allSettled(promises)
+
+      // Refresh data
+      await fetchData()
+      setSelectedLeads(new Set())
+      setAssignDialogOpen(false)
+      toast.success("Selected leads assigned")
+    } catch (err) {
+      toast.error("Some leads failed to assign")
+    } finally {
+      setBulkAssigning(false)
     }
   }
 
@@ -408,6 +493,25 @@ export default function LeadsPage() {
     }).length
   }
 
+  // Prevent hydration errors by not rendering complex UI until mounted
+  if (!isMounted) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="flex justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+        <div className="h-64 bg-muted/10 rounded-lg animate-pulse" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen animate-in fade-in duration-500 bg-muted/5">
       {/* Header & Stats */}
@@ -431,9 +535,23 @@ export default function LeadsPage() {
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Sync
             </Button>
-            <Button onClick={() => setIsAddLeadOpen(true)} className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all">
-              <Plus className="w-4 h-4" /> Add Lead
-            </Button>
+            <PermissionTooltip
+              hasPermission={canCreate}
+              message="You need 'Create Leads' permission to add new leads."
+            >
+              <Button
+                onClick={() => {
+                  if (!canCreate) return
+                  setIsAddLeadOpen(true)
+                }}
+                disabled={!canCreate}
+                className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
+              >
+                {!canCreate && <Lock className="w-3.5 h-3.5" />}
+                <Plus className="w-4 h-4" />
+                Add Lead
+              </Button>
+            </PermissionTooltip>
           </div>
         </div>
 
@@ -492,15 +610,39 @@ export default function LeadsPage() {
             <span className="text-sm text-muted-foreground">Select all {leads.length} leads?</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleBulkDelete}
-              disabled={bulkDeleting}
-              className="h-8"
+            <PermissionTooltip
+              hasPermission={canAssign}
+              message="You need 'Assign Leads' permission to assign leads."
             >
-              {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (!canAssign) return
+                  setAssignDialogOpen(true)
+                }}
+                disabled={bulkAssigning || !canAssign}
+                className="h-8 flex items-center gap-2"
+              >
+                {!canAssign && <Lock className="w-3.5 h-3.5" />}
+                {bulkAssigning ? 'Assigning...' : 'Assign Selected'}
+              </Button>
+            </PermissionTooltip>
+            <PermissionTooltip
+              hasPermission={canDelete}
+              message="You need 'Delete Leads' permission to delete leads."
+            >
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting || !canDelete}
+                className="h-8 flex items-center gap-2"
+              >
+                {!canDelete && <Lock className="w-3.5 h-3.5" />}
+                {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
+              </Button>
+            </PermissionTooltip>
           </div>
         </div>
       )
@@ -531,6 +673,21 @@ export default function LeadsPage() {
               <Label>Email</Label>
               <Input name="email" type="email" defaultValue={editingLead?.email} placeholder="email@example.com" />
             </div>
+
+            {canAssign && (
+              <div className="space-y-2">
+                <Label>Assign To</Label>
+                <Select name="assignedTo" defaultValue={editingLead?.assigned_to || 'unassigned'}>
+                  <SelectTrigger><SelectValue placeholder="Select User" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {users.map(u => (
+                      <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Project Context</Label>
@@ -600,6 +757,37 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Bulk Assign Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Assign {selectedLeads.size} Leads</DialogTitle>
+            <DialogDescription>Select a user to assign the selected leads to.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Assign To</Label>
+              <Select onValueChange={(value) => handleBulkAssign(value)} disabled={bulkAssigning}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select User" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {users.map(u => (
+                    <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setAssignDialogOpen(false)} disabled={bulkAssigning}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* Scrollable Content */}
       <div className="p-6">
@@ -648,6 +836,7 @@ export default function LeadsPage() {
                     />
                   </TableHead>
                   <TableHead className="w-[280px]">Lead Details</TableHead>
+                  <TableHead>Assigned To</TableHead>
                   <TableHead>Contact Info</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Project</TableHead>
@@ -684,6 +873,28 @@ export default function LeadsPage() {
                             </div>
                           </div>
                         </div>
+                      </TableCell>
+
+                      {/* Assigned To */}
+                      <TableCell className="py-4">
+                        {lead.assigned_to ? (
+                          (() => {
+                            const assignee = users.find(u => u.id === lead.assigned_to)
+                            return (
+                              <div className="flex items-center gap-2" title={assignee?.full_name || 'Assigned User'}>
+                                <Avatar className="h-6 w-6 border border-border/50">
+                                  {/* Use a simple placeholder if we don't have avatar URL for assignee yet, or fetch it if included in lead data */}
+                                  <AvatarFallback className="bg-blue-100 text-blue-700 text-[10px]">
+                                    {assignee?.full_name ? assignee.full_name.substring(0, 2).toUpperCase() : 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm text-foreground">{assignee?.full_name || 'Unknown'}</span>
+                              </div>
+                            )
+                          })()
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                        )}
                       </TableCell>
 
                       {/* Contact */}
@@ -779,25 +990,41 @@ export default function LeadsPage() {
                           >
                             <User className="w-4 h-4" />
                           </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                            onClick={() => handleEdit(lead)}
+                          <PermissionTooltip
+                            hasPermission={canEditLead(lead)}
+                            message="You don't have permission to edit this lead."
                           >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                            onClick={() => {
-                              setLeadToDelete(lead)
-                              setDeleteDialogOpen(true)
-                            }}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 relative"
+                              onClick={() => handleEdit(lead)}
+                              disabled={!canEditLead(lead)}
+                            >
+                              {!canEditLead(lead) && <Lock className="w-3 h-3 absolute" />}
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          </PermissionTooltip>
+
+                          <PermissionTooltip
+                            hasPermission={canDelete}
+                            message="You need 'Delete Leads' permission."
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-red-600 hover:bg-red-50 relative"
+                              onClick={() => {
+                                if (!canDelete) return
+                                setLeadToDelete(lead)
+                                setDeleteDialogOpen(true)
+                              }}
+                              disabled={!canDelete}
+                            >
+                              {!canDelete && <Lock className="w-3 h-3 absolute" />}
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </PermissionTooltip>
                         </div>
                       </TableCell>
                     </TableRow>

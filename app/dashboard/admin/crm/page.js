@@ -5,6 +5,7 @@ import { Plus, RefreshCw } from 'lucide-react'
 import PipelineBoard from '@/components/crm/PipelineBoard'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
+import { PermissionGate } from '@/components/permissions/PermissionGate'
 import LeadSourceDialog from '@/components/crm/LeadSourceDialog'
 import {
     Select,
@@ -80,14 +81,16 @@ export default function CrmPipelinePage() {
                         <span className="hidden sm:inline">Sync</span>
                     </Button>
 
-                    <Button
-                        onClick={() => setIsDealInitOpen(true)}
-                        className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-                        size="sm"
-                    >
-                        <Plus className="w-4 h-4" />
-                        New Deal
-                    </Button>
+                    <PermissionGate feature="create_leads">
+                        <Button
+                            onClick={() => setIsDealInitOpen(true)}
+                            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
+                            size="sm"
+                        >
+                            <Plus className="w-4 h-4" />
+                            New Deal
+                        </Button>
+                    </PermissionGate>
                 </div>
             </div>
 

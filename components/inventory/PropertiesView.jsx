@@ -21,8 +21,12 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu'
+import { usePermission } from '@/contexts/PermissionContext'
 
 export function PropertiesView({ projectId = null }) {
+    const canManage = usePermission('manage_inventory')
+    const canEdit = usePermission('edit_inventory')
+
     const [properties, setProperties] = useState([])
     const [projects, setProjects] = useState([])
     const [loading, setLoading] = useState(true)
@@ -171,10 +175,12 @@ export function PropertiesView({ projectId = null }) {
                         />
                     </div>
 
-                    <Button onClick={() => setIsAddPropertyOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Property
-                    </Button>
+                    {canManage && (
+                        <Button onClick={() => setIsAddPropertyOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Property
+                        </Button>
+                    )}
                 </div>
 
                 {/* Filter Dropdowns */}
@@ -452,6 +458,8 @@ export function PropertiesView({ projectId = null }) {
                                 key={property.id}
                                 property={property}
                                 onActionComplete={fetchData}
+                                canManage={canManage}
+                                canEdit={canEdit}
                             />
                         ))}
                     </div>

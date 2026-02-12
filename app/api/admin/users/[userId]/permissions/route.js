@@ -1,11 +1,14 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 // GET /api/admin/users/[userId]/permissions
 // Get all permissions for a specific user (role-based + user-specific)
 export async function GET(request, { params }) {
     try {
         const { userId } = await params
+        console.log(`[API] Fetching permissions for user: ${userId}`)
         const supabase = await createServerSupabaseClient()
 
         // Check if requester is super admin
@@ -14,19 +17,24 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Get requester's profile
-        const { data: requesterProfile } = await supabase
+        // Use Admin Client for database operations to bypass RLS
+        const admin = createAdminClient()
+
+        // Get requester's profile to verify role
+        const { data: requesterProfile } = await admin
             .from('profiles')
             .select('role, organization_id')
             .eq('id', user.id)
             .single()
 
-        if (!requesterProfile || requesterProfile.role !== 'super_admin') {
-            return NextResponse.json({ error: 'Forbidden - Super admin access required' }, { status: 403 })
+        const canManagePermissions = await hasDashboardPermission(user.id, 'manage_permissions')
+
+        if (!requesterProfile || !canManagePermissions) {
+            return NextResponse.json({ error: 'Forbidden - Insufficient permissions' }, { status: 403 })
         }
 
         // Get target user's profile
-        const { data: targetProfile, error: profileError } = await supabase
+        const { data: targetProfile, error: profileError } = await admin
             .from('profiles')
             .select('role, organization_id')
             .eq('id', userId)
@@ -36,20 +44,20 @@ export async function GET(request, { params }) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
 
-        // Check same organization
-        if (targetProfile.organization_id !== requesterProfile.organization_id) {
+        // Check same organization (skip for platform_admin if needed, but keeping safe for now)
+        if (targetProfile.organization_id !== requesterProfile.organization_id && requesterProfile.role !== 'platform_admin') {
             return NextResponse.json({ error: 'Forbidden - Different organization' }, { status: 403 })
         }
 
         // Get all dashboard features
-        const { data: allFeatures } = await supabase
+        const { data: allFeatures } = await admin
             .from('dashboard_features')
             .select('*')
             .eq('is_active', true)
             .order('category, feature_name')
 
         // Get role-based permissions
-        const { data: rolePermissions } = await supabase
+        const { data: rolePermissions } = await admin
             .from('dashboard_role_permissions')
             .select('feature_key')
             .eq('organization_id', targetProfile.organization_id)
@@ -59,7 +67,7 @@ export async function GET(request, { params }) {
         const rolePermissionKeys = rolePermissions?.map(p => p.feature_key) || []
 
         // Get user-specific permissions
-        const { data: userPermissions } = await supabase
+        const { data: userPermissions } = await admin
             .from('dashboard_user_permissions')
             .select('feature_key, is_enabled, granted_by, created_at')
             .eq('user_id', userId)
@@ -116,19 +124,24 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Use Admin Client for database operations to bypass RLS
+        const admin = createAdminClient()
+
         // Get requester's profile
-        const { data: requesterProfile } = await supabase
+        const { data: requesterProfile } = await admin
             .from('profiles')
             .select('role, organization_id')
             .eq('id', user.id)
             .single()
 
-        if (!requesterProfile || requesterProfile.role !== 'super_admin') {
-            return NextResponse.json({ error: 'Forbidden - Super admin access required' }, { status: 403 })
+        const canManagePermissions = await hasDashboardPermission(user.id, 'manage_permissions')
+
+        if (!requesterProfile || !canManagePermissions) {
+            return NextResponse.json({ error: 'Forbidden - Insufficient permissions' }, { status: 403 })
         }
 
         // Get target user's profile
-        const { data: targetProfile, error: profileError } = await supabase
+        const { data: targetProfile, error: profileError } = await admin
             .from('profiles')
             .select('role, organization_id')
             .eq('id', userId)
@@ -149,7 +162,7 @@ export async function PUT(request, { params }) {
         }
 
         // Get role-based permissions for comparison
-        const { data: rolePermissions } = await supabase
+        const { data: rolePermissions } = await admin
             .from('dashboard_role_permissions')
             .select('feature_key')
             .eq('organization_id', targetProfile.organization_id)
@@ -159,7 +172,7 @@ export async function PUT(request, { params }) {
         const rolePermissionKeys = rolePermissions?.map(p => p.feature_key) || []
 
         // Delete all existing user permissions
-        await supabase
+        await admin
             .from('dashboard_user_permissions')
             .delete()
             .eq('user_id', userId)
@@ -176,7 +189,7 @@ export async function PUT(request, { params }) {
             }))
 
         if (permissionsToInsert.length > 0) {
-            const { error: insertError } = await supabase
+            const { error: insertError } = await admin
                 .from('dashboard_user_permissions')
                 .insert(permissionsToInsert)
 

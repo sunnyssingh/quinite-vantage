@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import CustomBreadcrumbs from '@/components/ui/CustomBreadcrumbs'
+import { usePermissions } from '@/contexts/PermissionContext'
 
 export default function AdminDashboardPage() {
     const [dashboardStats, setDashboardStats] = useState({
@@ -59,6 +60,8 @@ export default function AdminDashboardPage() {
         return val >= 0 ? 'up' : 'down'
     }
 
+    const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions()
+
     const stats = [
         {
             title: 'Total Leads',
@@ -66,6 +69,7 @@ export default function AdminDashboardPage() {
             change: loading ? '...' : `${formatTrend(dashboardStats.leads?.trend || 0)} from last 30 days`,
             trend: getTrendDirection(dashboardStats.leads?.trend || 0),
             icon: UserPlus,
+            permission: ['view_own_leads', 'view_team_leads', 'view_all_leads']
         },
         {
             title: 'Active Campaigns',
@@ -73,6 +77,7 @@ export default function AdminDashboardPage() {
             change: loading ? '...' : `${formatTrend(dashboardStats.activeCampaigns?.trend || 0)} from last 30 days`,
             trend: getTrendDirection(dashboardStats.activeCampaigns?.trend || 0),
             icon: Megaphone,
+            permission: 'view_campaigns'
         },
         {
             title: 'Total Projects',
@@ -80,6 +85,7 @@ export default function AdminDashboardPage() {
             change: loading ? '...' : `${formatTrend(dashboardStats.projects?.trend || 0)} from last 30 days`,
             trend: getTrendDirection(dashboardStats.projects?.trend || 0),
             icon: FolderKanban,
+            permission: 'view_projects'
         },
         {
             title: 'Total Users',
@@ -87,8 +93,15 @@ export default function AdminDashboardPage() {
             change: loading ? '...' : `${formatTrend(dashboardStats.users?.trend || 0)} from last 30 days`,
             trend: getTrendDirection(dashboardStats.users?.trend || 0),
             icon: Users,
+            permission: 'view_users'
         }
     ]
+
+    const filteredStats = stats.filter(stat => {
+        if (!stat.permission) return true
+        if (Array.isArray(stat.permission)) return hasAnyPermission(stat.permission)
+        return hasPermission(stat.permission)
+    })
 
     const quickActions = [
         {
@@ -96,26 +109,36 @@ export default function AdminDashboardPage() {
             description: 'View deals and update stages',
             href: '/dashboard/admin/crm',
             icon: KanbanSquare,
+            permission: ['view_own_leads', 'view_team_leads', 'view_all_leads', 'view_projects']
         },
         {
             title: 'Manage Inventory',
             description: 'Add properties or update listings',
             href: '/dashboard/admin/inventory',
             icon: Building,
+            permission: 'view_inventory'
         },
         {
             title: 'View Analytics',
             description: 'Track overall performance',
             href: '/dashboard/admin/analytics',
             icon: BarChart3,
+            permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics']
         },
         {
             title: 'Organization Settings',
             description: 'Manage users and profile',
             href: '/dashboard/admin/settings',
             icon: Settings,
+            permission: 'view_settings'
         }
     ]
+
+    const filteredQuickActions = quickActions.filter(action => {
+        if (!action.permission) return true
+        if (Array.isArray(action.permission)) return hasAnyPermission(action.permission)
+        return hasPermission(action.permission)
+    })
 
     const handleExport = () => {
         const headers = ['Metric,Value,Trend\n']
@@ -228,18 +251,20 @@ export default function AdminDashboardPage() {
                         <Download className="w-3.5 h-3.5" />
                         Export
                     </Button>
-                    <Link href="/dashboard/admin/inventory/new">
-                        <Button className="gap-2 text-xs">
-                            <Plus className="w-3.5 h-3.5" />
-                            New Property
-                        </Button>
-                    </Link>
+                    {hasPermission('view_inventory') && (
+                        <Link href="/dashboard/admin/inventory/new">
+                            <Button className="gap-2 text-xs">
+                                <Plus className="w-3.5 h-3.5" />
+                                New Property
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, index) => {
+                {filteredStats.map((stat, index) => {
                     const Icon = stat.icon
                     const TrendIcon = stat.trend === 'up' ? TrendingUp : TrendingDown
 
@@ -271,7 +296,7 @@ export default function AdminDashboardPage() {
                 <div className="flex-1 lg:flex-[2] flex flex-col gap-6">
                     <h2 className="text-lg font-semibold text-foreground">Quick Actions</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {quickActions.map((action, index) => {
+                        {filteredQuickActions.map((action, index) => {
                             const Icon = action.icon
                             return (
                                 <Link key={index} href={action.href} className="block h-full">

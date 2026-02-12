@@ -17,6 +17,15 @@ export async function GET(request) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        const { hasDashboardPermission } = await import('@/lib/dashboardPermissions')
+        const canView = await hasDashboardPermission(user.id, 'view_inventory')
+        if (!canView) {
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to view inventory'
+            }, { status: 200 })
+        }
+
         const adminClient = createAdminClient()
         const { data: profile } = await adminClient
             .from('profiles')
@@ -68,6 +77,15 @@ export async function POST(request) {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
 
         if (authError || !user) return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+
+        const { hasDashboardPermission } = await import('@/lib/dashboardPermissions')
+        const canManage = await hasDashboardPermission(user.id, 'manage_inventory')
+        if (!canManage) {
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to manage inventory'
+            }, { status: 200 })
+        }
 
         const adminClient = createAdminClient()
         const { data: profile } = await adminClient

@@ -25,6 +25,7 @@ import {
     DialogTitle
 } from '@/components/ui/dialog'
 import LeadForm from './LeadForm'
+import { usePermission } from '@/contexts/PermissionContext'
 
 const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     const [pipelines, setPipelines] = useState([])
@@ -38,6 +39,8 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [targetStageId, setTargetStageId] = useState(null)
     const [submitting, setSubmitting] = useState(false)
+    const canManageDeals = usePermission('manage_deals')
+    const [users, setUsers] = useState([])
 
     const supabase = createClient()
     const router = useRouter()
@@ -77,6 +80,11 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
             const projRes = await fetch('/api/projects')
             const projData = await projRes.json()
             setProjects(projData.projects || [])
+
+            // 4. Fetch Users (for assignment)
+            const userRes = await fetch('/api/admin/users')
+            const userData = await userRes.json()
+            setUsers(userData.users || [])
 
         } catch (error) {
             console.error('Failed to fetch CRM data:', error)
@@ -137,6 +145,7 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     }
 
     const handleDragStart = (event) => {
+        if (!canManageDeals) return
         const { active } = event
         setActiveDragItem(active.data.current)
     }
@@ -293,7 +302,11 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
                                 key={stage.id}
                                 stage={stage}
                                 leads={stageLeads.map(l => ({ ...l, onClick: handleLeadClick }))}
-                                onAddLead={handleAddLead}
+                                onAddLead={(stageId) => {
+                                    if (!canManageDeals) return
+                                    handleAddLead(stageId)
+                                }}
+                                canDrop={canManageDeals}
                             />
                         )
                     })}
@@ -315,6 +328,7 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
                         {targetStageId && (
                             <LeadForm
                                 projects={projects}
+                                users={users}
                                 stages={activePipeline?.stages || []} // Pass stages
                                 initialStageId={targetStageId}
                                 // Initial status is fallback

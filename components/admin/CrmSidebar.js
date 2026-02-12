@@ -14,10 +14,12 @@ import {
     ChevronRight,
     Phone,
     TrendingUp,
-    Clock
+    Clock,
+    Lock
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { toast } from 'react-hot-toast'
 import {
     Tooltip,
     TooltipContent,
@@ -64,7 +66,7 @@ export default function CrmSidebar() {
             title: 'Insights & Admin',
             items: [
                 { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: BarChart3, permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics'] },
-                { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText, permission: 'view_audit_logs' },
+                { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText, permission: 'view_settings' },
                 { label: 'Settings', href: '/dashboard/admin/crm/settings', icon: Settings, permission: 'view_settings' },
             ]
         }

@@ -1,8 +1,10 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Plus, RefreshCw, ArrowLeft, Megaphone } from 'lucide-react'
+import { Plus, RefreshCw, ArrowLeft, Megaphone, Lock } from 'lucide-react'
 import PipelineBoard from '@/components/crm/PipelineBoard'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import LeadSourceDialog from '@/components/crm/LeadSourceDialog'
@@ -14,6 +16,7 @@ export default function CampaignPipelinePage() {
     const campaignId = params.id
 
     // State
+    const canCreate = usePermission('create_leads')
     const [campaign, setCampaign] = useState(null)
     const [project, setProject] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -126,24 +129,37 @@ export default function CampaignPipelinePage() {
                         Sync
                     </Button>
 
-                    <Button
-                        onClick={() => setIsDealInitOpen(true)}
-                        className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
-                        size="sm"
+
+
+                    <PermissionTooltip
+                        hasPermission={canCreate}
+                        message="You need 'Create Leads' permission to create new deals."
                     >
-                        <Plus className="w-4 h-4" />
-                        New Deal
-                    </Button>
+                        <Button
+                            onClick={() => {
+                                if (!canCreate) return
+                                setIsDealInitOpen(true)
+                            }}
+                            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
+                            size="sm"
+                            disabled={!canCreate}
+                        >
+                            {!canCreate ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                            New Deal
+                        </Button>
+                    </PermissionTooltip>
                 </div>
             </div>
 
             {/* Board - Filtering by the Campaign's Project ID */}
             {/* This ensures we see leads relevant to the campaign (since the campaign targets the project) */}
-            {campaign.project_id && (
-                <div className="p-6">
-                    <PipelineBoard ref={pipelineBoardRef} projectId={campaign.project_id} />
-                </div>
-            )}
+            {
+                campaign.project_id && (
+                    <div className="p-6">
+                        <PipelineBoard ref={pipelineBoardRef} projectId={campaign.project_id} />
+                    </div>
+                )
+            }
 
             <LeadSourceDialog
                 open={isDealInitOpen}
@@ -151,6 +167,6 @@ export default function CampaignPipelinePage() {
                 projectId={campaign.project_id}
                 projects={project ? [project] : []}
             />
-        </div>
+        </div >
     )
 }

@@ -12,13 +12,15 @@ import {
   DialogHeader,
   DialogDescription
 } from '@/components/ui/dialog'
-import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X } from 'lucide-react'
+import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Lock } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectForm from '@/components/projects/ProjectForm'
 import ProjectList from '@/components/projects/ProjectList'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
 export default function ProjectsPage() {
   const router = useRouter()
@@ -39,6 +41,13 @@ export default function ProjectsPage() {
 
   // Campaign State
   const [addOpen, setAddOpen] = useState(false)
+
+  // Permissions
+  const canView = usePermission('view_projects')
+  const canCreate = usePermission('create_projects')
+  const canEdit = usePermission('edit_projects')
+  const canDelete = usePermission('delete_projects')
+
   const [campName, setCampName] = useState('')
   const [campProjectId, setCampProjectId] = useState(null)
   const [campStartDate, setCampStartDate] = useState(new Date().toISOString().split('T')[0])
@@ -291,15 +300,22 @@ export default function ProjectsPage() {
             </Button>
           </div>
 
-          <Button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="gap-2 h-9 text-sm font-medium shadow-sm transition-all"
-            size="sm"
+          <PermissionTooltip
+            hasPermission={canCreate}
+            message="You need 'Create Projects' permission to add new projects. Contact your administrator."
           >
-            {showCreateForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            {showCreateForm ? 'Cancel' : <span className="hidden sm:inline">New Project</span>}
-            {!showCreateForm && <span className="sm:hidden">New</span>}
-          </Button>
+            <Button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              disabled={!canCreate}
+              className="gap-2 h-9 text-sm font-medium shadow-sm transition-all"
+              size="sm"
+            >
+              {!canCreate && <Lock className="w-3.5 h-3.5" />}
+              {showCreateForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showCreateForm ? 'Cancel' : <span className="hidden sm:inline">New Project</span>}
+              {!showCreateForm && <span className="sm:hidden">New</span>}
+            </Button>
+          </PermissionTooltip>
         </div>
       </div>
 

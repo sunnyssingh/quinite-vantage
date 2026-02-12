@@ -1,3 +1,5 @@
+'use client'
+
 import {
     Table,
     TableBody,
@@ -7,9 +9,14 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Eye, Megaphone, Building2, MapPin } from "lucide-react"
+import { Edit, Trash2, Eye, Megaphone, Building2, MapPin, Lock } from "lucide-react"
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
 export default function ProjectList({ projects, onEdit, onDelete, onView, onStartCampaign, deletingId }) {
+    const canEdit = usePermission('edit_projects')
+    const canDelete = usePermission('delete_projects')
+
     if (!projects || projects.length === 0) {
         return (
             <div className="text-center py-10 border border-dashed border-border rounded-lg bg-muted/10">
@@ -100,25 +107,43 @@ export default function ProjectList({ projects, onEdit, onDelete, onView, onStar
                                         >
                                             <Eye className="w-3.5 h-3.5" />
                                         </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onEdit(project)}
-                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                            title="Edit"
+                                        <PermissionTooltip
+                                            hasPermission={canEdit}
+                                            message="You need 'Edit Projects' permission to edit projects."
                                         >
-                                            <Edit className="w-3.5 h-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onDelete(project)}
-                                            disabled={deletingId === project.id}
-                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-50/50"
-                                            title="Delete"
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (!canEdit) return
+                                                    onEdit(project)
+                                                }}
+                                                disabled={!canEdit}
+                                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                                title="Edit"
+                                            >
+                                                <Edit className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </PermissionTooltip>
+
+                                        <PermissionTooltip
+                                            hasPermission={canDelete}
+                                            message="You need 'Delete Projects' permission to delete projects."
                                         >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (!canDelete) return
+                                                    onDelete?.(project)
+                                                }}
+                                                disabled={deletingId === project.id || !onDelete || !canDelete}
+                                                className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-50/50"
+                                                title="Delete"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                        </PermissionTooltip>
                                     </div>
                                 </TableCell>
                             </TableRow>

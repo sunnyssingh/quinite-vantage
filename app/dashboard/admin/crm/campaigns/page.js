@@ -31,8 +31,11 @@ import {
   PauseCircle,
   XCircle,
   Phone,
-  KanbanSquare
+  KanbanSquare,
+  Lock
 } from 'lucide-react'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
 const StatusBadge = ({ status }) => {
   const statusConfig = {
@@ -73,6 +76,11 @@ import { toast } from 'react-hot-toast'
 export default function CampaignsPage() {
   const supabase = createClient()
   const router = useRouter()
+  const canView = usePermission('view_campaigns')
+  const canCreate = usePermission('create_campaigns')
+  const canEdit = usePermission('edit_campaigns')
+  const canDelete = usePermission('delete_campaigns')
+  const canRun = usePermission('run_campaigns')
 
   const [campaigns, setCampaigns] = useState([])
   const [projects, setProjects] = useState([])
@@ -150,6 +158,11 @@ export default function CampaignsPage() {
       return
     }
 
+    if (!canCreate) {
+      toast.error("You do not have permission to create campaigns")
+      return
+    }
+
     // Validate end date is not before start date
     if (new Date(endDate) < new Date(startDate)) {
       toast.error("End date cannot be before start date")
@@ -205,6 +218,11 @@ export default function CampaignsPage() {
   async function handleDelete(campaign) {
     if (!confirm('Delete this campaign? This cannot be undone.')) return
 
+    if (!canDelete) {
+      toast.error("You do not have permission to delete campaigns")
+      return
+    }
+
     setDeleting(true)
     setError(null)
 
@@ -240,6 +258,11 @@ export default function CampaignsPage() {
 
   async function handleUpdate() {
     if (!editingCampaign) return
+
+    if (!canEdit) {
+      toast.error("You do not have permission to edit campaigns")
+      return
+    }
 
     setError(null)
     setSuccess(null)
@@ -296,6 +319,11 @@ export default function CampaignsPage() {
   }
 
   async function handleStartCampaign(campaign) {
+    if (!canRun) {
+      toast.error("You do not have permission to run campaigns")
+      return
+    }
+
     setStarting(true)
     setStartingCampaignId(campaign.id)
     setError(null)
@@ -381,21 +409,27 @@ export default function CampaignsPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button
-            onClick={() => {
-              // Pre-fill project ID if we are filtered
-              const params = new URLSearchParams(window.location.search)
-              const pid = params.get('project_id')
-              if (pid) setProjectId(pid)
-
-              setShowCreateForm(!showCreateForm)
-            }}
-            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
-            size="sm"
+          <PermissionTooltip
+            hasPermission={canCreate}
+            message="You need 'Create Campaigns' permission to create new campaigns. Contact your administrator."
           >
-            <Plus className="w-4 h-4" />
-            New Campaign
-          </Button>
+            <Button
+              onClick={() => {
+                // Pre-fill project ID if we are filtered
+                const params = new URLSearchParams(window.location.search)
+                const pid = params.get('project_id')
+                if (pid) setProjectId(pid)
+
+                setShowCreateForm(!showCreateForm)
+              }}
+              disabled={!canCreate}
+              className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
+              size="sm"
+            >
+              {!canCreate ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-4 h-4" />}
+              New Campaign
+            </Button>
+          </PermissionTooltip>
         </div>
       </div>
 
@@ -572,12 +606,21 @@ export default function CampaignsPage() {
               </div>
               <h3 className="text-lg font-semibold text-foreground mb-2">No campaigns yet</h3>
               <p className="text-muted-foreground mb-4">Create your first campaign to start scheduling calls</p>
-              <Button
-                onClick={() => setShowCreateForm(true)}
+              <PermissionTooltip
+                hasPermission={canCreate}
+                message="You need 'Create Campaigns' permission to create new campaigns."
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Campaign
-              </Button>
+                <Button
+                  onClick={() => {
+                    if (!canCreate) return
+                    setShowCreateForm(true)
+                  }}
+                  disabled={!canCreate}
+                >
+                  {!canCreate ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                  Create Campaign
+                </Button>
+              </PermissionTooltip>
             </CardContent>
           </Card>
         ) : (
@@ -595,25 +638,42 @@ export default function CampaignsPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditModal(campaign)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                      <PermissionTooltip
+                        hasPermission={canEdit}
+                        message="You need 'Edit Campaigns' permission to edit campaigns."
                       >
-                        <Edit className="w-4 h-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(campaign)}
-                        disabled={deleting}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!canEdit) return
+                            openEditModal(campaign)
+                          }}
+                          disabled={!canEdit}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        >
+                          <Edit className="w-4 h-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                      </PermissionTooltip>
+                      <PermissionTooltip
+                        hasPermission={canDelete}
+                        message="You need 'Delete Campaigns' permission to delete campaigns."
                       >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (!canDelete) return
+                            handleDelete(campaign)
+                          }}
+                          disabled={deleting || !canDelete}
+                          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </PermissionTooltip>
                     </div>
                   </div>
                 </div>
@@ -678,30 +738,43 @@ export default function CampaignsPage() {
                       </div>
                     )}
 
-                    <Button
-                      onClick={() => handleStartCampaign(campaign)}
-                      disabled={starting || campaign.status === 'completed'}
-                      className="w-full text-xs h-8"
-                      size="sm"
-                      variant={campaign.status === 'completed' ? "secondary" : "default"}
+                    <PermissionTooltip
+                      hasPermission={canRun}
+                      message="You need 'Run Campaigns' permission to start campaigns."
                     >
-                      {starting && startingCampaignId === campaign.id ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                          Calling...
-                        </>
-                      ) : campaign.status === 'completed' ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
-                          Completed
-                        </>
-                      ) : (
-                        <>
-                          <PlayCircle className="w-3.5 h-3.5 mr-2" />
-                          Start Campaign
-                        </>
-                      )}
-                    </Button>
+                      <Button
+                        onClick={() => {
+                          if (!canRun) return
+                          handleStartCampaign(campaign)
+                        }}
+                        disabled={starting || campaign.status === 'completed' || !canRun}
+                        className="w-full text-xs h-8 disabled:opacity-50"
+                        size="sm"
+                        variant={campaign.status === 'completed' ? "secondary" : "default"}
+                      >
+                        {starting && startingCampaignId === campaign.id ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                            Calling...
+                          </>
+                        ) : campaign.status === 'completed' ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
+                            Completed
+                          </>
+                        ) : !canRun ? (
+                          <>
+                            <Lock className="w-3.5 h-3.5 mr-2" />
+                            Start Campaign
+                          </>
+                        ) : (
+                          <>
+                            <PlayCircle className="w-3.5 h-3.5 mr-2" />
+                            Start Campaign
+                          </>
+                        )}
+                      </Button>
+                    </PermissionTooltip>
 
                     <Button
                       variant="outline"

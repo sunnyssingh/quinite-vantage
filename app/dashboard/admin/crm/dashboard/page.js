@@ -108,12 +108,7 @@ export default function CRMDashboardPage() {
         },
     ]
 
-    const recentActivities = loading ? [] : stats?.recentActivities || [
-        { id: 1, type: 'call', title: 'Call with John Doe', time: '10 minutes ago', status: 'completed' },
-        { id: 2, type: 'email', title: 'Follow-up email sent to Jane Smith', time: '1 hour ago', status: 'sent' },
-        { id: 3, type: 'meeting', title: 'Demo scheduled with Acme Corp', time: '2 hours ago', status: 'scheduled' },
-        { id: 4, type: 'deal', title: 'Deal moved to negotiation stage', time: '3 hours ago', status: 'updated' },
-    ]
+    const recentActivities = loading ? [] : stats?.recentActivities || []
 
     const quickActions = [
         { label: 'Add Lead', href: '/dashboard/admin/crm/leads', icon: Plus, color: 'bg-blue-600 hover:bg-blue-700', permission: 'create_leads' },

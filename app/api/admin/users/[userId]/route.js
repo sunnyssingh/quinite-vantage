@@ -24,23 +24,39 @@ export async function GET(request, { params }) {
             throw new NotFoundError('User')
         }
 
-        return NextResponse.json({ user })
+        return corsJSON({ user })
 
     } catch (error) {
         const { status, body } = handleApiError(error)
-        return NextResponse.json(body, { status })
+        return corsJSON(body, { status })
     }
 }
 
 export async function PUT(request, { params }) {
     try {
-        const auth = await requireRole(request, ['super_admin'])
-        if (auth instanceof NextResponse) return auth
+        const supabase = await createServerSupabaseClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        const { profile } = auth
+        if (authError || !user) {
+            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check permission
+        const canManage = await hasDashboardPermission(user.id, 'manage_users')
+        if (!canManage) {
+            return corsJSON({ error: 'Forbidden - Missing "manage_users" permission' }, { status: 403 })
+        }
+
         const { userId } = await params
         const body = await request.json()
         const admin = createAdminClient()
+
+        // Get user's organization first
+        const { data: profile } = await admin.from('profiles').select('organization_id, id, full_name').eq('id', user.id).single()
+
+        if (!profile?.organization_id) {
+            return corsJSON({ error: 'Organization not found' }, { status: 404 })
+        }
 
         // Verify user belongs to same organization
         const { data: targetUser } = await admin
@@ -85,22 +101,38 @@ export async function PUT(request, { params }) {
             }
         })
 
-        return NextResponse.json({ user: updatedUser })
+        return corsJSON({ user: updatedUser })
 
     } catch (error) {
         const { status, body } = handleApiError(error)
-        return NextResponse.json(body, { status })
+        return corsJSON(body, { status })
     }
 }
 
 export async function DELETE(request, { params }) {
     try {
-        const auth = await requireRole(request, ['super_admin'])
-        if (auth instanceof NextResponse) return auth
+        const supabase = await createServerSupabaseClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        const { profile } = auth
+        if (authError || !user) {
+            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check permission
+        const canManage = await hasDashboardPermission(user.id, 'manage_users')
+        if (!canManage) {
+            return corsJSON({ error: 'Forbidden - Missing "manage_users" permission' }, { status: 403 })
+        }
+
         const { userId } = await params
         const admin = createAdminClient()
+
+        // Get user's organization first
+        const { data: profile } = await admin.from('profiles').select('organization_id, id, full_name').eq('id', user.id).single()
+
+        if (!profile?.organization_id) {
+            return corsJSON({ error: 'Organization not found' }, { status: 404 })
+        }
 
         // Verify user belongs to same organization
         const { data: targetUser } = await admin
@@ -131,10 +163,10 @@ export async function DELETE(request, { params }) {
             metadata: { deleted_user_id: userId }
         })
 
-        return NextResponse.json({ success: true })
+        return corsJSON({ success: true })
 
     } catch (error) {
         const { status, body } = handleApiError(error)
-        return NextResponse.json(body, { status })
+        return corsJSON(body, { status })
     }
 }

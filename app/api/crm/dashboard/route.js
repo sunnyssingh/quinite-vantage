@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 export async function GET(request) {
     try {
@@ -64,50 +65,58 @@ export async function GET(request) {
             { data: allTasks }
         ] = await Promise.all([
             // 1. Total Leads Count (filtered by date)
-            adminClient
+            leadsFilter(adminClient
                 .from('leads')
                 .select('*', { count: 'exact', head: true })
                 .eq('organization_id', organizationId)
                 .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString()),
+                .lte('created_at', endDate.toISOString())),
 
             // 2. Fetch all leads (id, stage_id) for aggregation (filtered by date)
-            adminClient
+            leadsFilter(adminClient
                 .from('leads')
                 .select('id, stage_id')
                 .eq('organization_id', organizationId)
                 .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString()),
+                .lte('created_at', endDate.toISOString())),
 
             // 3. Fetch all deals (lead_id, amount, status) for revenue calc (filtered by date)
-            adminClient
+            // Note: Deals filtering is tricky without join. For now, we rely on filtering leads and mapping.
+            // But we fetch 'deals' directly here.
+            // If user can only view OWN leads, they should only see deals for those leads.
+            // We can't easily filter deals by lead owner here without a join or two-step fetch.
+            // Compromise: If restricted view, we might over-fetch deals but filtering happened on leads count.
+            // BETTER: Don't show revenue if no analytics permission.
+            canViewAnalytics ? adminClient
                 .from('deals')
                 .select('lead_id, amount, status, created_at')
                 .eq('organization_id', organizationId)
                 .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString()),
+                .lte('created_at', endDate.toISOString())
+                : Promise.resolve({ data: [] }),
 
             // 4. Fetch Pipeline Stages (Scoped to Default Pipeline)
-            pipelineId ? adminClient
+            (pipelineId && (canViewAllLeads || canViewOwnLeads)) ? adminClient
                 .from('pipeline_stages')
                 .select('id, name, color, order_index')
                 .eq('pipeline_id', pipelineId)
                 .order('order_index', { ascending: true })
                 : Promise.resolve({ data: [] }),
 
-            // 5. Fetch Recent Activities
-            adminClient
+            // 5. Fetch Recent Activities (Audit Logs) - RESTRICTED TO SETTINGS/ADMIN
+            canViewSettings ? adminClient
                 .from('audit_logs')
                 .select('id, action, entity_type, created_at, user_name')
                 .eq('organization_id', organizationId)
                 .order('created_at', { ascending: false })
-                .limit(5),
+                .limit(5)
+                : Promise.resolve({ data: [] }),
 
             // 6. Fetch All Tasks for statistics
-            adminClient
+            tasksFilter(adminClient
                 .from('lead_tasks')
                 .select('id, status, due_date')
-                .eq('organization_id', organizationId)
+                .eq('organization_id', organizationId))
         ])
 
         // Aggregation Logic

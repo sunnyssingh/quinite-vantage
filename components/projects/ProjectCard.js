@@ -1,3 +1,5 @@
+'use client'
+
 import {
     Card,
     CardContent,
@@ -16,8 +18,11 @@ import {
     Eye,
     Store,
     LandPlot,
-    Briefcase
+    Briefcase,
+    Lock
 } from 'lucide-react'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
 // Helper Components
 const PropertyCategoryIcon = ({ category }) => {
@@ -38,6 +43,9 @@ const TransactionBadge = ({ transaction }) => {
 }
 
 export default function ProjectCard({ project, onEdit, onDelete, onView, onStartCampaign, deleting }) {
+    const canEdit = usePermission('edit_projects')
+    const canDelete = usePermission('delete_projects')
+
     const re = project.metadata?.real_estate || project.real_estate || {}
 
     // Safe accessors
@@ -193,26 +201,43 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                 </div>
 
                 <div className="flex gap-2 pt-2 border-t border-border/50">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex-1 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
-                        onClick={() => onEdit(project)}
-                        disabled={deleting}
+                    <PermissionTooltip
+                        hasPermission={canEdit}
+                        message="You need 'Edit Projects' permission to edit projects."
                     >
-                        <Edit className="w-3.5 h-3.5 mr-1.5" />
-                        Edit
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex-1 h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50/50"
-                        onClick={() => onDelete(project)}
-                        disabled={deleting}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 h-7 text-xs text-muted-foreground hover:text-foreground hover:bg-muted"
+                            onClick={() => {
+                                if (!canEdit) return
+                                onEdit(project)
+                            }}
+                            disabled={deleting || !canEdit}
+                        >
+                            <Edit className="w-3.5 h-3.5 mr-1.5" />
+                            Edit
+                        </Button>
+                    </PermissionTooltip>
+
+                    <PermissionTooltip
+                        hasPermission={canDelete}
+                        message="You need 'Delete Projects' permission to delete projects."
                     >
-                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                        Delete
-                    </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50/50"
+                            onClick={() => {
+                                if (!canDelete) return
+                                onDelete?.(project)
+                            }}
+                            disabled={deleting || !onDelete || !canDelete}
+                        >
+                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                            Delete
+                        </Button>
+                    </PermissionTooltip>
                 </div>
             </CardContent>
         </Card>

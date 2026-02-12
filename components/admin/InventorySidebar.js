@@ -10,16 +10,28 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { usePermissions } from '@/contexts/PermissionContext'
 
 export default function InventorySidebar() {
     const pathname = usePathname()
     const [isCollapsed, setIsCollapsed] = useState(false)
 
     const items = [
-        { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard },
-        { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building },
-        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3 },
+        { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard, permission: 'view_inventory' },
+        { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building, permission: 'view_inventory' },
+        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3, permission: 'view_inventory_analytics' },
     ]
+
+    const { hasPermission, loading } = usePermissions()
+
+    if (loading) return null
+
+    const filteredItems = items.filter(item => {
+        if (!item.permission) return true
+        return hasPermission(item.permission)
+    })
+
+    if (filteredItems.length === 0) return null
 
     return (
         <TooltipProvider delayDuration={0}>
@@ -38,7 +50,7 @@ export default function InventorySidebar() {
                     {isCollapsed && <div className="h-px bg-gray-100 my-4 mx-4" />}
 
                     <nav className="space-y-1 px-2">
-                        {items.map((item) => {
+                        {filteredItems.map((item) => {
                             const isActive = pathname === item.href
                             const Icon = item.icon
 

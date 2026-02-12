@@ -4,14 +4,14 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MapPin, Bed, Bath, Layout, EyeOff, Eye } from 'lucide-react'
+import { MapPin, Bed, Bath, Layout, EyeOff, Eye, Lock } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 import EditPropertyModal from './EditPropertyModal'
 import StatusChangeModal from './StatusChangeModal'
 import { Edit, RefreshCcw, Maximize } from 'lucide-react'
 
-export function PropertyCard({ property: initialProperty, onActionComplete }) {
+export function PropertyCard({ property: initialProperty, onActionComplete, canManage = false, canEdit = false }) {
     const [property, setProperty] = useState(initialProperty)
     // ...
 
@@ -163,7 +163,7 @@ export function PropertyCard({ property: initialProperty, onActionComplete }) {
                         size="sm"
                         className={`flex-1 h-8 text-xs ${property.show_in_crm ? 'hover:bg-blue-50 text-slate-600' : ''}`}
                         onClick={toggleCrmVisibility}
-                        disabled={toggling}
+                        disabled={toggling || (!canManage && !canEdit)}
                     >
                         {property.show_in_crm ? (
                             <>
@@ -184,8 +184,9 @@ export function PropertyCard({ property: initialProperty, onActionComplete }) {
                             className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200"
                             onClick={() => setIsEditOpen(true)}
                             title="Edit Details"
+                            disabled={!canEdit && !canManage}
                         >
-                            <Edit className="w-3.5 h-3.5" />
+                            {(!canEdit && !canManage) ? <Lock className="w-3.5 h-3.5" /> : <Edit className="w-3.5 h-3.5" />}
                         </Button>
                         <Button
                             variant="outline"
@@ -193,8 +194,9 @@ export function PropertyCard({ property: initialProperty, onActionComplete }) {
                             className="h-8 w-8 hover:bg-green-50 hover:text-green-600 hover:border-green-200"
                             onClick={() => setIsStatusOpen(true)}
                             title="Change Status"
+                            disabled={!canEdit && !canManage}
                         >
-                            <RefreshCcw className="w-3.5 h-3.5" />
+                            {(!canEdit && !canManage) ? <Lock className="w-3.5 h-3.5" /> : <RefreshCcw className="w-3.5 h-3.5" />}
                         </Button>
                     </div>
                 </div>

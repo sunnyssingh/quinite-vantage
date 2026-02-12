@@ -1,16 +1,32 @@
-import { NextResponse } from 'next/server'
-import { requireRole } from '@/lib/middleware/requireRole'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { corsJSON } from '@/lib/cors'
 
 // GET - List all users in organization
 export async function GET(request) {
     try {
-        // Only super_admin can access
-        const auth = await requireRole(request, ['super_admin'])
-        if (auth instanceof NextResponse) return auth
+        const supabase = await createServerSupabaseClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-        const { profile } = auth
+        if (authError || !user) {
+            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check permission
+        const canView = await hasDashboardPermission(user.id, 'view_users')
+        if (!canView) {
+            return corsJSON({ error: 'Forbidden - Missing "view_users" permission' }, { status: 403 })
+        }
+
         const admin = createAdminClient()
+
+        // Get user's organization first
+        const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', user.id).single()
+
+        if (!profile?.organization_id) {
+            return corsJSON({ error: 'Organization not found' }, { status: 404 })
+        }
 
         // Get all users in the organization
         const { data: users, error } = await admin
@@ -27,14 +43,11 @@ export async function GET(request) {
             )
         }
 
-        return NextResponse.json({ users })
+        return corsJSON({ users })
 
     } catch (error) {
         console.error('[GET /api/admin/users] Error:', error)
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        )
+        return corsJSON({ error: 'Internal server error' }, { status: 500 })
     }
 }
 

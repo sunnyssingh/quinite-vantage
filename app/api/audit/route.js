@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,12 @@ export async function GET(request) {
     // Regular users MUST have an organization_id
     if (!profile?.organization_id && !isPlatformAdmin) {
       return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
+    }
+
+    // Check permission
+    const canView = await hasDashboardPermission(user.id, 'view_settings')
+    if (!canView) {
+      return NextResponse.json({ error: 'Forbidden - Missing \"view_settings\" permission' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)

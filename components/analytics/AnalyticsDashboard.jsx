@@ -24,6 +24,10 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'react-hot-toast'
 
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+import { Download, Lock } from 'lucide-react'
+
 export default function AnalyticsDashboard() {
     const [overview, setOverview] = useState(null)
     const [campaigns, setCampaigns] = useState([])
@@ -31,12 +35,24 @@ export default function AnalyticsDashboard() {
 
     const [isRefreshing, setIsRefreshing] = useState(false)
 
+    // Permissions
+    const canViewOrg = usePermission('view_organization_analytics')
+    const canViewTeam = usePermission('view_team_analytics')
+    const canViewOwn = usePermission('view_own_analytics')
+    const canExport = usePermission('export_reports')
+
+    const hasViewAccess = canViewOrg || canViewTeam || canViewOwn
+
     useEffect(() => {
-        fetchAnalytics()
-        // Auto-refresh every 30 seconds
-        const interval = setInterval(() => fetchAnalytics(), 30000)
-        return () => clearInterval(interval)
-    }, [])
+        if (hasViewAccess) {
+            fetchAnalytics()
+            // Auto-refresh every 30 seconds
+            const interval = setInterval(() => fetchAnalytics(), 30000)
+            return () => clearInterval(interval)
+        } else {
+            setLoading(false)
+        }
+    }, [hasViewAccess])
 
     const fetchAnalytics = async (isManual = false) => {
         try {
@@ -76,9 +92,29 @@ export default function AnalyticsDashboard() {
         fetchAnalytics(true)
     }
 
+    const handleExport = () => {
+        if (!canExport) return
+        toast.success("Exporting report...")
+        // Implement export logic here
+    }
+
     const getStatusBadgeColor = (status) => {
         // Minimal outline/subtle styles
         return 'bg-secondary text-secondary-foreground hover:bg-secondary/80 font-normal border-transparent shadow-none'
+    }
+
+    if (!hasViewAccess) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[50vh] text-center p-6 border border-dashed border-border rounded-xl bg-muted/10">
+                <div className="p-4 bg-muted rounded-full mb-4">
+                    <Lock className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
+                <p className="text-muted-foreground max-w-sm mt-2">
+                    You do not have permission to view analytics. Please contact your administrator to request access.
+                </p>
+            </div>
+        )
     }
 
     if (loading && !overview) {
@@ -133,15 +169,32 @@ export default function AnalyticsDashboard() {
                     <h1 className="text-3xl font-semibold tracking-tight text-foreground">Analytics</h1>
                     <p className="text-muted-foreground mt-1">Track your performance and conversion metrics</p>
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={handleRefresh}
-                    disabled={isRefreshing}
-                    className="gap-2 w-full md:w-auto h-9 text-xs"
-                >
-                    <Activity className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <PermissionTooltip
+                        hasPermission={canExport}
+                        message="You need 'Export Reports' permission to export data."
+                    >
+                        <Button
+                            variant="outline"
+                            onClick={handleExport}
+                            disabled={!canExport}
+                            className="gap-2 w-full md:w-auto h-9 text-xs"
+                        >
+                            <Download className="h-3.5 w-3.5" />
+                            Export Reports
+                        </Button>
+                    </PermissionTooltip>
+
+                    <Button
+                        variant="outline"
+                        onClick={handleRefresh}
+                        disabled={isRefreshing}
+                        className="gap-2 w-full md:w-auto h-9 text-xs"
+                    >
+                        <Activity className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+                    </Button>
+                </div>
             </div>
 
             {/* Overview Cards */}

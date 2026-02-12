@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/permissions'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 function handleCORS(response) {
     response.headers.set('Access-Control-Allow-Origin', '*')
@@ -15,6 +16,14 @@ export async function GET(request, { params }) {
         const supabase = await createServerSupabaseClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+
+        const canView = await hasDashboardPermission(user.id, 'view_campaigns')
+        if (!canView) {
+            return handleCORS(NextResponse.json({
+                success: false,
+                message: 'You don\'t have permission to view campaigns'
+            }, { status: 200 }))
+        }
 
         const admin = createAdminClient()
         const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', user.id).single()
@@ -48,6 +57,15 @@ export async function PUT(request, { params }) {
         const body = await request.json()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+
+        // Check permission
+        const canEdit = await hasDashboardPermission(user.id, 'edit_campaigns')
+        if (!canEdit) {
+            return handleCORS(NextResponse.json({
+                success: false,
+                message: 'You don\'t have permission to edit campaigns'
+            }, { status: 200 }))
+        }
 
         const admin = createAdminClient()
         const { data: profile } = await admin.from('profiles').select('organization_id, full_name').eq('id', user.id).single()
@@ -112,6 +130,16 @@ export async function DELETE(request, { params }) {
         const supabase = await createServerSupabaseClient()
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+
+        // Check permission
+        const canDelete = await hasDashboardPermission(user.id, 'delete_campaigns')
+        if (!canDelete) {
+            // Return success with message instead of 403 to avoid error toasts
+            return handleCORS(NextResponse.json({
+                success: false,
+                message: 'You don\'t have permission to delete campaigns'
+            }, { status: 200 }))
+        }
 
         const admin = createAdminClient()
         const { data: profile } = await admin.from('profiles').select('organization_id, full_name').eq('id', user.id).single()

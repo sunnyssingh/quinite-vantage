@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+
 import { hasPermission, logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { getDefaultAvatar } from '@/lib/avatar-utils'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 console.log('[Leads API] Avatar utility loaded:', typeof getDefaultAvatar)
 
@@ -18,6 +20,19 @@ export async function GET(request) {
 
         if (authError || !user) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check Permissions
+        const canViewAll = await hasDashboardPermission(user.id, 'view_all_leads')
+        const canViewTeam = await hasDashboardPermission(user.id, 'view_team_leads')
+        const canViewOwn = await hasDashboardPermission(user.id, 'view_own_leads')
+
+        if (!canViewAll && !canViewTeam && !canViewOwn) {
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to view leads',
+                data: []
+            }, { status: 200 })
         }
 
         // Use admin client to bypass RLS and get reliable profile
@@ -54,8 +69,16 @@ export async function GET(request) {
             .order('created_at', { ascending: false })
 
         // Platform admins can see all leads, regular users only see their org
+
         if (!isPlatformAdmin) {
             query = query.eq('organization_id', profile.organization_id)
+
+            // Apply Scope Filters
+            // If has view_all or view_team, they see everything in the org (Team = Org for now)
+            // If ONLY view_own, filter by assigned_to
+            if (!canViewAll && !canViewTeam && canViewOwn) {
+                query = query.eq('assigned_to', user.id)
+            }
         }
 
         // Apply filters
@@ -109,6 +132,14 @@ export async function POST(request) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        const canCreate = await hasDashboardPermission(user.id, 'create_leads')
+        if (!canCreate) {
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to create leads'
+            }, { status: 200 })
+        }
+
         console.log('✅ [Leads POST] User authenticated:', user.email)
 
         // Get user's profile with admin client
@@ -129,14 +160,24 @@ export async function POST(request) {
         console.log('✅ [Leads POST] Organization ID:', profile.organization_id)
 
         const body = await request.json()
-        const { name, email, phone, projectId, notes, stageId, dealValue } = body
+        const { name, email, phone, projectId, notes, stageId, dealValue, assignedTo } = body
 
-        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, stageId, dealValue })
+        console.log('📋 [Leads POST] Lead data:', { name, email, phone, projectId, stageId, dealValue, assignedTo })
 
         // Validation
         if (!name || name.trim() === '') {
             console.log('❌ [Leads POST] Name is required')
             return corsJSON({ error: 'Name is required' }, { status: 400 })
+        }
+
+        // [Logic] Determine Assignee
+        // Default to creator (user.id) so they can see it (view_own_leads)
+        let finalAssignedTo = user.id
+
+        // If user has 'assign_leads' permission, they can override this (e.g. to null or another user)
+        const canAssign = await hasDashboardPermission(user.id, 'assign_leads')
+        if (canAssign && assignedTo !== undefined) {
+            finalAssignedTo = assignedTo
         }
 
 
@@ -195,6 +236,7 @@ export async function POST(request) {
                 notes: notes?.trim() || null,
                 organization_id: profile.organization_id,
                 created_by: user.id,
+                assigned_to: finalAssignedTo, // [FIX] Assign to default (creator) or specified user
                 source: 'manual',
                 avatar_url: getDefaultAvatar(email || name) // Auto-assign avatar based on email or name
             })

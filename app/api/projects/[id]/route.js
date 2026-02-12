@@ -6,6 +6,7 @@ import { corsJSON } from '@/lib/cors'
 import path from 'path'
 import fs from 'fs'
 import Ajv from 'ajv'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 function handleCORS(response) {
     response.headers.set('Access-Control-Allow-Origin', '*')
@@ -63,13 +64,18 @@ export async function PUT(request, { params }) {
 
         // 4️⃣ Permission check
         const isOwner = existing.created_by === user.id
+        const canEdit = await hasDashboardPermission(user.id, 'edit_projects')
 
         if (
             !isOwner &&
-            !['super_admin', 'platform_admin'].includes(profile.role)
+            !['super_admin', 'platform_admin'].includes(profile.role) &&
+            !canEdit
         ) {
             return handleCORS(
-                NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+                NextResponse.json({
+                    success: false,
+                    message: 'You don\'t have permission to edit this project'
+                }, { status: 200 })
             )
         }
 
@@ -274,13 +280,18 @@ export async function DELETE(request, { params }) {
 
         // 4️⃣ Permission check
         const isOwner = project.created_by === user.id
+        const canDelete = await hasDashboardPermission(user.id, 'delete_projects')
 
         if (
             !isOwner &&
-            !['super_admin', 'platform_admin'].includes(profile.role)
+            !['super_admin', 'platform_admin'].includes(profile.role) &&
+            !canDelete
         ) {
             return handleCORS(
-                NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+                NextResponse.json({
+                    success: false,
+                    message: 'You don\'t have permission to delete this project'
+                }, { status: 200 })
             )
         }
 
@@ -358,6 +369,11 @@ export async function GET(request, { params }) {
 
         if (!profile) {
             return handleCORS(NextResponse.json({ error: 'Profile not found' }, { status: 404 }))
+        }
+
+        const canView = await hasDashboardPermission(user.id, 'view_projects')
+        if (!canView) {
+            return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
         }
 
         const { data: project, error } = await adminClient

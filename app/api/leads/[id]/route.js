@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 export async function GET(request, { params }) {
     try {
@@ -35,6 +37,19 @@ export async function GET(request, { params }) {
     }
 }
 
+
+// Helper to check edit scope
+async function canEditLead(userId, lead) {
+    const canEditAll = await hasDashboardPermission(userId, 'edit_all_leads')
+    const canEditTeam = await hasDashboardPermission(userId, 'edit_team_leads')
+    const canEditOwn = await hasDashboardPermission(userId, 'edit_own_leads')
+
+    if (canEditAll || canEditTeam) return true
+    if (canEditOwn && lead.assigned_to === userId) return true
+
+    return false
+}
+
 export async function PUT(request, { params }) {
     try {
         const supabase = await createServerSupabaseClient()
@@ -47,8 +62,67 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // 1. Fetch existing lead to check ownership
+        const { data: existingLead, error: fetchError } = await supabase
+            .from('leads')
+            .select('assigned_to, organization_id')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !existingLead) {
+            return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+        }
+
+        // 2. Check Permissions
+        const allowed = await canEditLead(user.id, existingLead)
+        if (!allowed) {
+            return NextResponse.json({
+                success: false,
+                message: 'You don\'t have permission to edit this lead'
+            }, { status: 200 })
+        }
+
         // Prepare update data
         const updateData = {}
+
+        // [Permission Check] Assign Leads
+        if (body.assignedTo !== undefined) {
+            const canAssign = await hasDashboardPermission(user.id, 'assign_leads')
+            if (!canAssign) {
+                return NextResponse.json({
+                    success: false,
+                    message: 'You don\'t have permission to assign leads'
+                }, { status: 200 })
+            }
+            updateData.assigned_to = body.assignedTo
+        }
+
+        // [Permission Check] Manage Deals
+        if (body.dealValue !== undefined) {
+            const canManageDeals = await hasDashboardPermission(user.id, 'manage_deals')
+            if (!canManageDeals) {
+                // We won't block the whole lead update, but we won't update the deal
+                // Alternatively, strictly block:
+                /*
+                return NextResponse.json({
+                   success: false,
+                   message: 'You don\'t have permission to manage deals'
+               }, { status: 200 })
+               */
+                // For better UX during "Edit Lead" which might include deal value, let's just ignore the deal update if no permission,
+                // OR strictly block it. 
+                // Let's strictly block if they explicitly tried to change it.
+                // But `dealValue` might be sent even if unchanged? The frontend sends everything.
+                // Let's check logic: Frontend `handleSubmit` sends everything. 
+                // We should probably only block if it actually CHANGED, or just enforce it generally.
+                // Safest to enforce generally if it's in the body.
+
+                return NextResponse.json({
+                    success: false,
+                    message: 'You don\'t have permission to manage deals'
+                }, { status: 200 })
+            }
+        }
 
         // Allow updating specific fields
         if (body.name !== undefined) updateData.name = body.name
@@ -98,6 +172,7 @@ export async function PUT(request, { params }) {
 
         // [Schema Alignment] Update Deal if value is provided
         if (body.dealValue !== undefined) {
+            // We already checked permission above
             const amount = parseFloat(body.dealValue)
             if (!isNaN(amount)) {
                 // Check if deal exists
@@ -150,6 +225,14 @@ export async function DELETE(request, { params }) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const canDelete = await hasDashboardPermission(user.id, 'delete_leads')
+        if (!canDelete) {
+            return NextResponse.json({
+                success: false,
+                message: 'You don\'t have permission to delete leads'
+            }, { status: 200 })
         }
 
         // Delete dependent records manually (Cascade)

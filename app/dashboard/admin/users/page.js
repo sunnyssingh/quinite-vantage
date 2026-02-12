@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import CredentialsModal from '@/components/dashboard/CredentialsModal'
-import { Pencil, Trash2, Plus, Shield } from 'lucide-react'
+import { Pencil, Trash2, Plus, Shield, Lock } from 'lucide-react'
 import PermissionManager from '@/components/admin/PermissionManager'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
 export default function UsersPage() {
     const [users, setUsers] = useState([])
@@ -14,6 +16,10 @@ export default function UsersPage() {
     const [newCredentials, setNewCredentials] = useState(null)
     const [editingUser, setEditingUser] = useState(null)
     const [managingPermissions, setManagingPermissions] = useState(null) // User whose permissions are being managed
+
+    const canInvite = usePermission('create_users')
+    const canManageUsers = usePermission('manage_users')
+    const canManagePermissions = usePermission('manage_permissions')
 
     useEffect(() => {
         fetchUsers()
@@ -116,16 +122,22 @@ export default function UsersPage() {
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">Users</h1>
                     <p className="text-muted-foreground mt-1 text-sm">Manage your team members and roles</p>
                 </div>
-                <button
-                    onClick={() => {
-                        setEditingUser(null)
-                        setShowModal(true)
-                    }}
-                    className="flex items-center gap-2 px-4 h-9 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                <PermissionTooltip
+                    hasPermission={canInvite}
+                    message="You need 'Create Users' permission to add new users."
                 >
-                    <Plus className="w-4 h-4" />
-                    Add New User
-                </button>
+                    <button
+                        onClick={() => {
+                            setEditingUser(null)
+                            setShowModal(true)
+                        }}
+                        disabled={!canInvite}
+                        className="flex items-center gap-2 px-4 h-9 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add New User
+                    </button>
+                </PermissionTooltip>
             </div>
 
             {/* Users Table */}
@@ -179,27 +191,54 @@ export default function UsersPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end gap-3">
-                                                <button
-                                                    onClick={() => setManagingPermissions(user)}
-                                                    className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
-                                                    title="Manage Permissions"
+                                                <PermissionTooltip
+                                                    hasPermission={canManagePermissions}
+                                                    message="You need 'Manage Permissions' permission to manage user permissions."
                                                 >
-                                                    <Shield className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => openEditModal(user)}
-                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                                                    title="Edit User"
+                                                    <button
+                                                        onClick={() => {
+                                                            if (!canManagePermissions) return
+                                                            setManagingPermissions(user)
+                                                        }}
+                                                        disabled={!canManagePermissions}
+                                                        className="relative p-1.5 text-purple-600 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        title={canManagePermissions ? "Manage Permissions" : "Permission Required"}
+                                                    >
+                                                        <Shield className="w-4 h-4" />
+                                                    </button>
+                                                </PermissionTooltip>
+                                                <PermissionTooltip
+                                                    hasPermission={canManageUsers}
+                                                    message="You need 'Manage Users' permission to edit user details."
                                                 >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteUser(user.id)}
-                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                                    title="Delete User"
+                                                    <button
+                                                        onClick={() => {
+                                                            if (!canManageUsers) return
+                                                            openEditModal(user)
+                                                        }}
+                                                        disabled={!canManageUsers}
+                                                        className="relative p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        title={canManageUsers ? "Edit User" : "Permission Required"}
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                </PermissionTooltip>
+                                                <PermissionTooltip
+                                                    hasPermission={canManageUsers}
+                                                    message="You need 'Manage Users' permission to delete users."
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (!canManageUsers) return
+                                                            handleDeleteUser(user.id)
+                                                        }}
+                                                        disabled={!canManageUsers}
+                                                        className="relative p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        title={canManageUsers ? "Delete User" : "Permission Required"}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </PermissionTooltip>
                                             </div>
                                         </td>
                                     </tr>
@@ -217,24 +256,26 @@ export default function UsersPage() {
             </div>
 
             {/* User Modal */}
-            {showModal && (
-                <UserModal
-                    user={editingUser}
-                    onClose={() => {
-                        setShowModal(false)
-                        setEditingUser(null)
-                    }}
-                    onSuccess={(credentials) => {
-                        setShowModal(false)
-                        setEditingUser(null)
-                        fetchUsers()
-                        if (credentials?.tempPassword) {
-                            setNewCredentials(credentials)
-                            setShowCredentials(true)
-                        }
-                    }}
-                />
-            )}
+            {
+                showModal && (
+                    <UserModal
+                        user={editingUser}
+                        onClose={() => {
+                            setShowModal(false)
+                            setEditingUser(null)
+                        }}
+                        onSuccess={(credentials) => {
+                            setShowModal(false)
+                            setEditingUser(null)
+                            fetchUsers()
+                            if (credentials?.tempPassword) {
+                                setNewCredentials(credentials)
+                                setShowCredentials(true)
+                            }
+                        }}
+                    />
+                )
+            }
 
             {/* Credentials Modal */}
             <CredentialsModal
@@ -244,18 +285,20 @@ export default function UsersPage() {
             />
 
             {/* Permission Manager Modal */}
-            {managingPermissions && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
-                        <PermissionManager
-                            userId={managingPermissions.id}
-                            userRole={managingPermissions.role}
-                            onClose={() => setManagingPermissions(null)}
-                        />
+            {
+                managingPermissions && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
+                            <PermissionManager
+                                userId={managingPermissions.id}
+                                userRole={managingPermissions.role}
+                                onClose={() => setManagingPermissions(null)}
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     )
 }
 

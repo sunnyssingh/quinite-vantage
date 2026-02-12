@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { makeCall, isPlivoConfigured, validateIndianPhone } from '@/lib/plivo-service'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 /**
  * POST /api/campaigns/[id]/start
@@ -19,6 +20,16 @@ export async function POST(request, { params }) {
         if (authError || !user) {
             console.log('❌ [Campaign Start] Unauthorized')
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        // Check permission
+        const canRun = await hasDashboardPermission(user.id, 'run_campaigns')
+        if (!canRun) {
+            console.log('❌ [Campaign Start] Forbidden - Missing "run_campaigns" permission')
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to run campaigns'
+            }, { status: 200 })
         }
 
         console.log('✅ [Campaign Start] User authenticated:', user.email)

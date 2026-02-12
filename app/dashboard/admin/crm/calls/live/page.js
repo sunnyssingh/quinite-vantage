@@ -7,23 +7,50 @@ import { Badge } from '@/components/ui/badge'
 import { Phone, Users, Clock, TrendingUp, PhoneOff, PhoneForwarded, Activity, Sparkles } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+import { Lock } from 'lucide-react'
+
 export default function LiveCallMonitor() {
     const [activeCalls, setActiveCalls] = useState([])
     const [queueStats, setQueueStats] = useState({ queued: 0, processing: 0, failed: 0 })
     const [agentStats, setAgentStats] = useState({ available: 0, onCall: 0 })
     const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState(null)
     const supabase = createClient()
+
+    // Permissions
+    const canViewAll = usePermission('view_all_calls')
+    const canViewTeam = usePermission('view_team_calls') // Placeholder
+    const canViewOwn = usePermission('view_own_calls')
+
+    // Authorization check
+    const hasAccess = canViewAll || canViewTeam || canViewOwn
 
     // Fetch initial data
     useEffect(() => {
-        fetchActiveCalls()
-        fetchQueueStats()
-        fetchAgentStats()
-        setLoading(false)
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            setUser(user)
+        }
+        getUser()
     }, [])
+
+    useEffect(() => {
+        if (user && hasAccess) {
+            fetchActiveCalls()
+            fetchQueueStats()
+            fetchAgentStats()
+            setLoading(false)
+        } else if (!loading && !hasAccess) {
+            setLoading(false)
+        }
+    }, [user, hasAccess])
 
     // Subscribe to real-time updates
     useEffect(() => {
+        if (!user || !hasAccess) return
+
         // Subscribe to call_logs changes
         const callLogsChannel = supabase
             .channel('call_logs_changes')
@@ -55,10 +82,12 @@ export default function LiveCallMonitor() {
             supabase.removeChannel(callLogsChannel)
             supabase.removeChannel(queueChannel)
         }
-    }, [])
+    }, [user, hasAccess])
 
     const fetchActiveCalls = async () => {
-        const { data, error } = await supabase
+        if (!user) return
+
+        let query = supabase
             .from('call_logs')
             .select(`
                 *,
@@ -67,6 +96,13 @@ export default function LiveCallMonitor() {
             `)
             .in('call_status', ['in_progress', 'ringing'])
             .order('created_at', { ascending: false })
+
+        // Apply permission filters
+        if (!canViewAll && !canViewTeam && canViewOwn) {
+            query = query.eq('user_id', user.id)
+        }
+
+        const { data, error } = await query
 
         if (!error && data) {
             setActiveCalls(data)
@@ -124,6 +160,20 @@ export default function LiveCallMonitor() {
             case 'transferred': return 'bg-blue-500'
             default: return 'bg-gray-500'
         }
+    }
+
+    if (!hasAccess && !loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
+                <div className="p-4 bg-gray-100 rounded-full mb-4">
+                    <Lock className="w-8 h-8 text-gray-400" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Access Restricted</h2>
+                <p className="text-gray-500 mt-2 text-center max-w-md">
+                    You do not have permission to view live calls.
+                </p>
+            </div>
+        )
     }
 
     if (loading) {

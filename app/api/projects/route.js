@@ -7,6 +7,7 @@ import fs from 'fs'
 import path from 'path'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 export async function GET() {
   try {
@@ -26,6 +27,16 @@ export async function GET() {
 
     if (!profile?.organization_id) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
+    }
+
+    // Check permissions
+    const canView = await hasDashboardPermission(user.id, 'view_projects')
+    if (!canView) {
+      return corsJSON({
+        success: false,
+        message: 'You don\'t have permission to view projects',
+        data: []
+      }, { status: 200 })
     }
 
     // Use admin client for fetching projects to avoid RLS recursion issues
@@ -65,6 +76,15 @@ export async function POST(request) {
 
     if (!profile?.organization_id) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
+    }
+
+    // Check permissions
+    const canCreate = await hasDashboardPermission(user.id, 'create_projects')
+    if (!canCreate) {
+      return corsJSON({
+        success: false,
+        message: 'You don\'t have permission to create projects'
+      }, { status: 200 })
     }
 
     const {

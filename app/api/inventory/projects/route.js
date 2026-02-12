@@ -10,6 +10,12 @@ export async function GET(request) {
             return corsJSON({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        const { hasDashboardPermission } = await import('@/lib/dashboardPermissions')
+        const canView = await hasDashboardPermission(user.id, 'view_inventory')
+        if (!canView) {
+            return corsJSON({ error: 'Forbidden - Missing "view_inventory" permission' }, { status: 403 })
+        }
+
         const adminClient = createAdminClient()
 
         // Get user's organization

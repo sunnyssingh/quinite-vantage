@@ -14,6 +14,10 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDistanceToNow, format } from 'date-fns'
 
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+import { Lock } from 'lucide-react'
+
 export default function CallHistory() {
     const [calls, setCalls] = useState([])
     const [filteredCalls, setFilteredCalls] = useState([])
@@ -21,18 +25,44 @@ export default function CallHistory() {
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCall, setSelectedCall] = useState(null)
     const [analyzing, setAnalyzing] = useState(null)
+    const [user, setUser] = useState(null)
     const supabase = createClient()
 
+    // Permissions
+    const canViewAll = usePermission('view_all_calls')
+    const canViewTeam = usePermission('view_team_calls') // Placeholder for future team logic
+    const canViewOwn = usePermission('view_own_calls')
+
+    // If user has view_all, they satisfy the requirement. 
+    // If not, but they have view_own, they satisfy it (with filtering).
+    const hasAccess = canViewAll || canViewTeam || canViewOwn
+
     useEffect(() => {
-        fetchCallHistory()
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            setUser(user)
+        }
+        getUser()
     }, [])
+
+    useEffect(() => {
+        if (user && hasAccess) {
+            fetchCallHistory()
+        } else if (!loading && !hasAccess) {
+            // If we're done loading user and determined no access, stop loading
+            // actually loading is controlled by fetchCallHistory, so we need to set it false if we don't fetch
+            setLoading(false)
+        }
+    }, [user, hasAccess])
 
     useEffect(() => {
         filterCalls()
     }, [searchTerm, calls])
 
     const fetchCallHistory = async () => {
-        const { data, error } = await supabase
+        if (!user) return
+
+        let query = supabase
             .from('call_logs')
             .select(`
                 *,
@@ -50,6 +80,15 @@ export default function CallHistory() {
             `)
             .order('created_at', { ascending: false })
             .limit(100)
+
+        // Apply permission filters
+        if (!canViewAll && !canViewTeam && canViewOwn) {
+            // Only view own calls
+            // Assuming 'user_id' is the column name for the caller
+            query = query.eq('user_id', user.id)
+        }
+
+        const { data, error } = await query
 
         if (!error && data) {
             setCalls(data)
@@ -118,6 +157,20 @@ export default function CallHistory() {
         const mins = Math.floor(seconds / 60)
         const secs = seconds % 60
         return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+    }
+
+    if (!hasAccess && !loading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
+                <div className="p-4 bg-gray-100 rounded-full mb-4">
+                    <Lock className="w-8 h-8 text-gray-400" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Access Restricted</h2>
+                <p className="text-gray-500 mt-2 text-center max-w-md">
+                    You do not have permission to view call history.
+                </p>
+            </div>
+        )
     }
 
     if (loading) {

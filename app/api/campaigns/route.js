@@ -4,6 +4,7 @@ import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 export async function GET(request) {
   try {
@@ -12,6 +13,15 @@ export async function GET(request) {
 
     if (authError || !user) {
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const canView = await hasDashboardPermission(user.id, 'view_campaigns')
+    if (!canView) {
+      return corsJSON({
+        success: false,
+        message: 'You don\'t have permission to view campaigns',
+        data: []
+      }, { status: 200 })
     }
 
     const admin = createAdminClient()
@@ -57,6 +67,15 @@ export async function POST(request) {
 
     if (authError || !user) {
       return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check permission
+    const canCreate = await hasDashboardPermission(user.id, 'create_campaigns')
+    if (!canCreate) {
+      return corsJSON({
+        success: false,
+        message: 'You don\'t have permission to create campaigns'
+      }, { status: 200 })
     }
 
     const admin = createAdminClient()

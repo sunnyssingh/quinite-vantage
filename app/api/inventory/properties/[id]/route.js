@@ -14,6 +14,17 @@ export async function PATCH(request, { params }) {
 
         if (authError || !user) return corsJSON({ error: 'Unauthorized' }, { status: 401 })
 
+        const { hasDashboardPermission } = await import('@/lib/dashboardPermissions')
+        const canEdit = await hasDashboardPermission(user.id, 'edit_inventory')
+        const canManage = await hasDashboardPermission(user.id, 'manage_inventory')
+
+        if (!canEdit && !canManage) {
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to edit inventory'
+            }, { status: 200 })
+        }
+
         const adminClient = createAdminClient()
         const { data: profile } = await adminClient
             .from('profiles')
@@ -99,6 +110,15 @@ export async function DELETE(request, { params }) {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
 
         if (authError || !user) return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+
+        const { hasDashboardPermission } = await import('@/lib/dashboardPermissions')
+        const canManage = await hasDashboardPermission(user.id, 'manage_inventory')
+        if (!canManage) {
+            return corsJSON({
+                success: false,
+                message: 'You don\'t have permission to manage inventory'
+            }, { status: 200 })
+        }
 
         const adminClient = createAdminClient()
         const { id } = await params

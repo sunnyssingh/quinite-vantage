@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getUserDashboardPermissions } from '@/lib/dashboardPermissions'
 
+export const dynamic = 'force-dynamic'
+
+
 /**
  * GET /api/permissions/my-permissions
  * Returns current user's dashboard permissions

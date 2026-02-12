@@ -13,9 +13,12 @@ import {
 import { User, Mail, Phone, Building2, Target, FileText } from 'lucide-react'
 
 
+import { usePermission } from '@/contexts/PermissionContext' // Import hook
+
 export default function LeadForm({
     initialData = null,
     projects = [],
+    users = [], // New prop
     stages = [], // New Prop
     initialStageId = null,
     // initialStatus removed or kept for fallback - let's keep it for fallback
@@ -24,6 +27,8 @@ export default function LeadForm({
     onCancel,
     isSubmitting = false
 }) {
+    const canAssign = usePermission('assign_leads')
+
     const handleSubmit = (e) => {
         e.preventDefault()
         const formData = new FormData(e.target)
@@ -37,7 +42,8 @@ export default function LeadForm({
             // If we have stages, prioritize stageId. Otherwise use status.
             stageId: formData.get('stageId') || initialStageId || initialData?.stage_id,
             status: formData.get('status'), // This might be hidden or derived
-            notes: formData.get('notes')
+            notes: formData.get('notes'),
+            assignedTo: formData.get('assignedTo') === 'unassigned' ? null : formData.get('assignedTo')
         }
 
         onSubmit(payload)
@@ -152,6 +158,27 @@ export default function LeadForm({
                     />
                 </div>
             </div>
+
+            {/* Assign To (Permission Gated) */}
+            {canAssign && (
+                <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <User className="w-4 h-4 text-slate-500" />
+                        Assign To
+                    </Label>
+                    <Select name="assignedTo" defaultValue={initialData?.assigned_to || 'unassigned'}>
+                        <SelectTrigger className="h-11 border-slate-300">
+                            <SelectValue placeholder="Select User" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            {users.map(u => (
+                                <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
 
             {/* Project & Stage Row */}
             <div className="grid grid-cols-2 gap-4">
