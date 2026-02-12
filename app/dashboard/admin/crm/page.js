@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, RefreshCw } from 'lucide-react'
 import PipelineBoard from '@/components/crm/PipelineBoard'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { PermissionGate } from '@/components/permissions/PermissionGate'
 import LeadSourceDialog from '@/components/crm/LeadSourceDialog'
 import {
@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 
-export default function CrmPipelinePage() {
+function CrmPipelineContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const projectId = searchParams.get('project_id')
@@ -48,44 +48,40 @@ export default function CrmPipelinePage() {
                 <div className="flex items-center gap-3">
                     {/* Project Filter */}
                     <Select
-                        value={projectId || "all"}
+                        value={projectId || 'all'}
                         onValueChange={(val) => {
-                            if (val === "all") router.push('/dashboard/admin/crm')
-                            else router.push(`/dashboard/admin/crm?project_id=${val}`)
+                            if (val === 'all') {
+                                router.push('/dashboard/admin/crm')
+                            } else {
+                                router.push(`/dashboard/admin/crm?project_id=${val}`)
+                            }
                         }}
                     >
-                        <SelectTrigger className="w-[240px] h-9 bg-background border-border/50 shadow-sm">
-                            <SelectValue placeholder="Filter by Project" />
+                        <SelectTrigger className="w-[200px] h-9 bg-background border-border/50">
+                            <SelectValue placeholder="All Projects" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all" className="font-medium text-primary">
-                                All Projects
-                            </SelectItem>
+                            <SelectItem value="all">All Projects</SelectItem>
                             {projects.map(p => (
-                                <SelectItem key={p.id} value={p.id}>
-                                    {p.name}
-                                </SelectItem>
+                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
 
                     <Button
-                        onClick={() => {
-                            pipelineBoardRef.current?.refresh()
-                        }}
                         variant="outline"
                         size="sm"
+                        onClick={() => pipelineBoardRef.current?.refresh()}
                         className="gap-2 h-9 border-dashed"
                     >
-                        <RefreshCw className="w-4 h-4" />
-                        <span className="hidden sm:inline">Sync</span>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Sync
                     </Button>
 
-                    <PermissionGate feature="create_leads">
+                    <PermissionGate permission="create_leads">
                         <Button
                             onClick={() => setIsDealInitOpen(true)}
-                            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-                            size="sm"
+                            className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
                         >
                             <Plus className="w-4 h-4" />
                             New Deal
@@ -94,17 +90,29 @@ export default function CrmPipelinePage() {
                 </div>
             </div>
 
-            {/* Board */}
-            <div className="flex-1 overflow-x-auto p-6">
-                <PipelineBoard ref={pipelineBoardRef} projectId={projectId} />
+            {/* Pipeline Board */}
+            <div className="flex-1 p-6 overflow-x-auto">
+                <PipelineBoard
+                    ref={pipelineBoardRef}
+                    projectId={projectId}
+                />
             </div>
 
+            {/* Lead Source Dialog */}
             <LeadSourceDialog
                 open={isDealInitOpen}
                 onOpenChange={setIsDealInitOpen}
-                projectId={projectId}
                 projects={projects}
+                initialProjectId={projectId}
             />
         </div>
+    )
+}
+
+export default function CrmPipelinePage() {
+    return (
+        <Suspense fallback={<div className="p-6">Loading...</div>}>
+            <CrmPipelineContent />
+        </Suspense>
     )
 }

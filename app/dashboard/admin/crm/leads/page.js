@@ -7,7 +7,7 @@ const LeadSourceDialog = dynamic(() => import('@/components/crm/LeadSourceDialog
   ssr: false,
   loading: () => null
 })
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,7 +61,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from 'react-hot-toast'
 import { getDefaultAvatar } from '@/lib/avatar-utils'
 
-export default function LeadsPage() {
+function LeadsPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const projectId = searchParams.get('project_id')
@@ -1071,5 +1071,14 @@ export default function LeadsPage() {
         projects={projects}
       />
     </div >
+  )
+}
+
+
+export default function LeadsPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Loading leads...</div>}>
+      <LeadsPageContent />
+    </Suspense>
   )
 }
