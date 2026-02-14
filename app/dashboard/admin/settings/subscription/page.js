@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast'
 import PricingTiers from '@/components/subscription/PricingTiers'
 import UsageLimits from '@/components/dashboard/UsageLimits'
 import CreditPurchase from '@/components/billing/CreditPurchase'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function SubscriptionPage() {
     const [subscription, setSubscription] = useState(null)
@@ -90,17 +91,80 @@ export default function SubscriptionPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading subscription...</p>
+            <div className="min-h-screen h-full bg-gray-50/50 overflow-y-auto">
+                <div className="container mx-auto py-8 px-4 max-w-7xl space-y-8">
+                    <div className="space-y-2">
+                        <Skeleton className="h-10 w-64" />
+                        <Skeleton className="h-5 w-96" />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2">
+                            {/* Current Plan Card Skeleton */}
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <Skeleton className="h-7 w-48" />
+                                    <Skeleton className="h-4 w-64" />
+                                </div>
+                                <div className="flex justify-between items-center py-4">
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-8 w-32" />
+                                        <Skeleton className="h-4 w-48" />
+                                    </div>
+                                    <div className="text-right space-y-2">
+                                        <Skeleton className="h-8 w-24 ml-auto" />
+                                        <Skeleton className="h-4 w-32 ml-auto" />
+                                    </div>
+                                </div>
+                                <div className="border-t pt-4 flex justify-between">
+                                    <Skeleton className="h-5 w-24" />
+                                    <Skeleton className="h-6 w-32" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Usage Limits Skeleton */}
+                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+                            <Skeleton className="h-6 w-32 mb-4" />
+                            <div className="space-y-6">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="space-y-2">
+                                        <div className="flex justify-between">
+                                            <Skeleton className="h-4 w-24" />
+                                            <Skeleton className="h-4 w-12" />
+                                        </div>
+                                        <Skeleton className="h-2 w-full rounded-full" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Pricing Grid Skeleton */}
+                    <div className="space-y-6">
+                        <Skeleton className="h-8 w-48" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4 h-96">
+                                    <Skeleton className="h-8 w-32" />
+                                    <Skeleton className="h-12 w-24" />
+                                    <div className="space-y-2 pt-4">
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-2/3" />
+                                    </div>
+                                    <Skeleton className="h-10 w-full mt-auto" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen h-full bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto">
+        <div className="min-h-screen h-full bg-gray-50/50 overflow-y-auto">
             <div className="container mx-auto py-8 px-4 max-w-7xl">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">Subscription & Billing</h1>

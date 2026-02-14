@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Edit, Trash2, Eye, Megaphone, Building2, MapPin, Lock } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
@@ -23,10 +24,53 @@ export default function ProjectList({
     page = 1,
     onPageChange,
     hasMore = false,
-    isLoadingMore = false
+    isLoadingMore = false,
+    loading = false
 }) {
     const canEdit = usePermission('edit_projects')
     const canDelete = usePermission('delete_projects')
+
+    if (loading) {
+        return (
+            <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/50">
+                                <TableHead className="w-[100px]"><Skeleton className="h-4 w-12" /></TableHead>
+                                <TableHead><Skeleton className="h-4 w-24" /></TableHead>
+                                <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                                <TableHead><Skeleton className="h-4 w-12" /></TableHead>
+                                <TableHead className="text-right"><Skeleton className="h-4 w-12 ml-auto" /></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <TableRow key={i}>
+                                    <TableCell><Skeleton className="h-12 w-16 rounded-lg" /></TableCell>
+                                    <TableCell>
+                                        <div className="space-y-2">
+                                            <Skeleton className="h-4 w-32" />
+                                            <Skeleton className="h-3 w-48" />
+                                        </div>
+                                    </TableCell>
+                                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                                    <TableCell><Skeleton className="h-5 w-16 rounded" /></TableCell>
+                                    <TableCell>
+                                        <div className="flex justify-end gap-2">
+                                            <Skeleton className="h-8 w-8" />
+                                            <Skeleton className="h-8 w-8" />
+                                            <Skeleton className="h-8 w-8" />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
+        )
+    }
 
     if (!projects || projects.length === 0) {
         return (

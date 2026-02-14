@@ -20,7 +20,12 @@ export function NotificationBell() {
     const [notifications, setNotifications] = useState([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [open, setOpen] = useState(false)
+    const [isMounted, setIsMounted] = useState(false)
     const router = useRouter()
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const fetchNotifications = async () => {
         try {
@@ -122,6 +127,17 @@ export function NotificationBell() {
             case 'error': return 'bg-red-50'
             default: return 'bg-blue-50'
         }
+    }
+
+    if (!isMounted) {
+        return (
+            <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded w-8 h-8">
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white animate-pulse" />
+                )}
+            </Button>
+        )
     }
 
     return (

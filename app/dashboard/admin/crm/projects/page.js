@@ -441,6 +441,7 @@ export default function ProjectsPage() {
             ) : (
               <ProjectList
                 projects={projects}
+                loading={loading}
                 onEdit={(p) => {
                   setEditingProject(p)
                   setEditOpen(true)
@@ -451,13 +452,14 @@ export default function ProjectsPage() {
                   setViewOpen(true)
                 }}
                 onStartCampaign={(p) => {
-                  router.push(`/dashboard/admin/crm/projects/${p.id}/campaigns`)
+                  setCampName(`Campaign for ${p.name}`)
+                  setCampProjectId(p.id)
+                  setAddOpen(true)
                 }}
                 deletingId={deletingId}
-                // Pagination
                 page={page}
                 onPageChange={setPage}
-                hasMore={metadata?.hasMore}
+                hasMore={metadata.hasMore}
                 isLoadingMore={isPlaceholderData}
               />
             )}

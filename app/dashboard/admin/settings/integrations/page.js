@@ -170,7 +170,7 @@ export default function IntegrationsPage() {
     }
 
     return (
-        <div className="min-h-screen h-full bg-gray-50 overflow-y-auto">
+        <div className="h-full bg-gray-50 overflow-y-auto">
             <div className="p-4 md:p-8 max-w-7xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
@@ -181,8 +181,8 @@ export default function IntegrationsPage() {
                     {INTEGRATIONS.map((tool) => (
                         <div key={tool.id} className="bg-white rounded-xl border hover:shadow-md transition-all p-6 flex flex-col">
                             <div className="flex items-start justify-between mb-4">
-                                <div className={`h-12 w-12 flex items-center justify-center rounded-lg border ${tool.color.replace('text-', 'border-').split(' ')[0]}`}>
-                                    <tool.icon className="h-8 w-8 object-contain" />
+                                <div className={`h-16 w-16 flex items-center justify-center rounded-xl border ${tool.color.replace('text-', 'border-').split(' ')[0]} bg-gray-50/50`}>
+                                    <tool.icon className="h-10 w-10 object-contain" />
                                 </div>
                                 {tool.connected ? (
                                     <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-full tracking-wide">
@@ -301,6 +301,7 @@ export default function IntegrationsPage() {
                         )}
                     </DialogContent>
                 </Dialog>
+                <div className="h-20"></div>
             </div>
         </div>
     )

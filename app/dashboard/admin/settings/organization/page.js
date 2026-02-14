@@ -173,26 +173,56 @@ export default function OrganizationSettingsPage() {
 
     if (loading && !organization) {
         return (
-            <div className="p-8 max-w-4xl space-y-6">
-                <Skeleton className="h-10 w-64 rounded-md mb-8" />
-                <div className="border rounded-xl bg-card p-6 space-y-8">
-                    <div className="space-y-2 mb-6">
-                        <Skeleton className="h-7 w-48 rounded" />
-                        <Skeleton className="h-4 w-full max-w-md rounded" />
+            <div className="h-full bg-gray-50/50 overflow-y-auto">
+                <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-64" />
+                        <Skeleton className="h-4 w-96" />
                     </div>
-                    <div className="space-y-6">
-                        <div className="flex gap-6 items-center">
-                            <Skeleton className="h-24 w-24 rounded-lg" />
-                            <div className="space-y-3">
-                                <Skeleton className="h-10 w-32 rounded-md" />
-                                <Skeleton className="h-3 w-24 rounded" />
+
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-200">
+                            <Skeleton className="h-7 w-48 mb-2" />
+                            <Skeleton className="h-4 w-full max-w-md" />
+                        </div>
+                        <div className="p-6 space-y-8">
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-32" />
+                                <div className="flex gap-6 items-center">
+                                    <Skeleton className="h-20 w-20 rounded-lg" />
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-9 w-32" />
+                                        <Skeleton className="h-3 w-24" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Skeleton className="h-4 w-32" />
+                                    <Skeleton className="h-10 w-full" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Skeleton className="h-4 w-32" />
+                                    <Skeleton className="h-10 w-full" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Skeleton className="h-4 w-32" />
+                                    <Skeleton className="h-10 w-full" />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-4 w-24" />
+                                        <Skeleton className="h-10 w-full" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-4 w-24" />
+                                        <Skeleton className="h-10 w-full" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <Skeleton className="h-10 w-full rounded-md" />
-                            <Skeleton className="h-10 w-full rounded-md" />
-                            <Skeleton className="h-10 w-full rounded-md" />
-                            <Skeleton className="h-24 w-full rounded-md" />
+                        <div className="p-6 bg-slate-50/50 border-t border-slate-200 flex justify-end">
+                            <Skeleton className="h-10 w-32" />
                         </div>
                     </div>
                 </div>
@@ -211,9 +241,14 @@ export default function OrganizationSettingsPage() {
     }
 
     return (
-        <div className="min-h-screen h-full bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto">
-            <div className="p-4 md:p-8 max-w-4xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">Organization Settings</h1>
+        <div className="h-full bg-gray-50/50 overflow-y-auto">
+            <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Organization Settings</h1>
+                    <p className="text-muted-foreground text-slate-500 mt-2">
+                        Manage your organization profile, branding, and regional preferences.
+                    </p>
+                </div>
 
                 <Card>
                     <CardHeader>

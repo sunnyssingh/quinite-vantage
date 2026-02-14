@@ -101,23 +101,21 @@ export default function UsersPage() {
 
     if (loading) {
         return (
-            <div className="flex flex-col h-full animate-in fade-in duration-500">
-                {/* Header Skeleton */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-6 border-b border-border bg-background shrink-0">
-                    <div>
-                        <Skeleton className="h-8 w-32 mb-2" />
-                        <Skeleton className="h-4 w-64" />
-                    </div>
-                    <Skeleton className="h-9 w-32" />
-                </div>
-
-                {/* Table Skeleton */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6">
-                    <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-border">
-                            <Skeleton className="h-10 w-full max-w-sm" />
+            <div className="h-full bg-gray-50/50 overflow-y-auto">
+                <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="space-y-2">
+                            <Skeleton className="h-8 w-32" />
+                            <Skeleton className="h-4 w-64" />
                         </div>
-                        <div className="divide-y divide-border">
+                        <Skeleton className="h-10 w-32" />
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-200">
+                            <Skeleton className="h-10 w-64" />
+                        </div>
+                        <div className="divide-y divide-slate-100">
                             {[1, 2, 3, 4, 5].map((i) => (
                                 <div key={i} className="p-4 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
@@ -147,37 +145,37 @@ export default function UsersPage() {
     }
 
     return (
-        <div className="flex flex-col h-full animate-in fade-in duration-500">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-6 border-b border-border bg-background shrink-0">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Users</h1>
-                    <p className="text-muted-foreground mt-1 text-sm">Manage your team members and roles</p>
-                </div>
-                <PermissionTooltip
-                    hasPermission={canInvite}
-                    message="You need 'Create Users' permission to add new users."
-                >
-                    <button
-                        onClick={() => {
-                            setEditingUser(null)
-                            setShowModal(true)
-                        }}
-                        disabled={!canInvite}
-                        className="flex items-center gap-2 px-4 h-9 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        <div className="h-full bg-gray-50/50 overflow-y-auto">
+            <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Users</h1>
+                        <p className="text-muted-foreground text-slate-500 mt-1">Manage your team members, roles, and access permissions.</p>
+                    </div>
+                    <PermissionTooltip
+                        hasPermission={canInvite}
+                        message="You need 'Create Users' permission to add new users."
                     >
-                        <Plus className="w-4 h-4" />
-                        Add New User
-                    </button>
-                </PermissionTooltip>
-            </div>
+                        <button
+                            onClick={() => {
+                                setEditingUser(null)
+                                setShowModal(true)
+                            }}
+                            disabled={!canInvite}
+                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add New User
+                        </button>
+                    </PermissionTooltip>
+                </div>
 
-            {/* Users Table */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6">
-                <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                {/* Users Table */}
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-border">
-                            <thead className="bg-muted/50">
+                        <table className="min-w-full divide-y divide-slate-200">
+                            <thead className="bg-slate-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                         Name

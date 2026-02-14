@@ -6,6 +6,7 @@ import PipelineBoard from '@/components/crm/PipelineBoard'
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import LeadSourceDialog from '@/components/crm/LeadSourceDialog'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ProjectPipelinePage() {
     const params = useParams()
@@ -15,16 +16,18 @@ export default function ProjectPipelinePage() {
     // Board state
     const [isDealInitOpen, setIsDealInitOpen] = useState(false)
     const [project, setProject] = useState(null)
+    const [loadingProject, setLoadingProject] = useState(true)
     const pipelineBoardRef = useRef(null)
 
     // Fetch project details for header
     useEffect(() => {
         if (!projectId) return
+        setLoadingProject(true)
         fetch(`/api/projects?id=${projectId}`).then(res => res.json()).then(data => {
             // Assuming API returns { projects: [...] } or single project
             const found = data.projects?.find(p => p.id === projectId)
             if (found) setProject(found)
-        })
+        }).finally(() => setLoadingProject(false))
     }, [projectId])
 
     const projectName = project?.name || 'Project'
@@ -45,11 +48,11 @@ export default function ProjectPipelinePage() {
                     </Button>
                     <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
                         <Building2 className="w-7 h-7 text-foreground" />
-                        {projectName} Pipeline
+                        {loadingProject ? <Skeleton className="h-9 w-64" /> : `${projectName} Pipeline`}
                     </h1>
                     <div className="flex items-center gap-3 mt-1">
                         <p className="text-muted-foreground text-sm">
-                            Manage deals and leads specifically for <span className="underline decoration-blue-500/50 decoration-2 underline-offset-4">{projectName}</span>
+                            Manage deals and leads specifically for {loadingProject ? <Skeleton className="h-4 w-32 inline-block align-middle" /> : <span className="underline decoration-blue-500/50 decoration-2 underline-offset-4">{projectName}</span>}
                         </p>
                     </div>
                 </div>

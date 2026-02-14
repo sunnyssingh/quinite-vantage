@@ -42,18 +42,102 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
     const [previewData, setPreviewData] = useState(null) // [NEW] Preview State
 
     const connectorCards = [
-        { id: 'mb', name: 'MagicBricks', icon: MagicBricksIcon, color: 'text-red-600', bg: 'bg-red-50', status: 'active' },
-        { id: '99', name: '99Acres', icon: AcresIcon, color: 'text-blue-600', bg: 'bg-blue-50', status: 'active' },
-        { id: 'meta', name: 'Meta Ads', icon: MetaIcon, color: 'text-slate-600', bg: 'bg-slate-50', status: 'active' },
-        { id: 'google', name: 'Google Ads', icon: GoogleAdsIcon, color: 'text-yellow-600', bg: 'bg-yellow-50', status: 'active' },
-        { id: 'fb', name: 'Facebook Leads', icon: FacebookIcon, color: 'text-indigo-600', bg: 'bg-indigo-50', status: 'active' },
-        { id: 'gforms', name: 'Google Forms', icon: GoogleFormsIcon, color: 'text-purple-600', bg: 'bg-purple-50', status: 'coming' },
-        { id: 'typeform', name: 'Typeform', icon: TypeformIcon, color: 'text-stone-600', bg: 'bg-stone-50', status: 'coming' },
-        { id: 'zapier', name: 'Zapier', icon: ZapierIcon, color: 'text-orange-600', bg: 'bg-orange-50', status: 'coming' },
-        { id: 'linkedin', name: 'LinkedIn', icon: LinkedInIcon, color: 'text-sky-700', bg: 'bg-sky-50', status: 'coming' },
-        { id: 'whatsapp', name: 'WhatsApp', icon: WhatsAppIcon, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
-        { id: 'webhook', name: 'Webhooks', icon: WebhookIcon, color: 'text-teal-600', bg: 'bg-teal-50', status: 'coming' },
-        { id: 'api', name: 'Custom API', icon: ApiIcon, color: 'text-gray-600', bg: 'bg-gray-50', status: 'coming' },
+        {
+            id: "magicbricks",
+            name: "MagicBricks",
+            description: "Receive leads instantly from MagicBricks property listings.",
+            icon: MagicBricksIcon,
+            color: "bg-red-50 text-red-600",
+            status: "available",
+        },
+        {
+            id: "99acres",
+            name: "99Acres",
+            description: "Sync potential buyer leads from 99Acres automatically.",
+            icon: AcresIcon,
+            color: "bg-blue-50 text-blue-600",
+            status: "available",
+        },
+        {
+            id: "meta-ads",
+            name: "Meta Ads",
+            description: "Auto-sync leads from Meta advertising campaigns.",
+            icon: MetaIcon,
+            color: "bg-slate-50 text-slate-600",
+            status: "coming-soon"
+        },
+        {
+            id: "google-ads",
+            name: "Google Ads",
+            description: "Auto-sync leads from Google advertising campaigns.",
+            icon: GoogleAdsIcon,
+            color: "bg-yellow-50 text-yellow-600",
+            status: "coming-soon"
+        },
+        {
+            id: "facebook",
+            name: "Facebook Leads",
+            description: "Connect Meta Lead Forms directly to your dashboard.",
+            icon: FacebookIcon,
+            color: "bg-indigo-50 text-indigo-600",
+            status: "available",
+        },
+        {
+            id: "google-forms",
+            name: "Google Forms",
+            description: "Capture leads from Google Forms submissions.",
+            icon: GoogleFormsIcon,
+            color: "bg-purple-50 text-purple-600",
+            status: "coming-soon"
+        },
+        {
+            id: "typeform",
+            name: "Typeform",
+            description: "Sync form responses from Typeform automatically.",
+            icon: TypeformIcon,
+            color: "bg-stone-50 text-stone-600",
+            status: "coming-soon"
+        },
+        {
+            id: "zapier",
+            name: "Zapier",
+            description: "Connect 5000+ apps through Zapier automation.",
+            icon: ZapierIcon,
+            color: "bg-orange-50 text-orange-600",
+            status: "coming-soon"
+        },
+        {
+            id: "webhooks",
+            name: "Webhooks",
+            description: "Create custom webhook integrations for any platform.",
+            icon: WebhookIcon,
+            color: "bg-teal-50 text-teal-600",
+            status: "coming-soon"
+        },
+        {
+            id: "linkedin",
+            name: "LinkedIn Lead Gen",
+            description: "Sync leads from LinkedIn advertising campaigns.",
+            icon: LinkedInIcon,
+            color: "bg-sky-50 text-sky-700",
+            status: "coming-soon"
+        },
+        {
+            id: "whatsapp",
+            name: "WhatsApp",
+            description: "Capture leads from WhatsApp Business conversations.",
+            icon: WhatsAppIcon,
+            color: "bg-green-50 text-green-700",
+            status: "coming-soon"
+        },
+        {
+            id: "custom-api",
+            name: "Custom API",
+            description: "Build custom integrations using our REST API.",
+            icon: ApiIcon,
+            color: "bg-gray-50 text-gray-700",
+            status: "coming-soon"
+        }
     ]
 
     const downloadSampleCSV = () => {
@@ -373,38 +457,51 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                             )}
                         </TabsContent>
 
-                        <TabsContent value="connect" className="mt-0 h-full relative">
-                            <div className="absolute inset-0 overflow-y-auto p-4">
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {connectorCards.map(c => (
-                                        <Card key={c.id} className="cursor-pointer hover:border-primary transition-all group border-border bg-card shadow-sm relative">
-                                            {c.status === 'coming' && (
-                                                <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                                                    Coming Soon
+                        < TabsContent value="connect" className="mt-0 h-full relative" >
+                            <div className="absolute inset-0 overflow-y-auto p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {connectorCards.map(tool => (
+                                        <div key={tool.id} className="bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all p-6 flex flex-col group cursor-pointer relative">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className={`h-16 w-16 flex items-center justify-center rounded-xl border ${tool.color.replace('text-', 'border-').split(' ')[0]} bg-gray-50/50`}>
+                                                    <tool.icon className="h-10 w-10 object-contain" />
                                                 </div>
-                                            )}
-                                            <CardHeader className="p-3">
-                                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-2 ${c.bg} shadow-sm border border-slate-100`}>
-                                                    {c.logo ? (
-                                                        <img src={c.logo} alt={c.name} className="w-8 h-8 object-contain" />
-                                                    ) : (
-                                                        c.icon && <c.icon className={`w-6 h-6 ${c.color}`} />
-                                                    )}
-                                                </div>
-                                                <CardTitle className="text-sm font-medium">{c.name}</CardTitle>
-                                                <CardDescription className="text-xs">
-                                                    {c.status === 'active' ? 'Auto-sync leads' : 'Coming soon'}
-                                                </CardDescription>
-                                            </CardHeader>
-                                        </Card>
+                                                {tool.status === 'coming-soon' ? (
+                                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-bold uppercase rounded-full tracking-wide">
+                                                        Coming Soon
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase rounded-full tracking-wide">
+                                                        Available
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <h3 className="text-base font-bold text-slate-900 mb-2">{tool.name}</h3>
+                                            <p className="text-slate-500 text-xs mb-6 flex-grow leading-relaxed">{tool.description}</p>
+
+                                            <Button
+                                                variant="outline"
+                                                className="w-full text-xs h-9"
+                                                disabled={tool.status === 'coming-soon'}
+                                                onClick={() => {
+                                                    if (tool.docs) {
+                                                        // Logic to show docs/config (could reuse Dialog state if lifted or show toast)
+                                                        toast('Configuration available in Settings > Integrations', { icon: '⚙️' })
+                                                    }
+                                                }}
+                                            >
+                                                {tool.status === 'coming-soon' ? 'Notify Me' : 'Configure'}
+                                            </Button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
-                        </TabsContent>
-                    </div>
-                </Tabs>
-            </DialogContent>
-        </Dialog>
+                        </TabsContent >
+                    </div >
+                </Tabs >
+            </DialogContent >
+        </Dialog >
     )
 }
 

@@ -51,6 +51,11 @@ export default function AdminHeader({ user, profile }) {
     const router = useRouter()
     const pathname = usePathname()
     const [open, setOpen] = React.useState(false) // [NEW] State for mobile menu
+    const [isMounted, setIsMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const handleSignOut = async () => {
         const supabase = createClientSupabaseClient()
@@ -96,124 +101,130 @@ export default function AdminHeader({ user, profile }) {
                     <div className="flex items-center gap-2 md:gap-6 h-full">
                         {/* Mobile Menu */}
                         <div className="md:hidden">
-                            <Sheet open={open} onOpenChange={setOpen}>
-                                <SheetTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                        <Menu className="w-5 h-5" />
-                                    </Button>
-                                </SheetTrigger>
-                                <SheetContent side="left" className="w-[80%] sm:w-[300px] p-0 overflow-y-auto">
-                                    <SheetHeader className="p-6 border-b border-border text-left">
-                                        <SheetTitle className="flex items-center gap-2">
-                                            <div className="relative w-32 h-12">
-                                                <Image
-                                                    src="/assets/logo.svg"
-                                                    alt="Quinite Vantage"
-                                                    fill
-                                                    className="object-contain object-left"
-                                                />
-                                            </div>
-                                        </SheetTitle>
-                                    </SheetHeader>
-                                    <div className="p-4 flex flex-col gap-1">
-                                        {navItems.map((item) => {
-                                            // Determine if this nav item is active based on the current path
-                                            let isActive = false
-
-                                            if (item.label === 'Overview') {
-                                                // Overview is active only on exact match
-                                                isActive = pathname === '/dashboard/admin'
-                                            } else if (item.label === 'CRM') {
-                                                // CRM is active for any path starting with /dashboard/admin/crm
-                                                isActive = pathname?.startsWith('/dashboard/admin/crm')
-                                            } else if (item.label === 'Inventory') {
-                                                // Inventory is active for any path starting with /dashboard/admin/inventory
-                                                isActive = pathname?.startsWith('/dashboard/admin/inventory')
-                                            } else if (item.label === 'Analytics') {
-                                                // Analytics is active for exact match (not CRM or Inventory analytics)
-                                                isActive = pathname === '/dashboard/admin/analytics'
-                                            }
-
-                                            const Icon = item.icon
-                                            return (
-                                                <Link
-                                                    key={item.href}
-                                                    href={item.href}
-                                                    onClick={() => setOpen(false)}
-                                                    className={cn(
-                                                        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                                                        isActive
-                                                            ? "bg-blue-50 text-blue-700"
-                                                            : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
-                                                    )}
-                                                >
-                                                    <Icon className="w-4 h-4" />
-                                                    {item.label}
-                                                </Link>
-                                            )
-                                        })}
-                                        {/* CRM Module Sub-Navigation */}
-                                        {isCrmModule && (
-                                            <>
-                                                <div className="my-2 border-t border-border" />
-                                                <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
-                                                    CRM Module
+                            {isMounted ? (
+                                <Sheet open={open} onOpenChange={setOpen}>
+                                    <SheetTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                            <Menu className="h-6 w-6" />
+                                        </Button>
+                                    </SheetTrigger>
+                                    <SheetContent side="left" className="w-[80%] sm:w-[300px] p-0 overflow-y-auto">
+                                        <SheetHeader className="p-6 border-b border-border text-left">
+                                            <SheetTitle className="flex items-center gap-2">
+                                                <div className="relative w-32 h-12">
+                                                    <Image
+                                                        src="/assets/logo.svg"
+                                                        alt="Quinite Vantage"
+                                                        fill
+                                                        className="object-contain object-left"
+                                                    />
                                                 </div>
-                                                {crmNavItems.map((item) => {
-                                                    const isActive = pathname === item.href || (item.label === 'Pipeline' && pathname === '/dashboard/admin/crm')
-                                                    const Icon = item.icon
-                                                    return (
-                                                        <Link
-                                                            key={item.href}
-                                                            href={item.href}
-                                                            onClick={() => setOpen(false)}
-                                                            className={cn(
-                                                                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                                                                isActive
-                                                                    ? "bg-blue-50 text-blue-700"
-                                                                    : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
-                                                            )}
-                                                        >
-                                                            <Icon className="w-4 h-4" />
-                                                            {item.label}
-                                                        </Link>
-                                                    )
-                                                })}
-                                            </>
-                                        )}
+                                            </SheetTitle>
+                                        </SheetHeader>
+                                        <div className="p-4 flex flex-col gap-1">
+                                            {navItems.map((item) => {
+                                                // Determine if this nav item is active based on the current path
+                                                let isActive = false
 
-                                        {/* Inventory Module Sub-Navigation */}
-                                        {isInventoryModule && (
-                                            <>
-                                                <div className="my-2 border-t border-border" />
-                                                <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
-                                                    Inventory Module
-                                                </div>
-                                                {inventoryNavItems.map((item) => {
-                                                    const isActive = pathname === item.href
-                                                    const Icon = item.icon
-                                                    return (
-                                                        <Link
-                                                            key={item.href}
-                                                            href={item.href}
-                                                            onClick={() => setOpen(false)}
-                                                            className={cn(
-                                                                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                                                                isActive
-                                                                    ? "bg-blue-50 text-blue-700"
-                                                                    : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
-                                                            )}
-                                                        >
-                                                            <Icon className="w-4 h-4" />
-                                                            {item.label}
-                                                        </Link>
-                                                    )
-                                                })}
-                                            </>
-                                        )}
-                                    </div>
-                                </SheetContent>
-                            </Sheet>
+                                                if (item.label === 'Overview') {
+                                                    // Overview is active only on exact match
+                                                    isActive = pathname === '/dashboard/admin'
+                                                } else if (item.label === 'CRM') {
+                                                    // CRM is active for any path starting with /dashboard/admin/crm
+                                                    isActive = pathname?.startsWith('/dashboard/admin/crm')
+                                                } else if (item.label === 'Inventory') {
+                                                    // Inventory is active for any path starting with /dashboard/admin/inventory
+                                                    isActive = pathname?.startsWith('/dashboard/admin/inventory')
+                                                } else if (item.label === 'Analytics') {
+                                                    // Analytics is active for exact match (not CRM or Inventory analytics)
+                                                    isActive = pathname === '/dashboard/admin/analytics'
+                                                }
+
+                                                const Icon = item.icon
+                                                return (
+                                                    <Link
+                                                        key={item.href}
+                                                        href={item.href}
+                                                        onClick={() => setOpen(false)}
+                                                        className={cn(
+                                                            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                                                            isActive
+                                                                ? "bg-blue-50 text-blue-700"
+                                                                : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
+                                                        )}
+                                                    >
+                                                        <Icon className="w-4 h-4" />
+                                                        {item.label}
+                                                    </Link>
+                                                )
+                                            })}
+                                            {/* CRM Module Sub-Navigation */}
+                                            {isCrmModule && (
+                                                <>
+                                                    <div className="my-2 border-t border-border" />
+                                                    <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+                                                        CRM Module
+                                                    </div>
+                                                    {crmNavItems.map((item) => {
+                                                        const isActive = pathname === item.href || (item.label === 'Pipeline' && pathname === '/dashboard/admin/crm')
+                                                        const Icon = item.icon
+                                                        return (
+                                                            <Link
+                                                                key={item.href}
+                                                                href={item.href}
+                                                                onClick={() => setOpen(false)}
+                                                                className={cn(
+                                                                    "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                                                                    isActive
+                                                                        ? "bg-blue-50 text-blue-700"
+                                                                        : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
+                                                                )}
+                                                            >
+                                                                <Icon className="w-4 h-4" />
+                                                                {item.label}
+                                                            </Link>
+                                                        )
+                                                    })}
+                                                </>
+                                            )}
+
+                                            {/* Inventory Module Sub-Navigation */}
+                                            {isInventoryModule && (
+                                                <>
+                                                    <div className="my-2 border-t border-border" />
+                                                    <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+                                                        Inventory Module
+                                                    </div>
+                                                    {inventoryNavItems.map((item) => {
+                                                        const isActive = pathname === item.href
+                                                        const Icon = item.icon
+                                                        return (
+                                                            <Link
+                                                                key={item.href}
+                                                                href={item.href}
+                                                                onClick={() => setOpen(false)}
+                                                                className={cn(
+                                                                    "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                                                                    isActive
+                                                                        ? "bg-blue-50 text-blue-700"
+                                                                        : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
+                                                                )}
+                                                            >
+                                                                <Icon className="w-4 h-4" />
+                                                                {item.label}
+                                                            </Link>
+                                                        )
+                                                    })}
+                                                </>
+                                            )}
+                                        </div>
+                                    </SheetContent>
+                                </Sheet>
+                            ) : (
+                                <Button variant="ghost" size="icon">
+                                    <Menu className="h-6 w-6" />
+                                </Button>
+                            )}
                         </div>
 
                         {/* Logo - Mobile & Desktop */}
@@ -319,42 +330,53 @@ export default function AdminHeader({ user, profile }) {
                             <div className="h-4 w-px bg-slate-200 mx-1"></div>
 
                             {/* User Profile */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" className="relative h-8 w-8 rounded-full ring-offset-background focus:ring-0 hover:bg-transparent p-0">
-                                        <Avatar className="h-8 w-8 border border-slate-200">
-                                            <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
-                                            <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
-                                                {profile?.full_name?.[0] || 'U'}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-56" align="end" forceMount>
-                                    <DropdownMenuLabel className="font-normal">
-                                        <div className="flex flex-col space-y-1">
-                                            <p className="text-sm font-medium leading-none text-foreground">{profile?.full_name}</p>
-                                            <p className="text-xs leading-none text-muted-foreground">
-                                                {user?.email}
-                                            </p>
-                                        </div>
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => router.push('/dashboard/admin/profile')}>
-                                        <User className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => router.push('/dashboard/admin/settings')}>
-                                        <Settings className="mr-2 h-4 w-4" />
-                                        <span>Settings</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                        <LogOut className="mr-2 h-4 w-4" />
-                                        <span>Log out</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            {isMounted ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="relative h-8 w-8 rounded-full ring-offset-background focus:ring-0 hover:bg-transparent p-0">
+                                            <Avatar className="h-8 w-8 border border-slate-200">
+                                                <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
+                                                <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
+                                                    {profile?.full_name?.[0] || 'U'}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                                        <DropdownMenuLabel className="font-normal">
+                                            <div className="flex flex-col space-y-1">
+                                                <p className="text-sm font-medium leading-none text-foreground">{profile?.full_name}</p>
+                                                <p className="text-xs leading-none text-muted-foreground">
+                                                    {user?.email}
+                                                </p>
+                                            </div>
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => router.push('/dashboard/admin/profile')}>
+                                            <User className="mr-2 h-4 w-4" />
+                                            <span>Profile</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => router.push('/dashboard/admin/settings')}>
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            <span>Settings</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                            <LogOut className="mr-2 h-4 w-4" />
+                                            <span>Log out</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <Button variant="ghost" className="relative h-8 w-8 rounded-full ring-offset-background focus:ring-0 hover:bg-transparent p-0">
+                                    <Avatar className="h-8 w-8 border border-slate-200">
+                                        <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
+                                        <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
+                                            {profile?.full_name?.[0] || 'U'}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
