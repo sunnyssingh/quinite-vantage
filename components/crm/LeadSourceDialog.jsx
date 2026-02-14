@@ -16,6 +16,20 @@ import { FileText, UserPlus, Upload, Database, LayoutTemplate, Megaphone, Smartp
 import LeadForm from './LeadForm'
 import { toast } from 'react-hot-toast'
 import dynamic from 'next/dynamic'
+import {
+    MagicBricksIcon,
+    AcresIcon,
+    MetaIcon,
+    GoogleAdsIcon,
+    FacebookIcon,
+    GoogleFormsIcon,
+    TypeformIcon,
+    ZapierIcon,
+    WebhookIcon,
+    LinkedInIcon,
+    WhatsAppIcon,
+    ApiIcon
+} from '@/components/icons/BrandIcons'
 
 const FormBuilder = dynamic(() => import('./FormBuilder'), {
     loading: () => <div className="h-64 flex items-center justify-center text-slate-400">Loading builder...</div>,
@@ -28,18 +42,18 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
     const [previewData, setPreviewData] = useState(null) // [NEW] Preview State
 
     const connectorCards = [
-        { id: 'mb', name: 'MagicBricks', logo: '/assets/magicbricks.svg', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-white', status: 'active' },
-        { id: '99', name: '99Acres', logo: '/assets/99acres.webp', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-white', status: 'active' },
-        { id: 'meta', name: 'Meta Ads', logo: '/assets/meta.svg', icon: Megaphone, color: 'text-foreground', bg: 'bg-white', status: 'active' },
-        { id: 'google', name: 'Google Ads', logo: '/assets/google-ads.svg', icon: SearchIcon, color: 'text-foreground', bg: 'bg-white', status: 'active' },
-        { id: 'fb', name: 'Facebook Leads', logo: '/assets/facebook.svg', icon: Facebook, color: 'text-blue-700', bg: 'bg-white', status: 'active' },
-        { id: 'gforms', name: 'Google Forms', logo: '/assets/google-forms.svg', icon: FileText, color: 'text-blue-600', bg: 'bg-white', status: 'coming' },
-        { id: 'typeform', name: 'Typeform', logo: '/assets/typeform.svg', icon: FileText, color: 'text-purple-600', bg: 'bg-white', status: 'coming' },
-        { id: 'zapier', name: 'Zapier', logo: '/assets/zapier.svg', icon: Zap, color: 'text-orange-600', bg: 'bg-white', status: 'coming' },
-        { id: 'linkedin', name: 'LinkedIn', logo: '/assets/linkedin.svg', icon: Linkedin, color: 'text-blue-800', bg: 'bg-white', status: 'coming' },
-        { id: 'whatsapp', name: 'WhatsApp', logo: '/assets/whatsapp.svg', icon: MessageSquare, color: 'text-green-600', bg: 'bg-white', status: 'coming' },
-        { id: 'webhook', name: 'Webhooks', logo: '/assets/webhooks.svg', icon: Webhook, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
-        { id: 'api', name: 'Custom API', logo: '/assets/api.svg', icon: Code, color: 'text-slate-600', bg: 'bg-slate-50', status: 'coming' },
+        { id: 'mb', name: 'MagicBricks', icon: MagicBricksIcon, color: 'text-red-600', bg: 'bg-red-50', status: 'active' },
+        { id: '99', name: '99Acres', icon: AcresIcon, color: 'text-blue-600', bg: 'bg-blue-50', status: 'active' },
+        { id: 'meta', name: 'Meta Ads', icon: MetaIcon, color: 'text-slate-600', bg: 'bg-slate-50', status: 'active' },
+        { id: 'google', name: 'Google Ads', icon: GoogleAdsIcon, color: 'text-yellow-600', bg: 'bg-yellow-50', status: 'active' },
+        { id: 'fb', name: 'Facebook Leads', icon: FacebookIcon, color: 'text-indigo-600', bg: 'bg-indigo-50', status: 'active' },
+        { id: 'gforms', name: 'Google Forms', icon: GoogleFormsIcon, color: 'text-purple-600', bg: 'bg-purple-50', status: 'coming' },
+        { id: 'typeform', name: 'Typeform', icon: TypeformIcon, color: 'text-stone-600', bg: 'bg-stone-50', status: 'coming' },
+        { id: 'zapier', name: 'Zapier', icon: ZapierIcon, color: 'text-orange-600', bg: 'bg-orange-50', status: 'coming' },
+        { id: 'linkedin', name: 'LinkedIn', icon: LinkedInIcon, color: 'text-sky-700', bg: 'bg-sky-50', status: 'coming' },
+        { id: 'whatsapp', name: 'WhatsApp', icon: WhatsAppIcon, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
+        { id: 'webhook', name: 'Webhooks', icon: WebhookIcon, color: 'text-teal-600', bg: 'bg-teal-50', status: 'coming' },
+        { id: 'api', name: 'Custom API', icon: ApiIcon, color: 'text-gray-600', bg: 'bg-gray-50', status: 'coming' },
     ]
 
     const downloadSampleCSV = () => {
@@ -394,25 +408,4 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
     )
 }
 
-function BuildingIcon(props) {
-    return <Building2 {...props} />
-}
-function SearchIcon(props) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-        </svg>
-    )
-}
+

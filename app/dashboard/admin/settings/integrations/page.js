@@ -5,14 +5,28 @@ import { Copy, Check, Upload, AlertCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { toast } from "react-hot-toast"
+import {
+    MagicBricksIcon,
+    AcresIcon,
+    MetaIcon,
+    GoogleAdsIcon,
+    FacebookIcon,
+    GoogleFormsIcon,
+    TypeformIcon,
+    ZapierIcon,
+    WebhookIcon,
+    LinkedInIcon,
+    WhatsAppIcon,
+    ApiIcon
+} from "@/components/icons/BrandIcons"
 
 const INTEGRATIONS = [
     {
         id: "magicbricks",
         name: "MagicBricks",
         description: "Receive leads instantly from MagicBricks property listings.",
-        logo: "/assets/magicbricks.svg",
-        color: "bg-red-100 text-red-600",
+        icon: MagicBricksIcon,
+        color: "bg-red-50 text-red-600",
         status: "available",
         docs: {
             step1: "Contact your MagicBricks Account Manager.",
@@ -30,8 +44,8 @@ const INTEGRATIONS = [
         id: "99acres",
         name: "99Acres",
         description: "Sync potential buyer leads from 99Acres automatically.",
-        logo: "/assets/99acres.svg",
-        color: "bg-blue-100 text-blue-600",
+        icon: AcresIcon,
+        color: "bg-blue-50 text-blue-600",
         status: "available",
         docs: {
             step1: "Login to your 99Acres Advertiser Dashboard.",
@@ -50,24 +64,24 @@ const INTEGRATIONS = [
         id: "meta-ads",
         name: "Meta Ads",
         description: "Auto-sync leads from Meta advertising campaigns.",
-        logo: "/assets/meta.svg",
-        color: "bg-purple-100 text-purple-600",
+        icon: MetaIcon,
+        color: "bg-slate-50 text-slate-600",
         status: "coming-soon"
     },
     {
         id: "google-ads",
         name: "Google Ads",
         description: "Auto-sync leads from Google advertising campaigns.",
-        logo: "/assets/google-ads.svg",
-        color: "bg-yellow-100 text-yellow-600",
+        icon: GoogleAdsIcon,
+        color: "bg-yellow-50 text-yellow-600",
         status: "coming-soon"
     },
     {
         id: "facebook",
         name: "Facebook Leads",
         description: "Connect Meta Lead Forms directly to your dashboard.",
-        logo: "/assets/facebook.svg",
-        color: "bg-indigo-100 text-indigo-600",
+        icon: FacebookIcon,
+        color: "bg-indigo-50 text-indigo-600",
         status: "available",
         docs: {
             step1: "Go to Meta Business Suite -> Leads Setup.",
@@ -82,56 +96,56 @@ const INTEGRATIONS = [
         id: "google-forms",
         name: "Google Forms",
         description: "Capture leads from Google Forms submissions.",
-        logo: "/assets/google-forms.svg",
-        color: "bg-green-100 text-green-600",
+        icon: GoogleFormsIcon,
+        color: "bg-purple-50 text-purple-600",
         status: "coming-soon"
     },
     {
         id: "typeform",
         name: "Typeform",
         description: "Sync form responses from Typeform automatically.",
-        logo: "/assets/typeform.svg",
-        color: "bg-slate-100 text-slate-600",
+        icon: TypeformIcon,
+        color: "bg-stone-50 text-stone-600",
         status: "coming-soon"
     },
     {
         id: "zapier",
         name: "Zapier",
         description: "Connect 5000+ apps through Zapier automation.",
-        logo: "/assets/zapier.svg",
-        color: "bg-orange-100 text-orange-600",
+        icon: ZapierIcon,
+        color: "bg-orange-50 text-orange-600",
         status: "coming-soon"
     },
     {
         id: "webhooks",
         name: "Webhooks",
         description: "Create custom webhook integrations for any platform.",
-        logo: "/assets/webhooks.svg",
-        color: "bg-teal-100 text-teal-600",
+        icon: WebhookIcon,
+        color: "bg-teal-50 text-teal-600",
         status: "coming-soon"
     },
     {
         id: "linkedin",
         name: "LinkedIn Lead Gen",
         description: "Sync leads from LinkedIn advertising campaigns.",
-        logo: "/assets/linkedin.svg",
-        color: "bg-blue-100 text-blue-700",
+        icon: LinkedInIcon,
+        color: "bg-sky-50 text-sky-700",
         status: "coming-soon"
     },
     {
         id: "whatsapp",
-        name: "WhatsApp Business",
+        name: "WhatsApp",
         description: "Capture leads from WhatsApp Business conversations.",
-        logo: "/assets/whatsapp.svg",
-        color: "bg-green-100 text-green-700",
+        icon: WhatsAppIcon,
+        color: "bg-green-50 text-green-700",
         status: "coming-soon"
     },
     {
         id: "custom-api",
         name: "Custom API",
         description: "Build custom integrations using our REST API.",
-        logo: "/assets/api.svg",
-        color: "bg-gray-100 text-gray-700",
+        icon: ApiIcon,
+        color: "bg-gray-50 text-gray-700",
         status: "coming-soon"
     }
 ]
@@ -167,8 +181,8 @@ export default function IntegrationsPage() {
                     {INTEGRATIONS.map((tool) => (
                         <div key={tool.id} className="bg-white rounded-xl border hover:shadow-md transition-all p-6 flex flex-col">
                             <div className="flex items-start justify-between mb-4">
-                                <div className="h-12 flex items-center">
-                                    <img src={tool.logo} alt={tool.name} className="h-full w-auto object-contain max-w-[140px]" />
+                                <div className={`h-12 w-12 flex items-center justify-center rounded-lg border ${tool.color.replace('text-', 'border-').split(' ')[0]}`}>
+                                    <tool.icon className="h-8 w-8 object-contain" />
                                 </div>
                                 {tool.connected ? (
                                     <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-full tracking-wide">
@@ -208,8 +222,8 @@ export default function IntegrationsPage() {
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2 text-xl">
-                                {selectedIntegration?.logo && (
-                                    <img src={selectedIntegration.logo} alt={selectedIntegration.name} className="h-8 w-auto object-contain" />
+                                {selectedIntegration && (
+                                    <selectedIntegration.icon className="h-8 w-8 object-contain" />
                                 )}
                                 Setup {selectedIntegration?.name}
                             </DialogTitle>
