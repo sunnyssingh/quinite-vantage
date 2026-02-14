@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Building2, Upload, Loader2 } from 'lucide-react'
+import { Building2, Upload, Loader2, ArrowLeft } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import Image from 'next/image'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -243,6 +244,14 @@ export default function OrganizationSettingsPage() {
     return (
         <div className="h-full bg-gray-50/50 overflow-y-auto">
             <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
+                <div className="mb-6">
+                    <Link href="/dashboard/admin/settings">
+                        <Button variant="ghost" size="sm" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-800">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Settings
+                        </Button>
+                    </Link>
+                </div>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900">Organization Settings</h1>
                     <p className="text-muted-foreground text-slate-500 mt-2">

@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'react-hot-toast'
 import PricingTiers from '@/components/subscription/PricingTiers'
 import UsageLimits from '@/components/dashboard/UsageLimits'
 import CreditPurchase from '@/components/billing/CreditPurchase'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 export default function SubscriptionPage() {
     const [subscription, setSubscription] = useState(null)
@@ -166,6 +170,15 @@ export default function SubscriptionPage() {
     return (
         <div className="min-h-screen h-full bg-gray-50/50 overflow-y-auto">
             <div className="container mx-auto py-8 px-4 max-w-7xl">
+                <div className="mb-6">
+                    <Link href="/dashboard/admin/settings">
+                        <Button variant="ghost" size="sm" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-800">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Settings
+                        </Button>
+                    </Link>
+                </div>
+
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900">Subscription & Billing</h1>
                     <p className="text-gray-600 mt-2">
@@ -176,52 +189,61 @@ export default function SubscriptionPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                     <div className="lg:col-span-2">
                         {/* Current Plan Card */}
-                        <Card className="mb-6">
-                            <CardHeader>
-                                <CardTitle>Current Plan</CardTitle>
-                                <CardDescription>Your active subscription details</CardDescription>
+                        <Card className="mb-6 border-blue-100 shadow-md bg-white relative overflow-hidden group">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-500 to-indigo-600" />
+                            <CardHeader className="border-b border-slate-100 bg-slate-50/30 pb-4">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <CardTitle className="text-xl text-slate-800">Current Plan</CardTitle>
+                                        <CardDescription>Your active subscription details</CardDescription>
+                                    </div>
+                                    <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 gap-1.5 px-3 py-1">
+                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                        Active
+                                    </Badge>
+                                </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-6">
                                 {subscription ? (
-                                    <div className="space-y-4">
+                                    <div className="space-y-6">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <h3 className="text-2xl font-bold text-gray-900">
+                                                <h3 className="text-3xl font-bold text-slate-900 mb-1">
                                                     {subscription.plan?.name || 'Free'}
                                                 </h3>
-                                                <p className="text-sm text-gray-500">
+                                                <p className="text-sm text-slate-500 font-medium">
                                                     {subscription.plan?.description}
                                                 </p>
                                             </div>
                                             <div className="text-right">
                                                 {subscription.plan?.per_user_price_inr > 0 ? (
                                                     <>
-                                                        <div className="text-2xl font-bold text-blue-600">
+                                                        <div className="text-3xl font-bold text-blue-600">
                                                             {organization?.currency_symbol || '₹'}{subscription.plan.per_user_price_inr}
                                                         </div>
-                                                        <div className="text-sm text-gray-500">per user/month</div>
+                                                        <div className="text-xs text-slate-500 font-medium uppercase tracking-wide mt-1">per user/month</div>
                                                     </>
                                                 ) : (
-                                                    <div className="text-2xl font-bold text-green-600">Free</div>
+                                                    <div className="text-3xl font-bold text-green-600">Free</div>
                                                 )}
                                             </div>
                                         </div>
 
                                         {subscription.user_count && subscription.plan?.per_user_price_inr > 0 && (
-                                            <div className="pt-4 border-t">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-gray-600">
-                                                        {subscription.user_count} user{subscription.user_count > 1 ? 's' : ''}
+                                            <div className="pt-4 border-t border-slate-100">
+                                                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                                    <span className="text-slate-600 font-medium text-sm">
+                                                        Total Monthly Billing ({subscription.user_count} user{subscription.user_count > 1 ? 's' : ''})
                                                     </span>
-                                                    <span className="text-xl font-semibold text-gray-900">
-                                                        {organization?.currency_symbol || '₹'}{(subscription.plan.per_user_price_inr * subscription.user_count).toFixed(0)}/month
+                                                    <span className="text-xl font-bold text-slate-900">
+                                                        {organization?.currency_symbol || '₹'}{(subscription.plan.per_user_price_inr * subscription.user_count).toFixed(0)}
                                                     </span>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 ) : (
-                                    <p className="text-gray-500">No active subscription</p>
+                                    <p className="text-gray-500 italic">No active subscription found.</p>
                                 )}
                             </CardContent>
                         </Card>

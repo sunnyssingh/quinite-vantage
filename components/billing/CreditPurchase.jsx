@@ -97,20 +97,26 @@ export default function CreditPurchase({ currentBalance, onPurchaseComplete }) {
     const presetAmounts = [50, 100, 250, 500, 1000]
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
+        <Card className="h-full border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
+            <CardHeader className="bg-slate-50/50 pb-4 border-b border-slate-100">
+                <CardTitle className="flex items-center gap-2 text-xl text-slate-800">
+                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                        <CreditCard className="h-5 w-5" />
+                    </div>
                     Purchase Call Credits
                 </CardTitle>
-                <CardDescription>
-                    Current Balance: <span className="font-semibold">{currentBalance?.toFixed(2) || '0.00'}</span> credits
+                <CardDescription className="pt-2 flex items-center gap-2">
+                    Current Balance:
+                    <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-sm">
+                        {currentBalance?.toFixed(2) || '0.00'}
+                    </span> credits
                 </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
                 {/* Preset amounts */}
-                <div className="space-y-2">
-                    <Label>Quick Select</Label>
+                <div className="space-y-3">
+                    <Label className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Quick Select</Label>
                     <div className="grid grid-cols-5 gap-2">
                         {presetAmounts.map((amount) => (
                             <Button
@@ -118,7 +124,10 @@ export default function CreditPurchase({ currentBalance, onPurchaseComplete }) {
                                 variant={credits === amount ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => setCredits(amount)}
-                                className="text-xs"
+                                className={`text-xs h-9 transition-all ${credits === amount
+                                        ? 'bg-blue-600 hover:bg-blue-700 shadow-md transform scale-105'
+                                        : 'hover:border-blue-300 hover:bg-blue-50/50'
+                                    }`}
                             >
                                 {amount}
                             </Button>
@@ -127,34 +136,40 @@ export default function CreditPurchase({ currentBalance, onPurchaseComplete }) {
                 </div>
 
                 {/* Custom amount */}
-                <div className="space-y-2">
-                    <Label htmlFor="credits">Custom Amount (Credits)</Label>
-                    <Input
-                        id="credits"
-                        type="number"
-                        min="1"
-                        value={credits}
-                        onChange={(e) => setCredits(parseInt(e.target.value) || 0)}
-                        placeholder="Enter credits"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        1 Credit = 1 Minute of calling | ₹4 per credit
+                <div className="space-y-3">
+                    <Label htmlFor="credits" className="text-xs font-semibold uppercase text-slate-500 tracking-wider">Custom Amount</Label>
+                    <div className="relative">
+                        <Input
+                            id="credits"
+                            type="number"
+                            min="1"
+                            value={credits}
+                            onChange={(e) => setCredits(parseInt(e.target.value) || 0)}
+                            className="pl-10 h-11 text-lg font-medium border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                            placeholder="Enter credits"
+                        />
+                        <div className="absolute left-3 top-3 text-slate-400">
+                            <CreditCard className="w-5 h-5" />
+                        </div>
+                    </div>
+                    <p className="text-xs text-slate-500 pl-1">
+                        1 Credit = 1 Minute of calling | <span className="font-semibold text-slate-700">₹4 per credit</span>
                     </p>
                 </div>
 
                 {/* Price breakdown */}
-                <div className="space-y-2 p-4 bg-slate-50 rounded-lg">
+                <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <div className="flex justify-between text-sm">
-                        <span>Credits:</span>
-                        <span className="font-medium">{credits}</span>
+                        <span className="text-slate-600">Credits Selected</span>
+                        <span className="font-semibold text-slate-900">{credits}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                        <span>Rate:</span>
-                        <span className="font-medium">₹{CREDIT_RATE} per credit</span>
+                        <span className="text-slate-600">Rate</span>
+                        <span className="font-medium text-slate-900">₹{CREDIT_RATE} / credit</span>
                     </div>
-                    <div className="border-t pt-2 mt-2 flex justify-between">
-                        <span className="font-semibold">Total Amount:</span>
-                        <span className="font-bold text-lg">₹{calculateAmount().toFixed(2)}</span>
+                    <div className="border-t border-slate-200 pt-3 mt-1 flex justify-between items-center">
+                        <span className="font-bold text-slate-800">Total Payable</span>
+                        <span className="font-bold text-2xl text-blue-600">₹{calculateAmount().toFixed(2)}</span>
                     </div>
                 </div>
 
@@ -162,18 +177,16 @@ export default function CreditPurchase({ currentBalance, onPurchaseComplete }) {
                 <Button
                     onClick={handlePurchase}
                     disabled={loading || credits <= 0}
-                    className="w-full"
-                    size="lg"
+                    className="w-full h-12 text-base font-semibold shadow-lg shadow-blue-500/20 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-[0.98]"
                 >
                     {loading ? (
                         <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Processing Payment...
                         </>
                     ) : (
                         <>
-                            <CreditCard className="mr-2 h-4 w-4" />
-                            Purchase {credits} Credits for ₹{calculateAmount()}
+                            Pay ₹{calculateAmount()} Securely
                         </>
                     )}
                 </Button>

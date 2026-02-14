@@ -1,11 +1,13 @@
 'use client'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import CredentialsModal from '@/components/dashboard/CredentialsModal'
-import { Pencil, Trash2, Plus, Shield, Lock } from 'lucide-react'
+import { Pencil, Trash2, Plus, Shield, Lock, ArrowLeft } from 'lucide-react'
 import PermissionManager from '@/components/admin/PermissionManager'
+import { Button } from '@/components/ui/button'
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
@@ -147,6 +149,14 @@ export default function UsersPage() {
     return (
         <div className="h-full bg-gray-50/50 overflow-y-auto">
             <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+                <div className="mb-6">
+                    <Link href="/dashboard/admin/settings">
+                        <Button variant="ghost" size="sm" className="pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-800">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Settings
+                        </Button>
+                    </Link>
+                </div>
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
