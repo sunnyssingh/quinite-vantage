@@ -238,26 +238,26 @@ export default function CRMDashboardPage() {
 
                     return (
                         <PermissionGate key={index} feature={metric.permission}>
-                            <Card className="overflow-hidden border-border hover:shadow-md transition-all duration-200">
+                            <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
                                 <CardContent className="p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className={`p-3 rounded-lg ${metric.bgColor} w-12 h-12 flex items-center justify-center`}>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
                                             {Icon ? (
-                                                <Icon className={`w-6 h-6 ${metric.color}`} />
+                                                <Icon className="w-5 h-5" />
                                             ) : (
-                                                <span className={`text-2xl font-bold ${metric.color}`}>
+                                                <span className="text-lg font-bold">
                                                     {metric.currencySymbol}
                                                 </span>
                                             )}
                                         </div>
-                                        <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${metric.trend === 'up' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                                        <div className={`flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${metric.trend === 'up' ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
                                             <TrendIcon className="w-3 h-3" />
                                             {metric.change}
                                         </div>
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
-                                        <h3 className="text-3xl font-bold text-foreground mt-1">{metric.value}</h3>
+                                        <h3 className="text-2xl font-semibold text-foreground mt-1">{metric.value}</h3>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -287,7 +287,7 @@ export default function CRMDashboardPage() {
                                                     variant="outline"
                                                     className="w-full h-auto flex-col gap-3 p-6 hover:bg-secondary/50 transition-all group"
                                                 >
-                                                    <div className={`p-3 rounded-lg ${action.color} text-white group-hover:scale-110 transition-transform`}>
+                                                    <div className="p-3 rounded-md bg-secondary border border-border text-muted-foreground group-hover:text-primary transition-colors">
                                                         <Icon className="w-5 h-5" />
                                                     </div>
                                                     <span className="text-sm font-medium">{action.label}</span>

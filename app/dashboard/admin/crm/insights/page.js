@@ -181,27 +181,19 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="min-h-screen bg-slate-50/50 p-4 md:p-6 space-y-4 md:space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-3">
-                        <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg">
-                            <Brain className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                                Conversation Insights
-                            </h1>
-                            <p className="text-xs sm:text-base text-gray-500 mt-1 flex items-center gap-2">
-                                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500" />
-                                AI-powered analysis of customer conversations
-                            </p>
-                        </div>
-                    </div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+                        Conversation Insights
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                        AI-powered analysis of customer conversations
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border-purple-200 text-purple-700 bg-purple-50 w-fit">
+                    <Badge variant="outline" className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-background w-fit">
                         Last {dateRange} days
                     </Badge>
                     <PermissionTooltip
@@ -228,82 +220,82 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
             {/* Summary Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {/* Total Conversations */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <MessageSquare className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <MessageSquare className="w-5 h-5" />
                             </div>
-                            <TrendingUp className="h-5 w-5 text-white/60" />
+                            <TrendingUp className="w-4 h-4 text-muted-foreground" />
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-blue-100 text-xs md:text-sm font-medium">Total Conversations</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">{stats.totalInsights}</p>
-                            <p className="text-blue-100 text-xs">Analyzed interactions</p>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Total Conversations</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{stats.totalInsights}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">Analyzed interactions</p>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
 
                 {/* Avg Sentiment */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <Activity className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <Activity className="w-5 h-5" />
                             </div>
-                            <div className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 text-white">
+                            <Badge variant={stats.avgSentiment > 0 ? "default" : stats.avgSentiment < 0 ? "destructive" : "secondary"} className="text-[10px]">
                                 {stats.avgSentiment > 0 ? 'Positive' : stats.avgSentiment < 0 ? 'Negative' : 'Neutral'}
-                            </div>
+                            </Badge>
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-green-100 text-xs md:text-sm font-medium">Avg Sentiment</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">{stats.avgSentiment}</p>
-                            <div className="w-full bg-white/20 rounded-full h-1.5 mt-2">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Avg Sentiment</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{stats.avgSentiment}</h3>
+                            <div className="w-full bg-secondary rounded-full h-1.5 mt-2">
                                 <div
-                                    className="bg-white h-1.5 rounded-full transition-all duration-500"
+                                    className={`h-1.5 rounded-full transition-all duration-500 ${stats.avgSentiment > 0 ? 'bg-green-500' : stats.avgSentiment < 0 ? 'bg-red-500' : 'bg-yellow-500'}`}
                                     style={{ width: `${Math.min(Math.abs(stats.avgSentiment) * 100, 100)}%` }}
                                 />
                             </div>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
 
                 {/* High Interest */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <UserCheck className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <UserCheck className="w-5 h-5" />
                             </div>
-                            <Badge className="bg-white/20 text-white border-0 text-xs">
+                            <Badge variant="secondary" className="text-[10px]">
                                 {stats.totalInsights > 0 ? Math.round((stats.highInterest / stats.totalInsights) * 100) : 0}%
                             </Badge>
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-purple-100 text-xs md:text-sm font-medium">High Interest</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">{stats.highInterest}</p>
-                            <p className="text-purple-100 text-xs">Qualified leads</p>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">High Interest</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{stats.highInterest}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">Qualified leads</p>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
 
                 {/* Budget Mentioned */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <Banknote className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <Banknote className="w-5 h-5" />
                             </div>
-                            <Badge className="bg-white/20 text-white border-0 text-xs">
+                            <Badge variant="secondary" className="text-[10px]">
                                 {stats.totalInsights > 0 ? Math.round((stats.budgetMentioned / stats.totalInsights) * 100) : 0}%
                             </Badge>
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-amber-100 text-xs md:text-sm font-medium">Budget Mentioned</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">{stats.budgetMentioned}</p>
-                            <p className="text-amber-100 text-xs">Ready to invest</p>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Budget Mentioned</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{stats.budgetMentioned}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">Ready to invest</p>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
             </div>
 
@@ -331,9 +323,9 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
                 <TabsContent value="sentiment" className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Card className="border-0 shadow-lg">
-                            <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50">
+                            <CardHeader className="border-b">
                                 <CardTitle className="flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-blue-600" />
+                                    <Activity className="w-5 h-5 text-muted-foreground" />
                                     Sentiment Distribution
                                 </CardTitle>
                                 <CardDescription>Overall customer sentiment across conversations</CardDescription>
@@ -364,7 +356,7 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
                         </Card>
 
                         <Card className="border-0 shadow-lg">
-                            <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-purple-50">
+                            <CardHeader className="border-b">
                                 <CardTitle>Sentiment Breakdown</CardTitle>
                                 <CardDescription>Detailed sentiment analysis</CardDescription>
                             </CardHeader>
@@ -402,9 +394,9 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
                 {/* Interest Level */}
                 <TabsContent value="interest">
                     <Card className="border-0 shadow-lg">
-                        <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50">
+                        <CardHeader className="border-b">
                             <CardTitle className="flex items-center gap-2">
-                                <UserCheck className="w-5 h-5 text-purple-600" />
+                                <UserCheck className="w-5 h-5 text-muted-foreground" />
                                 Interest Level Breakdown
                             </CardTitle>
                             <CardDescription>Customer interest in the product/service</CardDescription>
@@ -444,9 +436,9 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
                 {/* Purchase Readiness */}
                 <TabsContent value="readiness">
                     <Card className="border-0 shadow-lg">
-                        <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
+                        <CardHeader className="border-b">
                             <CardTitle className="flex items-center gap-2">
-                                <Calendar className="w-5 h-5 text-green-600" />
+                                <Calendar className="w-5 h-5 text-muted-foreground" />
                                 Purchase Readiness Timeline
                             </CardTitle>
                             <CardDescription>When customers are ready to make a decision</CardDescription>
@@ -472,9 +464,9 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
                 {/* Common Objections */}
                 <TabsContent value="objections">
                     <Card className="border-0 shadow-lg">
-                        <CardHeader className="border-b bg-gradient-to-r from-red-50 to-orange-50">
+                        <CardHeader className="border-b">
                             <CardTitle className="flex items-center gap-2">
-                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                                <AlertTriangle className="w-5 h-5 text-muted-foreground" />
                                 Common Objections
                             </CardTitle>
                             <CardDescription>Most frequently raised concerns</CardDescription>
@@ -500,9 +492,9 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
                 {/* Budget Ranges */}
                 <TabsContent value="budget">
                     <Card className="border-0 shadow-lg">
-                        <CardHeader className="border-b bg-gradient-to-r from-amber-50 to-yellow-50">
+                        <CardHeader className="border-b">
                             <CardTitle className="flex items-center gap-2">
-                                <Banknote className="w-5 h-5 text-amber-600" />
+                                <Banknote className="w-5 h-5 text-muted-foreground" />
                                 Budget Range Distribution
                             </CardTitle>
                             <CardDescription>Customer budget preferences</CardDescription>

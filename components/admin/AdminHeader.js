@@ -46,6 +46,8 @@ import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { GlobalSearch } from './GlobalSearch'
 import { NotificationBell } from './NotificationBell'
+import { SystemStatus } from './SystemStatus'
+import { HelpMenu } from './HelpMenu'
 
 export default function AdminHeader({ user, profile }) {
     const router = useRouter()
@@ -314,18 +316,14 @@ export default function AdminHeader({ user, profile }) {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {/* Quick Actions (Zap) */}
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-blue-50 hover:text-blue-600 w-8 h-8 rounded">
-                                <Zap className="w-4 h-4" />
-                            </Button>
+                            {/* Quick Actions (System Status) */}
+                            <SystemStatus />
 
                             {/* Notifications */}
                             <NotificationBell />
 
                             {/* Help / QL */}
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-blue-50 hover:text-blue-600 w-8 h-8 rounded hidden sm:flex">
-                                <HelpCircle className="w-4 h-4" />
-                            </Button>
+                            <HelpMenu />
 
                             <div className="h-4 w-px bg-slate-200 mx-1"></div>
 

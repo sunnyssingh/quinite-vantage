@@ -220,76 +220,76 @@ export default function CallHistory() {
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {/* Completed */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <Phone className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <Phone className="w-5 h-5" />
                             </div>
-                            <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-white/60" />
+                            <TrendingUp className="w-4 h-4 text-muted-foreground" />
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-green-100 text-xs md:text-sm font-medium">Completed</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Completed</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">
                                 {calls.filter(c => c.call_status === 'completed' || c.call_status === 'transferred').length}
-                            </p>
-                            <p className="text-green-100 text-xs">Successfully finished</p>
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">Successfully finished</p>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
 
                 {/* Transferred */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <PhoneForwarded className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <PhoneForwarded className="w-5 h-5" />
                             </div>
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-blue-100 text-xs md:text-sm font-medium">Transferred</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Transferred</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">
                                 {calls.filter(c => c.transferred).length}
-                            </p>
-                            <p className="text-blue-100 text-xs">Escalated to agents</p>
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">Escalated to agents</p>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
 
                 {/* Avg Duration */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <Clock className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <Clock className="w-5 h-5" />
                             </div>
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-purple-100 text-xs md:text-sm font-medium">Avg Duration</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Avg Duration</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">
                                 {formatDuration(Math.round(calls.reduce((acc, c) => acc + (c.duration || 0), 0) / calls.length))}
-                            </p>
-                            <p className="text-purple-100 text-xs">Average call length</p>
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">Average call length</p>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
 
                 {/* With Insights */}
-                <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
-                    <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-5 md:p-6 h-full flex flex-col">
+                <Card className="overflow-hidden border-border bg-card hover:shadow-sm transition-all duration-200">
+                    <CardContent className="p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="p-2.5 md:p-3 bg-white/20 backdrop-blur-sm rounded-lg">
-                                <Activity className="h-5 w-5 md:h-6 md:w-6 text-white" />
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <Activity className="w-5 h-5" />
                             </div>
                         </div>
-                        <div className="space-y-1 flex-1">
-                            <p className="text-amber-100 text-xs md:text-sm font-medium">With Insights</p>
-                            <p className="text-3xl md:text-4xl font-bold text-white">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">With Insights</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">
                                 {calls.filter(c => c.insights && c.insights.length > 0).length}
-                            </p>
-                            <p className="text-amber-100 text-xs">AI analyzed calls</p>
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">AI analyzed calls</p>
                         </div>
-                    </div>
+                    </CardContent>
                 </Card>
             </div>
 

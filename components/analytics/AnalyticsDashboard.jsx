@@ -224,57 +224,73 @@ export default function AnalyticsDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Total Leads */}
                 <Card className="rounded-xl border-border bg-card shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Leads</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-foreground">{overview?.overview?.totalLeads || 0}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            All leads in database
-                        </p>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <Users className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{overview?.overview?.totalLeads || 0}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                All leads in database
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
 
                 {/* Total Calls */}
                 <Card className="rounded-xl border-border bg-card shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Calls</CardTitle>
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-foreground">{overview?.overview?.totalCalls || 0}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Calls made by AI agent
-                        </p>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <Phone className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Total Calls</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{overview?.overview?.totalCalls || 0}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Calls made by AI agent
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
 
                 {/* Transferred Calls */}
                 <Card className="rounded-xl border-border bg-card shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Transferred</CardTitle>
-                        <PhoneForwarded className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-foreground">{overview?.overview?.totalTransferred || 0}</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Successful transfers
-                        </p>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <PhoneForwarded className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Transferred</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{overview?.overview?.totalTransferred || 0}</h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Successful transfers
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
 
                 {/* Conversion Rate */}
                 <Card className="rounded-xl border-border bg-card shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Conversion</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-foreground">{overview?.overview?.conversionRate || 0}%</div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Calls transferred to human
-                        </p>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="text-muted-foreground p-2 rounded-lg bg-secondary/50">
+                                <TrendingUp className="w-5 h-5" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Conversion</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1">{overview?.overview?.conversionRate || 0}%</h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Calls transferred to human
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

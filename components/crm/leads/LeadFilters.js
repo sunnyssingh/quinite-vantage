@@ -54,9 +54,9 @@ export function LeadFilters({
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                         <Select value={stageFilter} onValueChange={setStageFilter}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-full sm:w-[180px]">
                                 <SelectValue placeholder="All Stages" />
                             </SelectTrigger>
                             <SelectContent>
@@ -78,7 +78,7 @@ export function LeadFilters({
                             value={projectId || "all"}
                             onValueChange={(val) => setProjectId(val === "all" ? null : val)}
                         >
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-full sm:w-[180px]">
                                 <SelectValue placeholder="All Projects" />
                             </SelectTrigger>
                             <SelectContent>
