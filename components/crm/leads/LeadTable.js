@@ -40,7 +40,10 @@ export function LeadTable({
     page = 1,
     onPageChange,
     hasMore = false,
-    isLoadingMore = false
+    isLoadingMore = false,
+    onBulkAssign,
+    onBulkDelete,
+    users = []
 }) {
 
     const toggleSelectAll = () => {
@@ -273,6 +276,55 @@ export function LeadTable({
                     Next
                 </Button>
             </div>
+            {/* Bulk Action Bar */}
+            {selectedLeads.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-background border border-border shadow-lg rounded-full px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-4 duration-200">
+                    <span className="font-medium text-sm">
+                        {selectedLeads.size} selected
+                    </span>
+                    <div className="h-4 w-px bg-border" />
+
+                    {/* Bulk Assign */}
+                    {onBulkAssign && (
+                        <Select onValueChange={onBulkAssign}>
+                            <SelectTrigger className="h-8 w-[140px] border-0 bg-secondary/50 hover:bg-secondary focus:ring-0">
+                                <SelectValue placeholder="Assign to..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {users && users.map(user => (
+                                    <SelectItem key={user.id} value={user.id}>
+                                        {user.full_name || user.email}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+
+                    {/* Bulk Delete */}
+                    {onBulkDelete && (canDelete || true) && (
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-8 rounded-full px-4"
+                            onClick={onBulkDelete}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                        </Button>
+                    )}
+
+                    {/* Clear Selection */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full ml-2 hover:bg-muted"
+                        onClick={() => setSelectedLeads(new Set())}
+                    >
+                        <span className="sr-only">Dismiss</span>
+                        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 opacity-50"><path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.50009L3.21846 10.9685C2.99391 11.1931 2.99391 11.5571 3.21846 11.7816C3.44301 12.0062 3.80708 12.0062 4.03164 11.7816L7.50005 8.31327L10.9685 11.7816C11.193 12.0062 11.5571 12.0062 11.7816 11.7816C12.0062 11.5571 12.0062 11.1931 11.7816 10.9685L8.31322 7.50009L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path></svg>
+                    </Button>
+                </div>
+            )}
         </div>
     )
 }

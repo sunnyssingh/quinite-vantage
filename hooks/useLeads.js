@@ -159,3 +159,32 @@ export function useBulkDeleteLeads() {
         }
     })
 }
+/**
+ * Custom hook for bulk updating leads
+ */
+export function useBulkUpdateLeads() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async ({ leadIds, updates }) => {
+            const response = await fetch('/api/leads/bulk-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadIds, updates })
+            })
+            if (!response.ok) {
+                const error = await response.json()
+                throw new Error(error.error || 'Failed to update leads')
+            }
+            return response.json()
+        },
+        onSuccess: (data, { leadIds }) => {
+            // Remove all updated leads from cache to force refresh
+            leadIds.forEach(id => {
+                queryClient.removeQueries({ queryKey: ['lead', id] })
+            })
+            // Invalidate leads list
+            queryClient.invalidateQueries({ queryKey: ['leads'] })
+        }
+    })
+}

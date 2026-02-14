@@ -7,7 +7,7 @@ import { usePermission } from '@/contexts/PermissionContext'
 import { toast } from 'react-hot-toast'
 
 // Hooks
-import { useLeads, useCreateLead, useUpdateLead, useDeleteLead, useBulkDeleteLeads } from '@/hooks/useLeads'
+import { useLeads, useCreateLead, useUpdateLead, useDeleteLead, useBulkDeleteLeads, useBulkUpdateLeads } from '@/hooks/useLeads'
 import { useProjects } from '@/hooks/useProjects'
 import { useQuery } from '@tanstack/react-query'
 
@@ -85,6 +85,7 @@ export default function LeadsPage() {
   const updateLeadMutation = useUpdateLead()
   const deleteLeadMutation = useDeleteLead()
   const bulkDeleteMutation = useBulkDeleteLeads()
+  const bulkUpdateMutation = useBulkUpdateLeads()
 
   // Handlers
   const handleCreateEditSubmit = async (data) => {
@@ -136,15 +137,31 @@ export default function LeadsPage() {
 
   const handleBulkDelete = async () => {
     if (selectedLeads.size === 0) return
-    if (!confirm('Are you sure you want to delete selected leads?')) return
+    if (!confirm(`Are you sure you want to delete ${selectedLeads.size} selected leads?`)) return
 
     try {
       await bulkDeleteMutation.mutateAsync(Array.from(selectedLeads))
       setSelectedLeads(new Set())
-      toast.success('Leads deleted')
+      toast.success('Leads deleted successfully')
     } catch (error) {
       console.error(error)
       toast.error('Failed to delete leads')
+    }
+  }
+
+  const handleBulkAssign = async (userId) => {
+    if (selectedLeads.size === 0) return
+
+    try {
+      await bulkUpdateMutation.mutateAsync({
+        leadIds: Array.from(selectedLeads),
+        updates: { assigned_to: userId }
+      })
+      setSelectedLeads(new Set())
+      toast.success('Leads assigned successfully')
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to assign leads')
     }
   }
 
@@ -210,6 +227,9 @@ export default function LeadsPage() {
         canDelete={canDelete}
         onStatusUpdate={handleStatusUpdate}
         stages={allStages}
+        onBulkDelete={handleBulkDelete}
+        onBulkAssign={handleBulkAssign}
+        users={users}
 
         // Pagination Props
 

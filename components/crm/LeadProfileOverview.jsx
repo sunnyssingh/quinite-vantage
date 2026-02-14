@@ -2,7 +2,15 @@
 
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-// ... imports
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Building, Plus, X, Home, MapPin } from 'lucide-react'
+
+import PropertyDealsCard from './PropertyDealsCard'
+import ComingUpNextCard from './ComingUpNextCard'
+import BestTimeToContactCard from './BestTimeToContactCard'
+import SentimentAnalysisCard from './SentimentAnalysisCard'
+import ClientPreferencesCard from './ClientPreferencesCard'
 
 export default function LeadProfileOverview({
     lead,
