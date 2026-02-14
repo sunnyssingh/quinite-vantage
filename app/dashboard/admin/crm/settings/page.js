@@ -270,7 +270,7 @@ export default function CrmSettingsPage() {
 
             {/* Save Button */}
             <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving} size="lg" className="min-w-[140px]">
+                <Button onClick={handleSave} disabled={saving} size="lg" className="w-full sm:w-auto sm:min-w-[140px]">
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {!saving && <Save className="h-4 w-4 mr-2" />}
                     {saving ? 'Saving...' : 'Save Changes'}

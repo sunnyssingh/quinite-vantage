@@ -283,7 +283,7 @@ export default function PipelineSettingsPage() {
                 </div>
                 <div className="flex gap-4">
                     <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                        <SelectTrigger className="w-[200px]">
+                        <SelectTrigger className="w-full sm:w-[200px]">
                             <SelectValue placeholder="Select Pipeline" />
                         </SelectTrigger>
                         <SelectContent>

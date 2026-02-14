@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogDescription
 } from '@/components/ui/dialog'
-import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Lock } from 'lucide-react'
+import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Lock, RefreshCw } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -270,37 +270,11 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-screen bg-muted/5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border bg-background shadow-sm">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-            <Building2 className="w-7 h-7 text-foreground" />
-            My Projects
+      <div className="p-6 border-b border-border bg-background">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Projects
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">Manage your real estate projects and campaigns</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* View Toggle */}
-          <div className="bg-muted/50 p-1 rounded-lg flex items-center gap-1 border border-border/50">
-            <Button
-              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-              size="sm"
-              className={`h-7 w-7 p-0 ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setViewMode('grid')}
-              title="Grid View"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-              size="sm"
-              className={`h-7 w-7 p-0 ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              onClick={() => setViewMode('list')}
-              title="List View"
-            >
-              <List className="w-3.5 h-3.5" />
-            </Button>
-          </div>
 
           <PermissionTooltip
             hasPermission={canCreate}
@@ -308,17 +282,62 @@ export default function ProjectsPage() {
           >
             <Button
               onClick={() => setShowCreateForm(!showCreateForm)}
+              variant={showCreateForm ? 'outline' : 'default'}
               disabled={!canCreate}
-              className="gap-2 h-9 text-sm font-medium shadow-sm transition-all"
-              size="sm"
+              className="w-auto"
             >
-              {!canCreate && <Lock className="w-3.5 h-3.5" />}
-              {showCreateForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {showCreateForm ? 'Cancel' : <span className="hidden sm:inline">New Project</span>}
-              {!showCreateForm && <span className="sm:hidden">New</span>}
+              {!canCreate && <Lock className="w-3.5 h-3.5 mr-2" />}
+              <Plus className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">{showCreateForm ? 'Cancel' : 'New Project'}</span>
+              <span className="sm:hidden">{showCreateForm ? 'Cancel' : 'New'}</span>
             </Button>
           </PermissionTooltip>
         </div>
+
+        {/* Filter Card */}
+        <Card className="bg-card">
+          <CardContent className="p-4">
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <Input
+                  placeholder="Search projects..."
+                  className="w-full"
+                />
+              </div>
+
+              {/* View Toggle */}
+              <div className="bg-muted/50 p-1 rounded-lg flex items-center gap-1 border border-border/50 shrink-0">
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className={`h-7 w-7 p-0 ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className={`h-7 w-7 p-0 ${viewMode === 'list' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setViewMode('list')}
+                  title="List View"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => window.location.reload()}
+                className="shrink-0"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="p-6 space-y-6">

@@ -61,8 +61,8 @@ export const PUT = withAuth(async (request, context) => {
     try {
         const { user, profile } = context
         const body = await request.json()
-        const { id } = await request.params ? request.params : context.params || {}
-        const campaignId = id || context.params?.id
+        const params = await context.params
+        const campaignId = params.id
 
         // Check permission
         const canEdit = await hasDashboardPermission(user.id, 'edit_campaigns')

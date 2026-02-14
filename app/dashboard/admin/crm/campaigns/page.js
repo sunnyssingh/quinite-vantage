@@ -14,6 +14,13 @@ import {
   DialogFooter,
   DialogHeader
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -32,7 +39,8 @@ import {
   XCircle,
   Phone,
   KanbanSquare,
-  Lock
+  Lock,
+  RefreshCw
 } from 'lucide-react'
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
@@ -72,12 +80,14 @@ const StatusBadge = ({ status }) => {
 }
 
 import { toast } from 'react-hot-toast'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { useCampaigns } from '@/hooks/useCampaigns'
 
 export default function CampaignsPage() {
   const supabase = createClient()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const canView = usePermission('view_campaigns')
   const canCreate = usePermission('create_campaigns')
   const canEdit = usePermission('edit_campaigns')
@@ -85,14 +95,14 @@ export default function CampaignsPage() {
   const canRun = usePermission('run_campaigns')
 
   const [page, setPage] = useState(1)
-  const [selectedProjectId, setSelectedProjectId] = useState('')
+  const [selectedProjectId, setSelectedProjectId] = useState('all')
 
   // Projects needed for filter/create (keep manual fetch for now or use hook if available)
   const [projects, setProjects] = useState([])
 
   // Campaign Data Fetching
   const { data: campaignsResponse, isLoading: loading, isPlaceholderData } = useCampaigns({
-    projectId: selectedProjectId || undefined,
+    projectId: selectedProjectId === 'all' ? undefined : selectedProjectId,
     page,
     limit: 20
   })
@@ -100,7 +110,7 @@ export default function CampaignsPage() {
   const campaigns = campaignsResponse?.campaigns || []
   const metadata = campaignsResponse?.metadata || {}
 
-  // const [campaigns, setCampaigns] = useState([]) // Replaced by hook
+  // campaigns state comes from useCampaigns hook (line 100)
   // const [loading, setLoading] = useState(true) // Replaced by hook
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
@@ -201,7 +211,7 @@ export default function CampaignsPage() {
       }
 
       const payload = await res.json()
-      setCampaigns(prev => [payload.campaign, ...prev])
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
       toast.success("Campaign created successfully!")
 
       // Reset form
@@ -238,7 +248,7 @@ export default function CampaignsPage() {
         throw new Error(data.error || 'Delete failed')
       }
 
-      setCampaigns(prev => prev.filter(c => c.id !== campaign.id))
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
       toast.success("Campaign deleted successfully!")
     } catch (err) {
       console.error(err)
@@ -294,7 +304,7 @@ export default function CampaignsPage() {
       }
 
       const data = await res.json()
-      setCampaigns(prev => prev.map(c => c.id === data.campaign.id ? data.campaign : c))
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
       setEditModalOpen(false)
       toast.success("Campaign updated successfully!")
     } catch (err) {
@@ -345,7 +355,7 @@ export default function CampaignsPage() {
       }
 
       // Update campaign in list
-      setCampaigns(prev => prev.map(c => c.id === data.campaign.id ? data.campaign : c))
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] })
 
       // Show results
       setCampaignResults(data.summary)
@@ -368,74 +378,56 @@ export default function CampaignsPage() {
   return (
     <div className="min-h-screen bg-muted/5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border bg-background shadow-sm">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-            <Megaphone className="w-7 h-7 text-foreground" />
-            {selectedProjectId ? `${getProjectName(selectedProjectId)} Campaigns` : 'All Campaigns'}
+      <div className="p-6 border-b border-border bg-background">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            All Campaigns
           </h1>
-          <div className="flex items-center gap-3 mt-1">
-            <p className="text-muted-foreground text-sm">
-              {selectedProjectId ? 'Manage outbound campaigns for this project' : 'Create and manage your outbound call campaigns'}
-            </p>
 
-            {/* Project Filter */}
-            {!selectedProjectId ? (
-              <select
-                className="ml-2 text-xs border-border rounded-md px-2 py-1 bg-background text-foreground focus:ring-primary focus:border-primary"
-                value={selectedProjectId || ''}
-                onChange={(e) => {
-                  const val = e.target.value
-                  if (val) {
-                    router.push(`/dashboard/admin/crm/campaigns?project_id=${val}`)
-                  } else {
-                    router.push(`/dashboard/admin/crm/campaigns`)
-                  }
-                  // Trigger data refresh after URL change
-                  setTimeout(() => fetchData(), 100)
-                }}
-              >
-                <option value="">All Projects</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            ) : (
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => router.push('/dashboard/admin/crm/campaigns')}
-                className="h-auto p-0 text-primary"
-              >
-                ← Show All
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <PermissionTooltip
-            hasPermission={canCreate}
-            message="You need 'Create Campaigns' permission to create new campaigns. Contact your administrator."
+          <Button
+            onClick={() => {
+              const params = new URLSearchParams(window.location.search)
+              const pid = params.get('project_id')
+              if (pid) setProjectId(pid)
+              setShowCreateForm(!showCreateForm)
+            }}
+            disabled={!canCreate}
+            className="w-auto"
           >
-            <Button
-              onClick={() => {
-                // Pre-fill project ID if we are filtered
-                const params = new URLSearchParams(window.location.search)
-                const pid = params.get('project_id')
-                if (pid) setProjectId(pid)
-
-                setShowCreateForm(!showCreateForm)
-              }}
-              disabled={!canCreate}
-              className="gap-2 h-9 text-sm font-medium shadow-md hover:shadow-lg transition-all"
-              size="sm"
-            >
-              {!canCreate ? <Lock className="w-3.5 h-3.5" /> : <Plus className="w-4 h-4" />}
-              New Campaign
-            </Button>
-          </PermissionTooltip>
+            <Plus className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">New Campaign</span>
+            <span className="sm:hidden">New</span>
+          </Button>
         </div>
+
+        {/* Filters Card */}
+        <Card className="bg-card">
+          <CardContent className="p-4">
+            <div className="flex gap-2">
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Projects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Projects</SelectItem>
+                  {projects.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['campaigns'] })}
+                disabled={loading}
+                className="shrink-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="p-6 space-y-6">
@@ -1028,7 +1020,7 @@ export default function CampaignsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div >
+    </div>
   )
 }
 

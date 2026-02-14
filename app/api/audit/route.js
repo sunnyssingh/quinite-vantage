@@ -61,6 +61,19 @@ export async function GET(request) {
     if (!isPlatformAdmin) {
       console.log(`🔒 [Audit API] Filtering to organization: ${profile.organization_id}`);
       query = query.eq('organization_id', profile.organization_id)
+
+      // [User Request Fix] Users should not see other users' logs unless they are Admins/Owners
+      // We check the role name. Ideally this should be a permission like 'view_all_audit_logs'.
+      const viewAllRoles = ['Owner', 'Admin', 'Super Admin']
+      const canViewOthers = viewAllRoles.some(r => r.toLowerCase() === profile.role?.toLowerCase())
+
+      // Also check specific permission if available (future proofing)
+      const hasViewAllPermission = await hasDashboardPermission(user.id, 'view_all_audit_logs')
+
+      if (!canViewOthers && !hasViewAllPermission) {
+        console.log(`🔒 [Audit API] Restricting to user: ${user.id}`);
+        query = query.eq('user_id', user.id)
+      }
     } else {
       console.log(`🔓 [Audit API] Platform admin - showing all logs`);
       // Platform admins see all, UNLESS they specifically ask for an org

@@ -409,7 +409,7 @@ export default function OrganizationSettingsPage() {
                                         handleSave()
                                     }}
                                     disabled={loading || uploading || !canEdit}
-                                    className="min-w-[120px]"
+                                    className="w-full sm:w-auto sm:min-w-[120px]"
                                 >
                                     {loading ? (
                                         <>

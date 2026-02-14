@@ -461,7 +461,7 @@ export default function EditPropertyModal({ property, isOpen, onClose, onPropert
                             <Button type="button" variant="outline" onClick={onClose} disabled={loading || deleting}>
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={loading || uploading || deleting} className="bg-blue-600 hover:bg-blue-700 min-w-[120px]">
+                            <Button type="submit" disabled={loading || uploading || deleting} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto sm:min-w-[120px]">
                                 {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

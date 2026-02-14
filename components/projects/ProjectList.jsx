@@ -38,152 +38,154 @@ export default function ProjectList({
 
     return (
         <div className="rounded-md border border-border bg-card shadow-sm overflow-hidden">
-            <Table>
-                <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="w-[100px]">Image</TableHead>
-                        <TableHead>Project Info</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {projects.map((project) => {
-                        let meta = {}
-                        try {
-                            meta = typeof project.metadata === 'string'
-                                ? JSON.parse(project.metadata)
-                                : project.metadata || {}
-                        } catch (e) {
-                            // ignore
-                        }
-                        const re = meta.real_estate || {}
-                        const prop = re.property || {}
-                        const loc = re.location || {}
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            <TableHead className="w-[100px]">Image</TableHead>
+                            <TableHead>Project Info</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {projects.map((project) => {
+                            let meta = {}
+                            try {
+                                meta = typeof project.metadata === 'string'
+                                    ? JSON.parse(project.metadata)
+                                    : project.metadata || {}
+                            } catch (e) {
+                                // ignore
+                            }
+                            const re = meta.real_estate || {}
+                            const prop = re.property || {}
+                            const loc = re.location || {}
 
-                        return (
-                            <TableRow key={project.id} className="hover:bg-muted/30">
-                                <TableCell>
-                                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted border border-border">
-                                        {project.image_url ? (
-                                            <img
-                                                src={project.image_url}
-                                                alt={project.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                                <Building2 className="w-6 h-6 opacity-30" />
-                                            </div>
-                                        )}
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div>
-                                        <div className="font-medium text-foreground">{project.name}</div>
-                                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">{project.address}</div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="text-sm text-muted-foreground flex items-center gap-1">
-                                        <MapPin className="w-3 h-3 opacity-70" />
-                                        {loc.city || 'N/A'}, {loc.locality || ''}
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="text-sm">
-                                        <span className="capitalize px-2 py-1 bg-muted rounded text-muted-foreground text-xs font-medium border border-border/50">
-                                            {prop.category || 'Project'}
-                                        </span>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onStartCampaign(project)}
-                                            className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
-                                            title="Start Campaign"
-                                        >
-                                            <Megaphone className="w-3.5 h-3.5" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => onView(project)}
-                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                            title="View Details"
-                                        >
-                                            <Eye className="w-3.5 h-3.5" />
-                                        </Button>
-                                        <PermissionTooltip
-                                            hasPermission={canEdit}
-                                            message="You need 'Edit Projects' permission to edit projects."
-                                        >
+                            return (
+                                <TableRow key={project.id} className="hover:bg-muted/30">
+                                    <TableCell>
+                                        <div className="w-16 h-12 rounded-lg overflow-hidden bg-muted border border-border">
+                                            {project.image_url ? (
+                                                <img
+                                                    src={project.image_url}
+                                                    alt={project.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                                    <Building2 className="w-6 h-6 opacity-30" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div>
+                                            <div className="font-medium text-foreground">{project.name}</div>
+                                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">{project.address}</div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                            <MapPin className="w-3 h-3 opacity-70" />
+                                            {loc.city || 'N/A'}, {loc.locality || ''}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="text-sm">
+                                            <span className="capitalize px-2 py-1 bg-muted rounded text-muted-foreground text-xs font-medium border border-border/50">
+                                                {prop.category || 'Project'}
+                                            </span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => {
-                                                    if (!canEdit) return
-                                                    onEdit(project)
-                                                }}
-                                                disabled={!canEdit}
+                                                onClick={() => onStartCampaign(project)}
+                                                className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                                                title="Start Campaign"
+                                            >
+                                                <Megaphone className="w-3.5 h-3.5" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onView(project)}
                                                 className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                                                title="Edit"
+                                                title="View Details"
                                             >
-                                                <Edit className="w-3.5 h-3.5" />
+                                                <Eye className="w-3.5 h-3.5" />
                                             </Button>
-                                        </PermissionTooltip>
-
-                                        <PermissionTooltip
-                                            hasPermission={canDelete}
-                                            message="You need 'Delete Projects' permission to delete projects."
-                                        >
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    if (!canDelete) return
-                                                    onDelete?.(project)
-                                                }}
-                                                disabled={deletingId === project.id || !onDelete || !canDelete}
-                                                className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-50/50"
-                                                title="Delete"
+                                            <PermissionTooltip
+                                                hasPermission={canEdit}
+                                                message="You need 'Edit Projects' permission to edit projects."
                                             >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                            </Button>
-                                        </PermissionTooltip>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        )
-                    })}
-                </TableBody>
-            </Table>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (!canEdit) return
+                                                        onEdit(project)
+                                                    }}
+                                                    disabled={!canEdit}
+                                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                                    title="Edit"
+                                                >
+                                                    <Edit className="w-3.5 h-3.5" />
+                                                </Button>
+                                            </PermissionTooltip>
 
-            {/* Pagination Footer */}
-            <div className="flex items-center justify-end space-x-2 p-4 border-t bg-slate-50">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onPageChange && onPageChange(page - 1)}
-                    disabled={page === 1 || isLoadingMore}
-                >
-                    Previous
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                    Page {page}
+                                            <PermissionTooltip
+                                                hasPermission={canDelete}
+                                                message="You need 'Delete Projects' permission to delete projects."
+                                            >
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (!canDelete) return
+                                                        onDelete?.(project)
+                                                    }}
+                                                    disabled={deletingId === project.id || !onDelete || !canDelete}
+                                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-50/50"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
+                                            </PermissionTooltip>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })}
+                    </TableBody>
+                </Table>
+
+                {/* Pagination Footer */}
+                <div className="flex items-center justify-end space-x-2 p-4 border-t bg-slate-50">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onPageChange && onPageChange(page - 1)}
+                        disabled={page === 1 || isLoadingMore}
+                    >
+                        Previous
+                    </Button>
+                    <div className="text-sm text-muted-foreground">
+                        Page {page}
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onPageChange && onPageChange(page + 1)}
+                        disabled={!hasMore || isLoadingMore}
+                    >
+                        Next
+                    </Button>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onPageChange && onPageChange(page + 1)}
-                    disabled={!hasMore || isLoadingMore}
-                >
-                    Next
-                </Button>
             </div>
         </div>
     )

@@ -244,7 +244,7 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     if (loading) return (
         <div className="flex min-h-[calc(100vh-300px)] gap-4 overflow-x-auto pb-2">
             {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex-shrink-0 w-[300px] h-full rounded-xl bg-muted/30 border border-border/50 p-4 space-y-4">
+                <div key={i} className="flex-shrink-0 w-full md:w-[300px] h-full rounded-xl bg-muted/30 border border-border/50 p-4 space-y-4">
                     <div className="flex items-center justify-between mb-4">
                         <Skeleton className="h-6 w-32 rounded-md" />
                         <Skeleton className="h-6 w-8 rounded-full" />

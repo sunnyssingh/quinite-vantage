@@ -401,7 +401,7 @@ export default function PlatformSubscriptionsPage() {
                                 </div>
                                 <div className="flex gap-2">
                                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                        <SelectTrigger className="w-[150px]">
+                                        <SelectTrigger className="w-full sm:w-[150px]">
                                             <SelectValue placeholder="Filter by status" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -414,7 +414,7 @@ export default function PlatformSubscriptionsPage() {
                                     </Select>
 
                                     <Select value={planFilter} onValueChange={setPlanFilter}>
-                                        <SelectTrigger className="w-[150px]">
+                                        <SelectTrigger className="w-full sm:w-[150px]">
                                             <SelectValue placeholder="Filter by plan" />
                                         </SelectTrigger>
                                         <SelectContent>

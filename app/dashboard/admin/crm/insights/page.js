@@ -310,19 +310,19 @@ function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
             {/* Charts */}
             <Tabs defaultValue="sentiment" className="space-y-6">
                 <TabsList className="bg-white shadow-md border-0 p-1 w-full flex flex-wrap h-auto">
-                    <TabsTrigger value="sentiment" className="flex-1 min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white">
+                    <TabsTrigger value="sentiment" className="flex-1 sm:min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white">
                         Sentiment
                     </TabsTrigger>
-                    <TabsTrigger value="interest" className="flex-1 min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+                    <TabsTrigger value="interest" className="flex-1 sm:min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
                         Interest Level
                     </TabsTrigger>
-                    <TabsTrigger value="readiness" className="flex-1 min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white">
+                    <TabsTrigger value="readiness" className="flex-1 sm:min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-green-600 data-[state=active]:text-white">
                         Purchase Readiness
                     </TabsTrigger>
-                    <TabsTrigger value="objections" className="flex-1 min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white">
+                    <TabsTrigger value="objections" className="flex-1 sm:min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white">
                         Objections
                     </TabsTrigger>
-                    <TabsTrigger value="budget" className="flex-1 min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-amber-600 data-[state=active]:text-white">
+                    <TabsTrigger value="budget" className="flex-1 sm:min-w-[120px] data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-amber-600 data-[state=active]:text-white">
                         Budget
                     </TabsTrigger>
                 </TabsList>
