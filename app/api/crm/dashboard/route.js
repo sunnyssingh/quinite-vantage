@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { getUserDashboardPermissions } from '@/lib/dashboardPermissions'
 
 export async function GET(request) {
     try {
@@ -13,16 +13,12 @@ export async function GET(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Extract date range parameter
-        const { searchParams } = new URL(request.url)
-        const range = searchParams.get('range') || 'this_month'
-
-        // Calculate date range
-        const { startDate, endDate } = getDateRange(range)
-
-        // Get user's organization with currency settings
-        // Use admin client for reliable profile fetch
+        // 1. Fetch Parallel Configuration Data (Profile, Org, Pipeline, Permissions)
         const adminClient = createAdminClient()
+
+        // Use Promise.all for independent configuration fetches
+        // We need organization_id first, so we fetch profile.
+        // Optimally, we could cache this or use a session claim but let's stick to DB for reliability.
         const { data: profile } = await adminClient
             .from('profiles')
             .select('organization_id')
@@ -35,36 +31,62 @@ export async function GET(request) {
 
         const organizationId = profile.organization_id
 
-        // Fetch Organization Details for Currency
-        const { data: organization } = await adminClient
-            .from('organizations')
-            .select('currency_symbol')
-            .eq('id', organizationId)
-            .single()
+        // Now run organization-dependent config fetches in parallel
+        const [
+            permissions,
+            { data: organization },
+            { data: defaultPipeline }
+        ] = await Promise.all([
+            getUserDashboardPermissions(user.id),
+            adminClient
+                .from('organizations')
+                .select('currency_symbol')
+                .eq('id', organizationId)
+                .single(),
+            adminClient
+                .from('pipelines')
+                .select('id')
+                .eq('organization_id', organizationId)
+                .eq('is_default', true)
+                .limit(1)
+                .single()
+        ])
+
+        const canViewAllLeads = permissions.includes('view_all_leads')
+        const canViewTeamLeads = permissions.includes('view_team_leads')
+        const canViewOwnLeads = permissions.includes('view_own_leads')
+        const canViewSettings = permissions.includes('view_settings') || permissions.includes('view_organization_settings')
+        const canViewAnalytics = permissions.includes('view_organization_analytics') || permissions.includes('view_team_analytics') || permissions.includes('view_own_analytics')
+
+        const leadsFilter = (query) => {
+            if (canViewAllLeads) return query
+            if (canViewTeamLeads) return query
+            if (canViewOwnLeads) return query.eq('assigned_to_user_id', user.id)
+            return query.eq('id', -1)
+        }
+
+        // We don't need tasksFilter for counts if we build the query directly
 
         const currencySymbol = organization?.currency_symbol || '$'
-
-        // Fetch Default Pipeline (to avoid duplicate stages from multiple pipelines)
-        const { data: defaultPipeline } = await adminClient
-            .from('pipelines')
-            .select('id')
-            .eq('organization_id', organizationId)
-            .eq('is_default', true)
-            .limit(1)
-            .single()
-
         const pipelineId = defaultPipeline?.id
 
-        // Parallel Data Fetching
+        // Extract date range parameter
+        const { searchParams } = new URL(request.url)
+        const range = searchParams.get('range') || 'this_month'
+        const { startDate, endDate } = getDateRange(range)
+
+        // 2. Fetch Dashboard Data Parallelized
         const [
             { count: totalLeads },
             { data: allLeads },
             { data: allDeals },
             { data: stages },
             { data: recentActivities },
-            { data: allTasks }
+            { count: tasksCompleted },
+            { count: tasksPending },
+            { count: tasksOverdue }
         ] = await Promise.all([
-            // 1. Total Leads Count (filtered by date)
+            // 1. Total Leads Count
             leadsFilter(adminClient
                 .from('leads')
                 .select('*', { count: 'exact', head: true })
@@ -72,7 +94,7 @@ export async function GET(request) {
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString())),
 
-            // 2. Fetch all leads (id, stage_id) for aggregation (filtered by date)
+            // 2. Fetch all leads for aggregation
             leadsFilter(adminClient
                 .from('leads')
                 .select('id, stage_id')
@@ -80,22 +102,16 @@ export async function GET(request) {
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString())),
 
-            // 3. Fetch all deals (lead_id, amount, status) for revenue calc (filtered by date)
-            // Note: Deals filtering is tricky without join. For now, we rely on filtering leads and mapping.
-            // But we fetch 'deals' directly here.
-            // If user can only view OWN leads, they should only see deals for those leads.
-            // We can't easily filter deals by lead owner here without a join or two-step fetch.
-            // Compromise: If restricted view, we might over-fetch deals but filtering happened on leads count.
-            // BETTER: Don't show revenue if no analytics permission.
+            // 3. Fetch all deals for revenue
             canViewAnalytics ? adminClient
                 .from('deals')
-                .select('lead_id, amount, status, created_at')
+                .select('lead_id, amount, status')
                 .eq('organization_id', organizationId)
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString())
                 : Promise.resolve({ data: [] }),
 
-            // 4. Fetch Pipeline Stages (Scoped to Default Pipeline)
+            // 4. Pipeline Stages
             (pipelineId && (canViewAllLeads || canViewOwnLeads)) ? adminClient
                 .from('pipeline_stages')
                 .select('id, name, color, order_index')
@@ -103,7 +119,7 @@ export async function GET(request) {
                 .order('order_index', { ascending: true })
                 : Promise.resolve({ data: [] }),
 
-            // 5. Fetch Recent Activities (Audit Logs) - RESTRICTED TO SETTINGS/ADMIN
+            // 5. Recent Activities
             canViewSettings ? adminClient
                 .from('audit_logs')
                 .select('id, action, entity_type, created_at, user_name')
@@ -112,11 +128,27 @@ export async function GET(request) {
                 .limit(5)
                 : Promise.resolve({ data: [] }),
 
-            // 6. Fetch All Tasks for statistics
-            tasksFilter(adminClient
+            // 6. Tasks Completed (Optimized Count)
+            adminClient
                 .from('lead_tasks')
-                .select('id, status, due_date')
-                .eq('organization_id', organizationId))
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', organizationId)
+                .eq('status', 'completed'),
+
+            // 7. Tasks Pending (Optimized Count)
+            adminClient
+                .from('lead_tasks')
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', organizationId)
+                .eq('status', 'pending'),
+
+            // 8. Tasks Overdue (Optimized Count)
+            adminClient
+                .from('lead_tasks')
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', organizationId)
+                .neq('status', 'completed')
+                .lt('due_date', new Date().toISOString())
         ])
 
         // Aggregation Logic
@@ -131,15 +163,6 @@ export async function GET(request) {
             allDeals.forEach(deal => {
                 if (deal.amount) {
                     leadDealValueMap[deal.lead_id] = (leadDealValueMap[deal.lead_id] || 0) + Number(deal.amount)
-                    // Total Revenue logic: Sum of WON deals? or ALL deals? 
-                    // Usually "Revenue" on dashboard implies "Closed Won".
-                    // "Pipeline Value" implies "Active".
-                    // Let's assume 'Revenue' is won/closed deals.
-                    // But schema doesn't have explicit 'won' status in deals, just 'active' default.
-                    // Let's assume all deals contribute to 'Revenue' in this simplified view, OR filter by status if available.
-                    // Only active deals contribute to Pipeline Value. 
-                    // Since specific requirements are vague, I will sum ALL deal amounts for "Revenue" bucket for now, 
-                    // or better: "Pipeline Value" matches active deals.
                     totalRevenue += Number(deal.amount)
                 }
             })
@@ -230,23 +253,9 @@ export async function GET(request) {
             }
         }) || []
 
-        // Calculate Task Statistics
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-
-        const tasksCompleted = allTasks?.filter(t => t.status === 'completed').length || 0
-        const tasksPending = allTasks?.filter(t => t.status === 'pending').length || 0
-        const tasksOverdue = allTasks?.filter(t => {
-            if (t.status === 'completed') return false
-            if (!t.due_date) return false
-            const dueDate = new Date(t.due_date)
-            dueDate.setHours(0, 0, 0, 0)
-            return dueDate < today
-        }).length || 0
-
         const dashboardData = {
             totalLeads: totalLeads || 0,
-            leadsChange: null, // 'Coming soon',
+            leadsChange: null,
             activeDeals: activeDealsCount,
             dealsChange: null,
             conversionRate,
@@ -255,9 +264,9 @@ export async function GET(request) {
             revenueChange: null,
             recentActivities: formattedActivities,
             pipelineOverview,
-            tasksCompleted,
-            tasksPending,
-            tasksOverdue
+            tasksCompleted: tasksCompleted || 0,
+            tasksPending: tasksPending || 0,
+            tasksOverdue: tasksOverdue || 0
         }
 
         return NextResponse.json(dashboardData)

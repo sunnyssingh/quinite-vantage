@@ -117,7 +117,7 @@ export default function UsersPage() {
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-border bg-background shrink-0">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-6 border-b border-border bg-background shrink-0">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">Users</h1>
                     <p className="text-muted-foreground mt-1 text-sm">Manage your team members and roles</p>
@@ -141,7 +141,7 @@ export default function UsersPage() {
             </div>
 
             {/* Users Table */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6">
                 <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-border">

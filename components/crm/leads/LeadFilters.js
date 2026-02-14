@@ -23,6 +23,24 @@ export function LeadFilters({
     onRefresh,
     loading
 }) {
+    const [mounted, setMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        return (
+            <Card className="mb-6">
+                <CardContent className="pt-6">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        <div className="flex-1 h-10 bg-slate-100 rounded animate-pulse" />
+                    </div>
+                </CardContent>
+            </Card>
+        )
+    }
+
     return (
         <Card className="mb-6">
             <CardContent className="pt-6">

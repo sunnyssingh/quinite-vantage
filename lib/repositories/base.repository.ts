@@ -62,8 +62,5 @@ export class BaseRepository<T = any> {
         return true
     }
 
-    // Helper for scope/org checks
-    scoped(organizationId: string) {
-        return this.client.from(this.tableName).eq('organization_id', organizationId)
-    }
+
 }

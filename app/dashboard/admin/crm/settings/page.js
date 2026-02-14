@@ -224,16 +224,7 @@ export default function CrmSettingsPage() {
                     </h1>
                     <p className="text-gray-500 mt-1">Customize your sales pipeline by adding, removing, and reordering stages.</p>
                 </div>
-                <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-                    <SelectTrigger className="w-full md:w-[250px]">
-                        <SelectValue placeholder="Select Pipeline" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {pipelines.map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+
             </div>
 
             {/* Pipeline Stages Card */}

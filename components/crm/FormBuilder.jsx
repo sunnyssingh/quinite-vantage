@@ -25,25 +25,28 @@ const FIELD_TYPES = [
 ]
 
 export default function FormBuilder({ projectId }) {
-    const [fields, setFields] = useState([
-        // Pre-populate with mandatory fields
-        {
-            id: nanoid(),
-            type: 'text',
-            label: 'Full Name',
-            placeholder: 'Ravi Sastri',
-            required: true,
-            isStatic: false
-        },
-        {
-            id: nanoid(),
-            type: 'phone',
-            label: 'Phone Number',
-            placeholder: '+918866066069',
-            required: true,
-            isStatic: false
-        }
-    ])
+    const [fields, setFields] = useState([])
+
+    useEffect(() => {
+        setFields([
+            {
+                id: nanoid(),
+                type: 'text',
+                label: 'Full Name',
+                placeholder: 'Ravi Sastri',
+                required: true,
+                isStatic: false
+            },
+            {
+                id: nanoid(),
+                type: 'phone',
+                label: 'Phone Number',
+                placeholder: '+918866066069',
+                required: true,
+                isStatic: false
+            }
+        ])
+    }, [])
     const [activeDragItem, setActiveDragItem] = useState(null)
     const [selectedField, setSelectedField] = useState(null)
     const [formName, setFormName] = useState('New Lead Form')

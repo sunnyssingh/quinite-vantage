@@ -504,6 +504,33 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                 </div>
                                 {errors.imageUrl && <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.imageUrl}</p>}
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                        <LandPlot className="w-4 h-4 text-blue-600" />
+                                        Total Land Area (Acres/Sqft)
+                                    </label>
+                                    <Input
+                                        value={formData.plotArea}
+                                        onChange={e => handleChange('plotArea', e.target.value)}
+                                        placeholder="e.g. 5 Acres"
+                                        className="transition-all text-xs sm:text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs sm:text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
+                                        <Building className="w-4 h-4 text-blue-600" />
+                                        RERA Number
+                                    </label>
+                                    <Input
+                                        value={formData.reraNumber || ''}
+                                        onChange={e => handleChange('reraNumber', e.target.value)}
+                                        placeholder="e.g. P51800001234"
+                                        className="transition-all text-xs sm:text-sm"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
 

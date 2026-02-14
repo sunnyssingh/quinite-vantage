@@ -322,7 +322,7 @@ export default function CRMDashboardPage() {
                                                             <span className="text-sm font-medium text-foreground">{stage.stage}</span>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="text-sm text-muted-foreground">{stage.count} deals</span>
-                                                                <span className="text-sm font-semibold text-foreground">{stage.value !== '$0' ? stage.value : ''}</span>
+
                                                             </div>
                                                         </div>
                                                         <div className="h-2 bg-secondary rounded-full overflow-hidden">

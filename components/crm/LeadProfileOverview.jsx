@@ -1,14 +1,8 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Building, Home, MapPin, Plus, X } from 'lucide-react'
-import ClientPreferencesCard from '@/components/crm/ClientPreferencesCard'
-import PropertyDealsCard from '@/components/crm/PropertyDealsCard'
-import ComingUpNextCard from '@/components/crm/ComingUpNextCard'
-import BestTimeToContactCard from '@/components/crm/BestTimeToContactCard'
-import SentimentAnalysisCard from '@/components/crm/SentimentAnalysisCard'
+// ... imports
 
 export default function LeadProfileOverview({
     lead,
@@ -19,6 +13,17 @@ export default function LeadProfileOverview({
     onUnlinkProperty
 }) {
     const leadId = lead.id
+
+    const projects = useMemo(() => {
+        return Array.isArray(lead.projects)
+            ? lead.projects
+            : (lead.projects ? [lead.projects] : (lead.project ? [lead.project] : []))
+    }, [lead.projects, lead.project])
+
+    const linkedItems = useMemo(() => {
+        const otherProjects = projects.filter(p => !lead.property?.project_id || p.id !== lead.property.project_id)
+        return (lead.property ? [lead.property] : []).concat(otherProjects)
+    }, [projects, lead.property])
 
     return (
         <div className="space-y-6">
@@ -36,12 +41,7 @@ export default function LeadProfileOverview({
                             </div>
                             <div className="flex items-center gap-2">
                                 <Badge variant="secondary" className="px-1.5 py-0 h-5 text-[10px] font-medium">
-                                    {(
-                                        (lead.property ? 1 : 0) +
-                                        (lead.projects || (lead.project ? [lead.project] : []))
-                                            .filter(p => !lead.property?.project_id || p.id !== lead.property.project_id)
-                                            .length
-                                    )}
+                                    {linkedItems.length}
                                 </Badge>
                                 <Button
                                     variant="ghost"
@@ -54,7 +54,7 @@ export default function LeadProfileOverview({
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {((lead.property ? [lead.property] : []).concat(lead.projects || (lead.project ? [lead.project] : []))).length > 0 ? (
+                            {linkedItems.length > 0 ? (
                                 <div className="max-h-[350px] overflow-y-auto pr-1 space-y-4 custom-scrollbar">
                                     {/* Display Linked Property Unit first */}
                                     {lead.property && (
@@ -100,7 +100,7 @@ export default function LeadProfileOverview({
                                     )}
 
                                     {/* Display Linked Projects (excluding the one linked via Property Unit) */}
-                                    {(lead.projects || (lead.project ? [lead.project] : []))
+                                    {projects
                                         .filter(p => !lead.property?.project_id || p.id !== lead.property.project_id)
                                         .map((project, index) => (
                                             <div key={index} className="group relative flex items-start gap-3 p-2 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-sm transition-all cursor-pointer">

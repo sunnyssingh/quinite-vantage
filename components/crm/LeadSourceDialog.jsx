@@ -18,7 +18,8 @@ import { toast } from 'react-hot-toast'
 import dynamic from 'next/dynamic'
 
 const FormBuilder = dynamic(() => import('./FormBuilder'), {
-    loading: () => <div className="h-64 flex items-center justify-center text-slate-400">Loading builder...</div>
+    loading: () => <div className="h-64 flex items-center justify-center text-slate-400">Loading builder...</div>,
+    ssr: false
 })
 
 export default function LeadSourceDialog({ open, onOpenChange, projectId, projects }) {
@@ -27,18 +28,18 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
     const [previewData, setPreviewData] = useState(null) // [NEW] Preview State
 
     const connectorCards = [
-        { id: 'mb', name: 'MagicBricks', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
-        { id: '99', name: '99Acres', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
-        { id: 'meta', name: 'Meta Ads', icon: Megaphone, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
-        { id: 'google', name: 'Google Ads', icon: SearchIcon, color: 'text-foreground', bg: 'bg-muted/50', status: 'active' },
-        { id: 'gforms', name: 'Google Forms', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', status: 'coming' },
-        { id: 'typeform', name: 'Typeform', icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50', status: 'coming' },
-        { id: 'zapier', name: 'Zapier', icon: Zap, color: 'text-orange-600', bg: 'bg-orange-50', status: 'coming' },
-        { id: 'webhook', name: 'Webhooks', icon: Webhook, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
-        { id: 'fb', name: 'Facebook Leads', icon: Facebook, color: 'text-blue-700', bg: 'bg-blue-50', status: 'coming' },
-        { id: 'linkedin', name: 'LinkedIn Lead Gen', icon: Linkedin, color: 'text-blue-800', bg: 'bg-blue-50', status: 'coming' },
-        { id: 'whatsapp', name: 'WhatsApp Business', icon: MessageSquare, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
-        { id: 'api', name: 'Custom API', icon: Code, color: 'text-slate-600', bg: 'bg-slate-50', status: 'coming' },
+        { id: 'mb', name: 'MagicBricks', logo: '/assets/magicbricks.svg', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-white', status: 'active' },
+        { id: '99', name: '99Acres', logo: '/assets/99acres.webp', icon: BuildingIcon, color: 'text-foreground', bg: 'bg-white', status: 'active' },
+        { id: 'meta', name: 'Meta Ads', logo: '/assets/meta.svg', icon: Megaphone, color: 'text-foreground', bg: 'bg-white', status: 'active' },
+        { id: 'google', name: 'Google Ads', logo: '/assets/google-ads.svg', icon: SearchIcon, color: 'text-foreground', bg: 'bg-white', status: 'active' },
+        { id: 'fb', name: 'Facebook Leads', logo: '/assets/facebook.svg', icon: Facebook, color: 'text-blue-700', bg: 'bg-white', status: 'active' },
+        { id: 'gforms', name: 'Google Forms', logo: '/assets/google-forms.svg', icon: FileText, color: 'text-blue-600', bg: 'bg-white', status: 'coming' },
+        { id: 'typeform', name: 'Typeform', logo: '/assets/typeform.svg', icon: FileText, color: 'text-purple-600', bg: 'bg-white', status: 'coming' },
+        { id: 'zapier', name: 'Zapier', logo: '/assets/zapier.svg', icon: Zap, color: 'text-orange-600', bg: 'bg-white', status: 'coming' },
+        { id: 'linkedin', name: 'LinkedIn', logo: '/assets/linkedin.svg', icon: Linkedin, color: 'text-blue-800', bg: 'bg-white', status: 'coming' },
+        { id: 'whatsapp', name: 'WhatsApp', logo: '/assets/whatsapp.svg', icon: MessageSquare, color: 'text-green-600', bg: 'bg-white', status: 'coming' },
+        { id: 'webhook', name: 'Webhooks', logo: '/assets/webhooks.svg', icon: Webhook, color: 'text-green-600', bg: 'bg-green-50', status: 'coming' },
+        { id: 'api', name: 'Custom API', logo: '/assets/api.svg', icon: Code, color: 'text-slate-600', bg: 'bg-slate-50', status: 'coming' },
     ]
 
     const downloadSampleCSV = () => {
@@ -136,7 +137,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                 onOpenChange(false)
                 setPreviewData(null)
             } else {
-                toast.error(`Import failed: ${result.message}`)
+                toast.error(`Import failed: ${typeof result.message === 'object' ? JSON.stringify(result.message) : result.message}`)
             }
         } catch (err) {
             toast.error("Upload failed")
@@ -229,7 +230,8 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                                                     onOpenChange(false)
                                                 } else {
                                                     console.error('[LeadSourceDialog] API Error:', result)
-                                                    toast.error(result.error || "Failed to create lead")
+                                                    const errorMsg = result.error && typeof result.error === 'object' ? (result.error.message || JSON.stringify(result.error)) : (result.error || result.message || "Failed to create lead")
+                                                    toast.error(errorMsg)
                                                 }
                                             } catch (e) {
                                                 console.error('[LeadSourceDialog] Exception:', e)
@@ -368,8 +370,12 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                                                 </div>
                                             )}
                                             <CardHeader className="p-3">
-                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${c.bg}`}>
-                                                    <c.icon className={`w-5 h-5 ${c.color}`} />
+                                                <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-2 ${c.bg} shadow-sm border border-slate-100`}>
+                                                    {c.logo ? (
+                                                        <img src={c.logo} alt={c.name} className="w-8 h-8 object-contain" />
+                                                    ) : (
+                                                        c.icon && <c.icon className={`w-6 h-6 ${c.color}`} />
+                                                    )}
                                                 </div>
                                                 <CardTitle className="text-sm font-medium">{c.name}</CardTitle>
                                                 <CardDescription className="text-xs">

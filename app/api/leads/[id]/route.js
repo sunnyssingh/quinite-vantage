@@ -9,12 +9,8 @@ import { LeadService } from '@/services/lead.service'
  * GET /api/leads/[id]
  * Get a single lead by ID
  */
-export const GET = withAuth(async (request, { params }) => {
+export const GET = withAuth(async (request, { params, user, profile }) => {
     try {
-        const { user, profile } = await Promise.all([
-            Promise.resolve(request.context?.user),
-            Promise.resolve(request.context?.profile)
-        ])
         const { id } = await params
 
         if (!user) {

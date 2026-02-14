@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 
 // Components
+// ... existing imports ...
 import { LeadTable } from '@/components/crm/leads/LeadTable'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,6 +24,7 @@ const LeadFilters = dynamic(() => import('@/components/crm/leads/LeadFilters').t
   loading: () => <Skeleton className="h-16 w-full mb-6" />
 })
 const LeadDialog = dynamic(() => import('@/components/crm/leads/LeadDialog').then(mod => mod.LeadDialog))
+const LeadSourceDialog = dynamic(() => import('@/components/crm/LeadSourceDialog'))
 
 export default function LeadsPage() {
   // State
@@ -34,6 +36,7 @@ export default function LeadsPage() {
 
   // Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isSourceDialogOpen, setIsSourceDialogOpen] = useState(false)
   const [editingLead, setEditingLead] = useState(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [leadToDelete, setLeadToDelete] = useState(null)
@@ -174,10 +177,16 @@ export default function LeadsPage() {
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
-      {/* ... header ... */}
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Leads</h2>
+        <div className="flex items-center space-x-2">
+          <Button onClick={() => setIsSourceDialogOpen(true)} disabled={!canCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Add Lead
+          </Button>
+        </div>
+      </div>
 
       <LeadFilters
-        // ... existing props ...
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         stageFilter={stageFilter}
@@ -221,6 +230,13 @@ export default function LeadsPage() {
         users={users}
         onSubmit={handleCreateEditSubmit}
         submitting={createLeadMutation.isPending || updateLeadMutation.isPending}
+      />
+
+      <LeadSourceDialog
+        open={isSourceDialogOpen}
+        onOpenChange={setIsSourceDialogOpen}
+        projectId={projectId}
+        projects={projects || []}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

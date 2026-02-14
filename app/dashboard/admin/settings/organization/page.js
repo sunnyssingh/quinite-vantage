@@ -212,7 +212,7 @@ export default function OrganizationSettingsPage() {
 
     return (
         <div className="min-h-screen h-full bg-gradient-to-br from-gray-50 to-blue-50 overflow-y-auto">
-            <div className="p-8 max-w-4xl mx-auto">
+            <div className="p-4 md:p-8 max-w-4xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-900 mb-6">Organization Settings</h1>
 
                 <Card>
@@ -323,7 +323,7 @@ export default function OrganizationSettingsPage() {
                         </div>
 
                         {/* Country & Currency Selection */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="country">Country</Label>
                                 <Select
