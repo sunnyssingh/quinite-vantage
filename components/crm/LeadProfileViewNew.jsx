@@ -1,40 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Mail, Phone, Building, MapPin, TrendingUp, X, Edit2, Save, Camera, Home, Plus } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'react-hot-toast'
+
 import LeadActivityTimeline from '@/components/crm/LeadActivityTimeline'
-import ClientPreferencesCard from '@/components/crm/ClientPreferencesCard'
-import PropertyDealsCard from '@/components/crm/PropertyDealsCard'
-import ComingUpNextCard from '@/components/crm/ComingUpNextCard'
-import BestTimeToContactCard from '@/components/crm/BestTimeToContactCard'
-import SentimentAnalysisCard from '@/components/crm/SentimentAnalysisCard'
-import { Textarea } from '@/components/ui/textarea'
 import EditLeadProfileDialog from '@/components/crm/EditLeadProfileDialog'
 import LinkPropertyDialog from '@/components/crm/LinkPropertyDialog'
 import AvatarPickerDialog from '@/components/crm/AvatarPickerDialog'
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Skeleton } from '@/components/ui/skeleton'
-
-// Helper to get initials
-const getInitials = (name) => {
-    if (!name) return 'LP'
-    return name
-        .split(' ')
-        .map(n => n[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
-}
+// New sub-components
+import LeadProfileSidebar from '@/components/crm/LeadProfileSidebar'
+import LeadProfileOverview from '@/components/crm/LeadProfileOverview'
+import LeadProfileNotes from '@/components/crm/LeadProfileNotes'
+import LeadProfileEmails from '@/components/crm/LeadProfileEmails'
 
 export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     const [lead, setLead] = useState(null)
     const [profile, setProfile] = useState(null)
+    const [organization, setOrganization] = useState(null)
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('overview')
     const [notes, setNotes] = useState('')
@@ -44,46 +30,14 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
 
     useEffect(() => {
-        if (lead?.notes) setNotes(lead.notes)
-    }, [lead])
-
-    const handleUnlink = async () => {
-        if (!confirm('Are you sure you want to unlink this property?')) return
-        try {
-            const res = await fetch(`/api/leads/${leadId}/unlink-property`, { method: 'POST' })
-            if (!res.ok) throw new Error('Failed to unlink property')
-            toast.success('Property unlinked')
-            fetchLeadData()
-        } catch (error) {
-            toast.error('Failed to unlink property')
-        }
-    }
-
-    const handleSaveNotes = async () => {
-        try {
-            setSavingNotes(true)
-            const res = await fetch(`/api/leads/${leadId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes })
-            })
-            if (!res.ok) throw new Error('Failed to update notes')
-            toast.success('Notes updated')
-            setLead(prev => ({ ...prev, notes }))
-        } catch (error) {
-            toast.error('Failed to save notes')
-        } finally {
-            setSavingNotes(false)
-        }
-    }
-
-    useEffect(() => {
         if (leadId) {
             fetchLeadData()
         }
     }, [leadId])
 
-    const [organization, setOrganization] = useState(null)
+    useEffect(() => {
+        if (lead?.notes) setNotes(lead.notes)
+    }, [lead])
 
     const fetchLeadData = async () => {
         try {
@@ -95,7 +49,6 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
             })
             if (!leadRes.ok) throw new Error('Failed to fetch lead')
             const leadData = await leadRes.json()
-            console.log('Fetched lead data:', leadData.lead.avatar_url) // Debug log
             setLead(leadData.lead)
 
             // Fetch lead profile
@@ -111,8 +64,6 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 setOrganization(orgData.organization)
             }
 
-            console.log('Lead data with call logs:', leadData.lead)
-
         } catch (error) {
             console.error('Error fetching lead data:', error)
             toast.error('Failed to load lead profile')
@@ -121,20 +72,38 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         }
     }
 
-    const getEngagementColor = (level) => {
-        switch (level) {
-            case 'hot': return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-900'
-            case 'warm': return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-900'
-            case 'cold': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-900'
-            default: return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-800'
+    const handleUnlink = async () => {
+        if (!confirm('Are you sure you want to unlink this property?')) return
+        try {
+            const res = await fetch(`/api/leads/${leadId}/unlink-property`, { method: 'POST' })
+            if (!res.ok) throw new Error('Failed to unlink property')
+            toast.success('Property unlinked')
+            fetchLeadData()
+        } catch (error) {
+            toast.error('Failed to unlink property')
         }
     }
 
-    const getScoreColor = (score) => {
-        if (score >= 75) return 'text-green-600 dark:text-green-400'
-        if (score >= 50) return 'text-yellow-600 dark:text-yellow-400'
-        if (score >= 25) return 'text-orange-600 dark:text-orange-400'
-        return 'text-red-600 dark:text-red-400'
+    const handleSaveNotes = async () => {
+        if (!leadId) {
+            toast.error("Cannot save notes: Invalid lead ID")
+            return
+        }
+        try {
+            setSavingNotes(true)
+            const res = await fetch(`/api/leads/${leadId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes })
+            })
+            if (!res.ok) throw new Error('Failed to update notes')
+            toast.success('Notes updated')
+            setLead(prev => ({ ...prev, notes }))
+        } catch (error) {
+            toast.error('Failed to save notes')
+        } finally {
+            setSavingNotes(false)
+        }
     }
 
     if (loading) {
@@ -180,106 +149,12 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         <div className={`flex flex-col md:flex-row gap-6 ${isModal ? 'h-[80vh]' : ''}`}>
             {/* Sidebar - Sticky if not modal */}
             <div className={`w-full md:w-80 flex flex-col shrink-0 space-y-4 ${!isModal ? '' : 'overflow-y-auto'}`}>
-                <div className="bg-card border rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
-                    <div
-                        className="h-28 w-full"
-                        style={{
-                            background: 'linear-gradient(to right, #ffffff, #e1f5fe, #b3e5fc)'
-                        }}
-                    />
-
-                    <div className="flex flex-col items-center text-center px-6 -mt-12 mb-6">
-                        <div className="relative mb-3 group">
-                            <Avatar key={lead.avatar_url || 'no-avatar'} className="h-24 w-24 border-4 border-background shadow-md">
-                                {lead.avatar_url ? (
-                                    <img
-                                        src={lead.avatar_url}
-                                        alt={lead.name}
-                                        className="aspect-square h-full w-full object-cover"
-                                        onError={(e) => {
-                                            console.error('Avatar failed to load:', lead.avatar_url)
-                                            e.target.style.display = 'none'
-                                        }}
-                                    />
-                                ) : null}
-                                <AvatarFallback className="text-2xl font-bold bg-white text-primary">
-                                    {getInitials(lead.name)}
-                                </AvatarFallback>
-                            </Avatar>
-                            {/* Edit Avatar Overlay */}
-                            <button
-                                onClick={() => setAvatarPickerOpen(true)}
-                                className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                                aria-label="Change avatar"
-                            >
-                                <Camera className="w-6 h-6 text-white" />
-                            </button>
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-900">{lead.name}</h2>
-                        <p className="text-sm text-gray-500">{profile.company || 'No Company'}</p>
-                    </div>
-
-                    <div className="px-6 pb-6 flex flex-col flex-1 gap-6">
-                        <div>
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Contact Info</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3 text-sm group">
-                                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
-                                        <Mail className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-gray-500">Email</p>
-                                        <p className="font-medium text-gray-900 truncate" title={lead.email}>{lead.email}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm group">
-                                    <div className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 group-hover:bg-green-100 transition-colors">
-                                        <Phone className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-gray-500">Phone</p>
-                                        <p className="font-medium text-gray-900 truncate">{lead.phone || 'N/A'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm group">
-                                    <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-100 transition-colors">
-                                        <Building className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-gray-500">Department</p>
-                                        <p className="font-medium text-gray-900 truncate">{lead.department || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Location</h3>
-                            <div className="flex items-start gap-3 text-sm">
-                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 shrink-0">
-                                    <MapPin className="w-4 h-4" />
-                                </div>
-                                <div className="min-w-0 pt-1">
-                                    <p className="font-medium text-gray-900 leading-snug">
-                                        {[
-                                            profile.mailing_city,
-                                            profile.mailing_state,
-                                            profile.mailing_country
-                                        ].filter(Boolean).join(', ') || 'N/A'}
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-0.5 truncate">
-                                        {[profile.mailing_street, profile.mailing_zip].filter(Boolean).join(', ')}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Button variant="outline" className="w-full rounded-lg border-dashed border-gray-300 hover:border-primary hover:text-primary transition-colors mt-auto" onClick={() => setEditDialogOpen(true)}>
-                            <Edit2 className="w-4 h-4 mr-2" />
-                            Edit Profile
-                        </Button>
-                    </div>
-                </div>
+                <LeadProfileSidebar
+                    lead={lead}
+                    profile={profile}
+                    onEditProfile={() => setEditDialogOpen(true)}
+                    onEditAvatar={() => setAvatarPickerOpen(true)}
+                />
             </div>
 
             {/* Main Content */}
@@ -300,227 +175,27 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                     </div>
 
                     {activeTab === 'overview' && (
-                        <div className="space-y-6">
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-12 gap-6">
-                                {/* Properties Card */}
-                                <div className="col-span-12 md:col-span-4">
-                                    <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200">
-                                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md">
-                                                    <Building className="w-4 h-4" />
-                                                </div>
-                                                <CardTitle className="text-sm font-semibold text-gray-900">Properties</CardTitle>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="secondary" className="px-1.5 py-0 h-5 text-[10px] font-medium">
-                                                    {(
-                                                        (lead.property ? 1 : 0) +
-                                                        (lead.projects || (lead.project ? [lead.project] : []))
-                                                            .filter(p => !lead.property?.project_id || p.id !== lead.property.project_id)
-                                                            .length
-                                                    )}
-                                                </Badge>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 w-6 p-0 hover:bg-blue-50 hover:text-blue-600 rounded-full"
-                                                    onClick={() => setLinkDialogOpen(true)}
-                                                >
-                                                    <Plus className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {((lead.property ? [lead.property] : []).concat(lead.projects || (lead.project ? [lead.project] : []))).length > 0 ? (
-                                                <div className="max-h-[350px] overflow-y-auto pr-1 space-y-4 custom-scrollbar">
-                                                    {/* Display Linked Property Unit first */}
-                                                    {lead.property && (
-                                                        <div className="group relative flex items-start gap-3 p-2 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-sm transition-all cursor-pointer">
-
-                                                            {/* Unlink Button */}
-                                                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation()
-                                                                        handleUnlink()
-                                                                    }}
-                                                                >
-                                                                    <X className="w-3 h-3" />
-                                                                </Button>
-                                                            </div>
-
-                                                            <div className="h-14 w-20 shrink-0 bg-slate-100 rounded-lg overflow-hidden relative border border-slate-200 flex items-center justify-center">
-                                                                <Home className="w-6 h-6 text-slate-400" />
-                                                            </div>
-                                                            <div className="flex-1 min-w-0 py-0.5">
-                                                                <div className="flex justify-between items-start gap-2 pr-6">
-                                                                    <h4 className="font-semibold text-sm text-slate-900 leading-tight truncate">{lead.property.title}</h4>
-                                                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-emerald-50 text-emerald-700 border-emerald-200">
-                                                                        Unit
-                                                                    </Badge>
-                                                                </div>
-                                                                <div className="flex items-center gap-1 text-xs text-slate-500 mt-0.5">
-                                                                    {lead.property.project?.name && (
-                                                                        <span className="font-medium text-slate-700">{lead.property.project.name}</span>
-                                                                    )}
-                                                                </div>
-                                                                {lead.property.price && (
-                                                                    <p className="text-xs font-semibold text-slate-900 mt-1">
-                                                                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: organization?.currency || 'USD', maximumFractionDigits: 0 }).format(lead.property.price)}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Display Linked Projects (excluding the one linked via Property Unit) */}
-                                                    {(lead.projects || (lead.project ? [lead.project] : []))
-                                                        .filter(p => !lead.property?.project_id || p.id !== lead.property.project_id)
-                                                        .map((project, index) => (
-                                                            <div key={index} className="group relative flex items-start gap-3 p-2 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-sm transition-all cursor-pointer">
-
-                                                                {/* Unlink Button */}
-                                                                <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation()
-                                                                            handleUnlink()
-                                                                        }}
-                                                                    >
-                                                                        <X className="w-3 h-3" />
-                                                                    </Button>
-                                                                </div>
-
-                                                                {/* Small Thumbnail */}
-                                                                <div className="h-14 w-20 shrink-0 bg-slate-100 rounded-lg overflow-hidden relative border border-slate-200">
-                                                                    {project.image_url ? (
-                                                                        <img
-                                                                            src={project.image_url}
-                                                                            alt={project.name}
-                                                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                                                            onError={(e) => e.target.style.display = 'none'}
-                                                                        />
-                                                                    ) : (
-                                                                        <div className="flex items-center justify-center h-full text-slate-400">
-                                                                            <Building className="w-5 h-5 opacity-40" />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Details */}
-                                                                <div className="flex-1 min-w-0 py-0.5">
-                                                                    <div className="flex justify-between items-start gap-2 pr-6">
-                                                                        <h4 className="font-semibold text-sm text-slate-900 leading-tight truncate">{project.name}</h4>
-                                                                        {project.project_type && (
-                                                                            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full">
-                                                                                {project.project_type}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {project.address && (
-                                                                        <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
-                                                                            <MapPin className="w-3 h-3 shrink-0 opacity-70" />
-                                                                            <span className="truncate">{project.address}</span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                </div>
-                                            ) : (
-                                                <div className="py-12 text-center flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-xl bg-gray-50/50">
-                                                    <Building className="w-8 h-8 mb-2 opacity-20" />
-                                                    <p className="text-sm">No properties linked</p>
-                                                    <Button variant="link" size="sm" className="mt-1 h-auto p-0 text-primary" onClick={() => setLinkDialogOpen(true)}>Link Property</Button>
-                                                </div>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                </div>
-
-                                {/* Client Preferences - Spans 8 cols */}
-                                <div className="col-span-12 md:col-span-8">
-                                    <ClientPreferencesCard
-                                        profile={profile}
-                                        leadId={leadId}
-                                        onUpdate={fetchLeadData}
-                                        currency={organization?.currency || 'USD'}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Secondary Row */}
-                            <div className="grid grid-cols-12 gap-6">
-                                <div className="col-span-12 md:col-span-4">
-                                    <PropertyDealsCard
-                                        deals={lead.deals || []}
-                                        leadId={leadId}
-                                        onUpdate={fetchLeadData}
-                                        currency={organization?.currency || 'USD'}
-                                        defaultProperty={lead.property}
-                                        defaultProject={lead.projects?.[0] || lead.project}
-                                    />
-                                </div>
-                                <div className="col-span-12 md:col-span-4">
-                                    <ComingUpNextCard leadId={leadId} />
-                                </div>
-                                <div className="col-span-12 md:col-span-4">
-                                    <BestTimeToContactCard
-                                        profile={profile}
-                                        leadId={leadId}
-                                        onUpdate={fetchLeadData}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Sentiment */}
-                            <div>
-                                <SentimentAnalysisCard callLogs={lead.call_logs || []} />
-                            </div>
-                        </div>
+                        <LeadProfileOverview
+                            lead={lead}
+                            profile={profile}
+                            organization={organization}
+                            onUpdate={fetchLeadData}
+                            onLinkProperty={() => setLinkDialogOpen(true)}
+                            onUnlinkProperty={handleUnlink}
+                        />
                     )}
 
                     {activeTab === 'notes' && (
-                        <Card className="border-0 shadow-sm ring-1 ring-gray-200">
-                            <CardHeader>
-                                <CardTitle className="text-base">Notes</CardTitle>
-                                <CardDescription>Internal notes and remarks</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    className="min-h-[200px] resize-none text-base p-4 focus-visible:ring-1 focus-visible:ring-primary/20"
-                                    placeholder="Start typing..."
-                                />
-                                <div className="flex justify-end mt-4">
-                                    <Button onClick={handleSaveNotes} disabled={savingNotes} size="sm">
-                                        <Save className="w-4 h-4 mr-2" />
-                                        {savingNotes ? 'Saving...' : 'Save Notes'}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <LeadProfileNotes
+                            notes={notes}
+                            setNotes={setNotes}
+                            onSave={handleSaveNotes}
+                            isSaving={savingNotes}
+                        />
                     )}
 
                     {activeTab === 'emails' && (
-                        <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground bg-gray-50/50 rounded-xl border-2 border-dashed">
-                            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                                <Mail className="w-8 h-8 text-primary/60" />
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900">Connect Email</h3>
-                            <p className="max-w-xs text-center mt-2 text-sm">Sync your email to see all communications in one place.</p>
-                            <Button variant="outline" className="mt-6">Integrate Now</Button>
-                        </div>
+                        <LeadProfileEmails />
                     )}
 
                     {activeTab === 'timeline' && (

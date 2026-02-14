@@ -16,17 +16,32 @@ import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Loc
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import dynamic from 'next/dynamic'
 import ProjectCard from '@/components/projects/ProjectCard'
-import ProjectForm from '@/components/projects/ProjectForm'
 import ProjectList from '@/components/projects/ProjectList'
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+import { useProjects } from '@/hooks/useProjects'
+
+const ProjectForm = dynamic(() => import('@/components/projects/ProjectForm'), {
+  loading: () => <Skeleton className="h-96 w-full" />
+})
 
 export default function ProjectsPage() {
   const router = useRouter()
+  const [page, setPage] = useState(1)
 
-  const [projects, setProjects] = useState([])
-  const [loading, setLoading] = useState(true)
+  // Data Fetching
+  const { data: projectsData, metadata: projectsMetadata, isLoading: loading, isPlaceholderData } = useProjects({
+    status: undefined, // Add filters if needed
+    page,
+    limit: 20
+  })
+
+  // useProjects now returns flattened data
+  const projects = projectsData || []
+  const metadata = projectsMetadata || {}
+
   const [submitting, setSubmitting] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
@@ -58,22 +73,9 @@ export default function ProjectsPage() {
   // Delete State
   const [deletingId, setDeletingId] = useState(null)
 
-  useEffect(() => {
-    fetchProjects()
-  }, [])
-
-  async function fetchProjects() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/projects')
-      const data = await res.json()
-      setProjects(data.projects || [])
-    } catch (err) {
-      toast.error("Failed to load projects")
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Removed manual fetch
+  // useEffect(() => { fetchProjects() }, [])
+  // async function fetchProjects() { ... }
 
   // --- Actions ---
 
@@ -433,6 +435,11 @@ export default function ProjectsPage() {
                   router.push(`/dashboard/admin/crm/projects/${p.id}/campaigns`)
                 }}
                 deletingId={deletingId}
+                // Pagination
+                page={page}
+                onPageChange={setPage}
+                hasMore={metadata?.hasMore}
+                isLoadingMore={isPlaceholderData}
               />
             )}
           </div>

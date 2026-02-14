@@ -3,19 +3,16 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
+import { withAuth } from '@/lib/middleware/withAuth'
+import { PropertyService } from '@/services/property.service'
 
 /**
  * GET /api/inventory/properties
  * Fetch properties with filters
  */
-export async function GET(request) {
+export const GET = withAuth(async (request, context) => {
     try {
-        const supabase = await createServerSupabaseClient()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-        if (authError || !user) {
-            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-        }
+        const { user, profile } = context
 
         const { hasDashboardPermission } = await import('@/lib/dashboardPermissions')
         const canView = await hasDashboardPermission(user.id, 'view_inventory')
@@ -26,46 +23,25 @@ export async function GET(request) {
             }, { status: 200 })
         }
 
-        const adminClient = createAdminClient()
-        const { data: profile } = await adminClient
-            .from('profiles')
-            .select('organization_id')
-            .eq('id', user.id)
-            .single()
-
         if (!profile?.organization_id) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 
         const { searchParams } = new URL(request.url)
-        const status = searchParams.get('status')
-        const type = searchParams.get('type')
-        const projectId = searchParams.get('project_id')
+        const filters = {
+            status: searchParams.get('status'),
+            propertyType: searchParams.get('type'),
+            projectId: searchParams.get('project_id')
+        }
 
-        let query = adminClient
-            .from('properties')
-            .select(`
-        *,
-        project:projects(name),
-        images:property_images(url, is_featured)
-      `)
-            .eq('organization_id', profile.organization_id)
-            .order('created_at', { ascending: false })
-
-        if (status) query = query.eq('status', status)
-        if (type) query = query.eq('type', type)
-        if (projectId) query = query.eq('project_id', projectId)
-
-        const { data: properties, error } = await query
-
-        if (error) throw error
+        const properties = await PropertyService.getProperties(profile.organization_id, filters)
 
         return corsJSON({ properties: properties || [] })
-    } catch (e) {
-        console.error('properties GET error:', e)
-        return corsJSON({ error: e.message }, { status: 500 })
+    } catch (error) {
+        console.error('Error fetching properties:', error)
+        return corsJSON({ error: error.message }, { status: 500 })
     }
-}
+})
 
 /**
  * POST /api/inventory/properties

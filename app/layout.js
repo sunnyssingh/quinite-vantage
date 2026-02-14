@@ -2,6 +2,7 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import localFont from 'next/font/local'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
+import { ReactQueryProvider } from '@/components/providers/ReactQueryProvider'
 
 // Google Sans substitute (Premium Body Font)
 const inter = Inter({
@@ -74,8 +75,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${inter.variable} ${jakarta.variable} font-sans`}>
-        {children}
-        <Toaster position="top-right" />
+        <ReactQueryProvider>
+          {children}
+          <Toaster position="top-right" />
+        </ReactQueryProvider>
       </body>
     </html>
   )

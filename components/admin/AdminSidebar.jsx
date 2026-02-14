@@ -39,7 +39,7 @@ export default function AdminSidebar() {
             title: 'Management',
             items: [
                 { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3, permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics'] },
-                { label: 'Audit Logs', href: '/dashboard/admin/audit', icon: FileText, permission: 'view_settings' },
+                { label: 'Audit Logs', href: '/dashboard/admin/audit', icon: FileText, permission: 'view_audit_logs' },
                 { label: 'Users', href: '/dashboard/admin/users', icon: Users, permission: 'view_users' },
             ]
         },

@@ -2,40 +2,38 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { withAuth } from '@/lib/middleware/withAuth'
+import { LeadService } from '@/services/lead.service'
 
-export async function GET(request, { params }) {
+/**
+ * GET /api/leads/[id]
+ * Get a single lead by ID
+ */
+export const GET = withAuth(async (request, { params }) => {
     try {
-        const supabase = await createServerSupabaseClient()
+        const { user, profile } = await Promise.all([
+            Promise.resolve(request.context?.user),
+            Promise.resolve(request.context?.profile)
+        ])
         const { id } = await params
 
-        // Get user profile
-        const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        // Get lead
-        const { data, error } = await supabase
-            .from('leads')
-            .select(`
-                *,
-                project:projects(id, name, image_url, address, project_type),
-                property:properties(id, title, address, price, type, project_id, project:projects(name)),
-                deals(*, property:properties(id, title, project:projects(name)), project:projects(id, name))
-            `)
-            .eq('id', id)
-            .single()
+        // Get lead using service
+        const lead = await LeadService.getLeadById(id, profile.organization_id)
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
+        if (!lead) {
+            return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
         }
 
-        return NextResponse.json({ lead: data })
+        return NextResponse.json({ lead })
     } catch (error) {
         console.error('Error fetching lead:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
-}
+})
 
 
 // Helper to check edit scope
@@ -54,7 +52,18 @@ export async function PUT(request, { params }) {
     try {
         const supabase = await createServerSupabaseClient()
         const { id } = await params
-        const body = await request.json()
+
+        // Validate ID
+        if (!id || id === 'undefined' || id === 'null') {
+            return NextResponse.json({ error: 'Invalid Lead ID' }, { status: 400 })
+        }
+
+        let body
+        try {
+            body = await request.json()
+        } catch (e) {
+            return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+        }
 
         // Get user profile
         const { data: { user } } = await supabase.auth.getUser()

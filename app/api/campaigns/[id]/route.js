@@ -3,6 +3,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/permissions'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { withAuth } from '@/lib/middleware/withAuth'
+import { CampaignService } from '@/services/campaign.service'
 
 function handleCORS(response) {
     response.headers.set('Access-Control-Allow-Origin', '*')
@@ -51,12 +53,16 @@ export async function GET(request, { params }) {
     }
 }
 
-export async function PUT(request, { params }) {
+/**
+ * PUT /api/campaigns/[id]
+ * Update a campaign
+ */
+export const PUT = withAuth(async (request, context) => {
     try {
-        const supabase = await createServerSupabaseClient()
+        const { user, profile } = context
         const body = await request.json()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        const { id } = await request.params ? request.params : context.params || {}
+        const campaignId = id || context.params?.id
 
         // Check permission
         const canEdit = await hasDashboardPermission(user.id, 'edit_campaigns')
@@ -67,53 +73,26 @@ export async function PUT(request, { params }) {
             }, { status: 200 }))
         }
 
-        const admin = createAdminClient()
-        const { data: profile } = await admin.from('profiles').select('organization_id, full_name').eq('id', user.id).single()
-
-        if (!profile) {
-            return handleCORS(NextResponse.json({ error: 'Profile not found' }, { status: 404 }))
+        if (!profile?.organization_id) {
+            return handleCORS(NextResponse.json({ error: 'Organization not found' }, { status: 400 }))
         }
 
-        const { id } = await params
-
-        // Verify campaign belongs to user's org
-        const { data: existing } = await supabase
-            .from('campaigns')
-            .select('id')
-            .eq('id', id)
-            .eq('organization_id', profile.organization_id)
-            .single()
-
-        if (!existing) {
-            return handleCORS(NextResponse.json({ error: 'Campaign not found' }, { status: 404 }))
+        if (!campaignId) {
+            return handleCORS(NextResponse.json({ error: 'Campaign ID required' }, { status: 400 }))
         }
 
-        const { project_id, name, description, start_date, end_date, time_start, time_end, status, metadata } = body
+        // Update campaign using service
+        const campaign = await CampaignService.updateCampaign(campaignId, body, profile.organization_id)
 
-        const updatePayload = {
-            ...(project_id !== undefined && { project_id }),
-            ...(name !== undefined && { name }),
-            ...(description !== undefined && { description }),
-            ...(start_date !== undefined && { start_date }),
-            ...(end_date !== undefined && { end_date }),
-            ...(time_start !== undefined && { time_start }),
-            ...(time_end !== undefined && { time_end }),
-            ...(status !== undefined && { status }),
-            ...(metadata !== undefined && { metadata }),
-            updated_at: new Date().toISOString()
-        }
-
-        const { data: campaign, error } = await admin
-            .from('campaigns')
-            .update(updatePayload)
-            .eq('id', id)
-            .select()
-            .single()
-
-        if (error) throw error
-
+        // Log audit
         try {
-            await logAudit(supabase, user.id, profile.full_name || user.email, 'campaign.update', 'campaign', id, updatePayload)
+            await logAudit({
+                action: 'update',
+                resource: 'campaign',
+                resource_id: campaignId,
+                user_id: user.id,
+                details: { updated_fields: Object.keys(body) }
+            })
         } catch (e) {
             console.error('Audit log error:', e)
         }
@@ -123,7 +102,7 @@ export async function PUT(request, { params }) {
         console.error('campaigns PUT error:', e)
         return handleCORS(NextResponse.json({ error: e.message }, { status: 500 }))
     }
-}
+})
 
 export async function DELETE(request, { params }) {
     try {

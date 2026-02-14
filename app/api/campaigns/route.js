@@ -2,88 +2,44 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
-
 import { createAdminClient } from '@/lib/supabase/admin'
-import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { withPermission } from '@/lib/middleware/withAuth'
+import { CampaignService } from '@/services/campaign.service'
 
-export async function GET(request) {
+/**
+ * GET /api/campaigns
+ * Returns campaigns for the organization
+ */
+export const GET = withPermission('view_campaigns', async (request, context) => {
   try {
-    const supabase = await createServerSupabaseClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const canView = await hasDashboardPermission(user.id, 'view_campaigns')
-    if (!canView) {
-      return corsJSON({
-        success: false,
-        message: 'You don\'t have permission to view campaigns',
-        data: []
-      }, { status: 200 })
-    }
-
-    const admin = createAdminClient()
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single()
+    const { profile } = context
 
     if (!profile?.organization_id) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
     }
 
     const { searchParams } = new URL(request.url)
-    const projectId = searchParams.get('project_id')
-
-    let query = supabase
-      .from('campaigns')
-      .select('*')
-      .eq('organization_id', profile.organization_id)
-
-    if (projectId) {
-      query = query.eq('project_id', projectId)
+    const filters = {
+      projectId: searchParams.get('project_id'),
+      status: searchParams.get('status'),
+      page: searchParams.get('page') || 1,
+      limit: searchParams.get('limit') || 20
     }
 
-    const { data, error } = await query
-      .order('created_at', { ascending: false })
+    const { campaigns, metadata } = await CampaignService.getCampaigns(profile.organization_id, filters)
 
-    if (error) throw error
-
-    return corsJSON({ campaigns: data || [] })
+    return corsJSON({ campaigns: campaigns || [], metadata })
   } catch (e) {
     console.error('campaigns GET error:', e)
     return corsJSON({ error: e.message }, { status: 500 })
   }
-}
+})
 
-export async function POST(request) {
+export const POST = withPermission('create_campaigns', async (request, context) => {
   try {
-    const supabase = await createServerSupabaseClient()
+    const { user, profile } = context
     const body = await request.json()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check permission
-    const canCreate = await hasDashboardPermission(user.id, 'create_campaigns')
-    if (!canCreate) {
-      return corsJSON({
-        success: false,
-        message: 'You don\'t have permission to create campaigns'
-      }, { status: 200 })
-    }
-
-    const admin = createAdminClient()
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('organization_id, full_name')
-      .eq('id', user.id)
-      .single()
+    const supabase = await createServerSupabaseClient()
 
     if (!profile?.organization_id) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
@@ -111,6 +67,7 @@ export async function POST(request) {
       created_by: user.id
     }
 
+    const admin = createAdminClient()
     const { data: campaign, error } = await admin
       .from('campaigns')
       .insert(payload)
@@ -138,4 +95,4 @@ export async function POST(request) {
     console.error('campaigns POST error:', e)
     return corsJSON({ error: e.message }, { status: 500 })
   }
-}
+})

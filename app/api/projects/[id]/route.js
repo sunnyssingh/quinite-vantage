@@ -16,38 +16,25 @@ function handleCORS(response) {
 }
 
 /* ===================== UPDATE PROJECT ===================== */
-export async function PUT(request, { params }) {
+import { withAuth } from '@/lib/middleware/withAuth'
+import { ProjectService } from '@/services/project.service'
+
+export const PUT = withAuth(async (request, { params }) => {
     try {
         const { id } = await params
-        const supabase = await createServerSupabaseClient()
+        const { user, profile } = request.context
         const body = await request.json()
 
-        // 1️⃣ Auth
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
+        if (!profile?.organization_id) {
             return handleCORS(
-                NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-            )
-        }
-
-        // 2️⃣ Profile
-        const adminClient = createAdminClient()
-        const { data: profile, error: profileError } = await adminClient
-            .from('profiles')
-            .select('organization_id, full_name, role')
-            .eq('id', user.id)
-            .single()
-
-        if (profileError || !profile) {
-            console.error('[Project Update] Profile check failed:', profileError)
-            return handleCORS(
-                NextResponse.json({ error: 'Profile check failed', details: profileError }, { status: 404 })
+                NextResponse.json({ error: 'Profile check failed' }, { status: 404 })
             )
         }
 
         console.log('[Project Update] Profile found:', profile.organization_id, 'Project ID:', id)
 
-        // 3️⃣ Fetch project (IMPORTANT)
+        // Fetch project (IMPORTANT)
+        const adminClient = createAdminClient()
         const { data: existing } = await adminClient
             .from('projects')
             .select('id, name, image_path, created_by')
@@ -62,7 +49,7 @@ export async function PUT(request, { params }) {
             )
         }
 
-        // 4️⃣ Permission check
+        // Permission check
         const isOwner = existing.created_by === user.id
         const canEdit = await hasDashboardPermission(user.id, 'edit_projects')
 
@@ -234,7 +221,7 @@ export async function PUT(request, { params }) {
             NextResponse.json({ error: e.message }, { status: 500 })
         )
     }
-}
+})
 
 
 

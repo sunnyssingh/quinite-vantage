@@ -1,60 +1,92 @@
 import { NextResponse } from 'next/server'
+import { corsJSON } from '@/lib/cors'
+import { ProjectService } from '@/services/project.service'
+import { withPermission } from '@/lib/middleware/withAuth'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/permissions'
-import { corsJSON } from '@/lib/cors'
-import Ajv from 'ajv'
-import fs from 'fs'
-import path from 'path'
-
-import { createAdminClient } from '@/lib/supabase/admin'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import * as fs from 'fs'
+import * as path from 'path'
+import Ajv from 'ajv'
 
-export async function GET() {
+/**
+ * GET /api/projects
+ * List all projects
+ */
+export const GET = withPermission('view_projects', async (request, context) => {
   try {
-    const supabase = await createServerSupabaseClient()
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const admin = createAdminClient()
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single()
+    const { profile } = context
 
     if (!profile?.organization_id) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
     }
 
-    // Check permissions
-    const canView = await hasDashboardPermission(user.id, 'view_projects')
-    if (!canView) {
-      return corsJSON({
-        success: false,
-        message: 'You don\'t have permission to view projects',
-        data: []
-      }, { status: 200 })
-    }
-
     // Use admin client for fetching projects to avoid RLS recursion issues
     // We manually verify organization_id above, so this is safe
-    const { data, error } = await admin
+    const { searchParams } = new URL(request.url)
+    const filters = {
+      status: searchParams.get('status'),
+      projectType: searchParams.get('project_type'),
+      page: searchParams.get('page') || 1,
+      limit: searchParams.get('limit') || 20
+    }
+
+
+    // 1. Build Query
+    const admin = createAdminClient()
+    let query = admin
       .from('projects')
-      .select('*')
+      .select('*, campaigns(*)') // Fetch related campaigns
       .eq('organization_id', profile.organization_id)
       .order('created_at', { ascending: false })
 
+    // 2. Apply Filters
+    if (filters.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status)
+    }
+
+    if (filters.projectType && filters.projectType !== 'all') {
+      query = query.eq('project_type', filters.projectType)
+    }
+
+    // 3. Pagination
+    const page = parseInt(filters.page)
+    const limit = parseInt(filters.limit)
+    const from = (page - 1) * limit
+    const to = from + limit - 1
+
+    // Get count first
+    const { count, error: countError } = await admin
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+      .eq('organization_id', profile.organization_id)
+
+    if (countError) {
+      console.error('Projects count error:', countError)
+    }
+
+    // Execute query
+    const { data: projects, error } = await query.range(from, to)
+
     if (error) throw error
 
-    return corsJSON({ projects: data || [] })
+    return corsJSON({
+      projects: projects || [],
+      metadata: {
+        total: count || 0,
+        page,
+        limit,
+        hasMore: (from + limit) < (count || 0)
+      }
+    })
+
   } catch (e) {
     console.error('projects GET error:', e)
     return corsJSON({ error: e.message }, { status: 500 })
   }
-}
+})
+
 
 
 export async function POST(request) {

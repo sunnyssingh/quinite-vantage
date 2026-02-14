@@ -183,6 +183,10 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     }
 
     const moveLead = useCallback(async (leadId, newStageId) => {
+        if (!leadId) {
+            console.error('Cannot move lead: Invalid lead ID')
+            return
+        }
         // 1. Optimistic Update
         const originalLeads = [...leads]
         const leadToUpdate = leads.find(l => l.id === leadId)

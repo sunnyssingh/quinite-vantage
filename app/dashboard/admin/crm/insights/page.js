@@ -21,9 +21,14 @@ import {
     RadialBarChart,
     RadialBar
 } from 'recharts'
-import { Activity, MessageSquare, Banknote, Calendar, AlertTriangle, UserCheck, TrendingUp, Brain, Sparkles } from 'lucide-react'
+import { Activity, MessageSquare, Banknote, Calendar, AlertTriangle, UserCheck, TrendingUp, Brain, Sparkles, FileDown } from 'lucide-react'
+import { PermissionGate } from '@/components/permissions/PermissionGate'
+import { usePermission } from '@/contexts/PermissionContext'
+import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+import { Button } from '@/components/ui/button'
 
-export default function ConversationInsightsDashboard({ campaignId = null, dateRange = 30 }) {
+function ConversationInsightsContent({ campaignId = null, dateRange = 30 }) {
+    const canExport = usePermission('export_reports')
     const [insights, setInsights] = useState([])
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({
@@ -195,9 +200,29 @@ export default function ConversationInsightsDashboard({ campaignId = null, dateR
                         </div>
                     </div>
                 </div>
-                <Badge variant="outline" className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border-purple-200 text-purple-700 bg-purple-50 w-fit">
-                    Last {dateRange} days
-                </Badge>
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border-purple-200 text-purple-700 bg-purple-50 w-fit">
+                        Last {dateRange} days
+                    </Badge>
+                    <PermissionTooltip
+                        hasPermission={canExport}
+                        message="You need 'Export Reports' permission to export insights."
+                    >
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!canExport}
+                            onClick={() => {
+                                // TODO: Implement export functionality
+                                alert('Export functionality coming soon!')
+                            }}
+                            className="gap-2"
+                        >
+                            <FileDown className="w-4 h-4" />
+                            Export
+                        </Button>
+                    </PermissionTooltip>
+                </div>
             </div>
 
             {/* Summary Stats */}
@@ -552,3 +577,16 @@ function InsightsSkeleton() {
     )
 }
 
+
+
+export default function ConversationInsightsDashboard(props) {
+    return (
+        <PermissionGate
+            feature="view_organization_analytics"
+            fallbackFeatures={['view_team_analytics', 'view_own_analytics']}
+            fallbackMessage="You don't have permission to view insights. Contact your administrator."
+        >
+            <ConversationInsightsContent {...props} />
+        </PermissionGate>
+    )
+}

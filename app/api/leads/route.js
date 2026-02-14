@@ -6,21 +6,18 @@ import { hasPermission, logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { getDefaultAvatar } from '@/lib/avatar-utils'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { withAuth } from '@/lib/middleware/withAuth'
+import { LeadService } from '@/services/lead.service'
 
 console.log('[Leads API] Avatar utility loaded:', typeof getDefaultAvatar)
 
 /**
  * GET /api/leads
- * Returns all leads for the organization
+ * Returns leads for the organization with permission-based filtering
  */
-export async function GET(request) {
+export const GET = withAuth(async (request, context) => {
     try {
-        const supabase = await createServerSupabaseClient()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-        if (authError || !user) {
-            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-        }
+        const { user, profile } = context
 
         // Check Permissions
         const canViewAll = await hasDashboardPermission(user.id, 'view_all_leads')
@@ -32,18 +29,10 @@ export async function GET(request) {
                 success: false,
                 message: 'You don\'t have permission to view leads',
                 data: []
-            }, { status: 200 })
+            }, { status: 403 })
         }
 
-        // Use admin client to bypass RLS and get reliable profile
-        const adminClient = createAdminClient()
-
-        const { data: profile } = await adminClient
-            .from('profiles')
-            .select('organization_id, role')
-            .eq('id', user.id)
-            .single()
-
+        // Platform admins can see all leads
         const isPlatformAdmin = profile?.role === 'platform_admin'
 
         if (!profile?.organization_id && !isPlatformAdmin) {
@@ -52,69 +41,31 @@ export async function GET(request) {
 
         // Get query parameters for filtering
         const { searchParams } = new URL(request.url)
-        const status = searchParams.get('status')
-        const projectId = searchParams.get('project_id')
-        const stageId = searchParams.get('stage_id') // [NEW]
-        const search = searchParams.get('search')
-
-        // Build query - fetch all columns including call_status and project
-        let query = adminClient
-            .from('leads')
-            .select(`
-                *,
-                project:projects(id, name),
-                stage:pipeline_stages(id, name, color),
-                deals(id, amount, status)
-            `)
-            .order('created_at', { ascending: false })
-
-        // Platform admins can see all leads, regular users only see their org
-
-        if (!isPlatformAdmin) {
-            query = query.eq('organization_id', profile.organization_id)
-
-            // Apply Scope Filters
-            // If has view_all or view_team, they see everything in the org (Team = Org for now)
-            // If ONLY view_own, filter by assigned_to
-            if (!canViewAll && !canViewTeam && canViewOwn) {
-                query = query.eq('assigned_to', user.id)
-            }
+        const filters = {
+            projectId: searchParams.get('project_id'),
+            stageId: searchParams.get('stage_id'),
+            search: searchParams.get('search'),
+            status: searchParams.get('status'),
+            page: searchParams.get('page') || 1,
+            limit: searchParams.get('limit') || 20
         }
 
-        // Apply filters
+        // Fetch leads using service layer
+        const { leads, metadata } = await LeadService.getLeadsForUser(
+            user.id,
+            profile.organization_id,
+            { canViewAll, canViewTeam, canViewOwn },
+            filters
+        )
 
-        if (projectId) {
-            query = query.eq('project_id', projectId)
-        }
-        if (stageId && stageId !== 'all') { // [NEW] Filter by Stage
-            query = query.eq('stage_id', stageId)
-        }
-        if (search) {
-            query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
-        }
+        console.log('✅ [Leads GET] Fetched', leads?.length || 0, 'leads (Page', filters.page, ')')
 
-        const { data: leads, error } = await query
-
-        if (error) throw error
-
-        console.log('✅ [Leads GET] Fetched', leads?.length || 0, 'leads')
-        if (leads && leads.length > 0) {
-            console.log('📊 [Leads GET] Sample lead:', {
-                id: leads[0].id,
-                name: leads[0].name,
-                stage_id: leads[0].stage_id,
-                stage: leads[0].stage,
-                call_status: leads[0].call_status,
-                call_log_id: leads[0].call_log_id
-            })
-        }
-
-        return corsJSON({ leads: leads || [] })
+        return corsJSON({ leads: leads || [], metadata })
     } catch (e) {
         console.error('leads GET error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
-}
+})
 
 /**
  * POST /api/leads

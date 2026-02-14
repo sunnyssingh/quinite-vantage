@@ -206,55 +206,35 @@ export default function LeadForm({
                     </Select>
                 </div>
 
-                {fetchedStages.length > 0 || loadingStages ? (
-                    <div className="space-y-2">
-                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <Target className="w-4 h-4 text-slate-500" />
-                            Pipeline Stage
-                        </Label>
-                        <Select
-                            name="stageId"
-                            value={selectedStageId}
-                            onValueChange={setSelectedStageId}
-                            disabled={loadingStages}
-                        >
-                            <SelectTrigger className="h-11 border-slate-300">
-                                <SelectValue placeholder={loadingStages ? "Loading..." : "Select stage"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {fetchedStages.map(stage => (
-                                    <SelectItem key={stage.id} value={stage.id}>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
-                                            {stage.name}
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        {/* Hidden status field for backward compatibility/API requirement if needed */}
-                        <input type="hidden" name="status" value="new" />
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <Target className="w-4 h-4 text-slate-500" />
-                            Status
-                        </Label>
-                        <Select name="status" defaultValue={initialStatus || initialData?.status || 'new'}>
-                            <SelectTrigger className="h-11 border-slate-300">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="contacted">Contacted</SelectItem>
-                                <SelectItem value="qualified">Qualified</SelectItem>
-                                <SelectItem value="converted">Converted</SelectItem>
-                                <SelectItem value="lost">Lost</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
+                <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <Target className="w-4 h-4 text-slate-500" />
+                        Pipeline Stage
+                    </Label>
+                    <Select
+                        name="stageId"
+                        value={selectedStageId}
+                        onValueChange={setSelectedStageId}
+                        disabled={loadingStages || fetchedStages.length === 0}
+                    >
+                        <SelectTrigger className="h-11 border-slate-300">
+                            <SelectValue placeholder={
+                                loadingStages ? "Loading..." :
+                                    fetchedStages.length === 0 ? "Select Project First" : "Select stage"
+                            } />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {fetchedStages.map(stage => (
+                                <SelectItem key={stage.id} value={stage.id}>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color }} />
+                                        {stage.name}
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             {/* Notes Field */}

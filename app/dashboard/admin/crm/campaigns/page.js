@@ -73,6 +73,8 @@ const StatusBadge = ({ status }) => {
 
 import { toast } from 'react-hot-toast'
 
+import { useCampaigns } from '@/hooks/useCampaigns'
+
 export default function CampaignsPage() {
   const supabase = createClient()
   const router = useRouter()
@@ -82,9 +84,24 @@ export default function CampaignsPage() {
   const canDelete = usePermission('delete_campaigns')
   const canRun = usePermission('run_campaigns')
 
-  const [campaigns, setCampaigns] = useState([])
+  const [page, setPage] = useState(1)
+  const [selectedProjectId, setSelectedProjectId] = useState('')
+
+  // Projects needed for filter/create (keep manual fetch for now or use hook if available)
   const [projects, setProjects] = useState([])
-  const [loading, setLoading] = useState(true)
+
+  // Campaign Data Fetching
+  const { data: campaignsResponse, isLoading: loading, isPlaceholderData } = useCampaigns({
+    projectId: selectedProjectId || undefined,
+    page,
+    limit: 20
+  })
+
+  const campaigns = campaignsResponse?.campaigns || []
+  const metadata = campaignsResponse?.metadata || {}
+
+  // const [campaigns, setCampaigns] = useState([]) // Replaced by hook
+  // const [loading, setLoading] = useState(true) // Replaced by hook
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -96,7 +113,8 @@ export default function CampaignsPage() {
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false)
   const [campaignResults, setCampaignResults] = useState(null)
 
-  const [selectedProjectId, setSelectedProjectId] = useState('')
+  // const [selectedProjectId, setSelectedProjectId] = useState('') // Moved up
+
 
   // Create form states
   const [projectId, setProjectId] = useState('')
@@ -118,34 +136,21 @@ export default function CampaignsPage() {
   const [editStatus, setEditStatus] = useState('scheduled')
 
   useEffect(() => {
-    fetchData()
+    fetchProjectsOnly()
   }, [])
 
-  async function fetchData() {
-    setLoading(true)
-    setError(null)
+  async function fetchProjectsOnly() {
     try {
       const params = new URLSearchParams(window.location.search)
       const pid = params.get('project_id')
-
       if (pid) setSelectedProjectId(pid)
-      else setSelectedProjectId('')
 
-      const campaignUrl = pid ? `/api/campaigns?project_id=${pid}` : '/api/campaigns'
-
-      const [cRes, pRes] = await Promise.all([
-        fetch(campaignUrl),
-        fetch('/api/projects')
-      ])
-      const cData = await cRes.json()
+      const pRes = await fetch('/api/projects')
       const pData = await pRes.json()
-      setCampaigns(cData.campaigns || [])
       setProjects(pData.projects || [])
     } catch (e) {
       console.error(e)
-      toast.error("Failed to load campaigns or projects")
-    } finally {
-      setLoading(false)
+      toast.error("Failed to load projects")
     }
   }
 
@@ -792,6 +797,31 @@ export default function CampaignsPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Footer */}
+        {campaigns.length > 0 && (
+          <div className="flex items-center justify-end space-x-2 py-4 mt-4 border-t border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1 || isPlaceholderData}
+            >
+              Previous
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              Page {page}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(p => p + 1)}
+              disabled={!metadata?.hasMore || isPlaceholderData}
+            >
+              Next
+            </Button>
           </div>
         )}
       </div>

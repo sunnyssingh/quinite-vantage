@@ -54,6 +54,12 @@ export default function EditLeadProfileDialog({ open, onOpenChange, lead, profil
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+
+        if (!lead?.id) {
+            toast.error("Cannot update: Invalid lead ID")
+            return
+        }
+
         setLoading(true)
 
         try {

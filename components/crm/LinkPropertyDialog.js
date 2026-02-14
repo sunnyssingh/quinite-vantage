@@ -45,6 +45,10 @@ export default function LinkPropertyDialog({ lead, isOpen, onClose, onLinkSucces
 
     const handleLink = async () => {
         if (!selectedPropertyId) return
+        if (!lead?.id) {
+            toast.error("Cannot link: Invalid lead ID")
+            return
+        }
 
         setLinking(true)
         try {

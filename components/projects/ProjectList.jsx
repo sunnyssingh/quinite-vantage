@@ -13,7 +13,18 @@ import { Edit, Trash2, Eye, Megaphone, Building2, MapPin, Lock } from "lucide-re
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 
-export default function ProjectList({ projects, onEdit, onDelete, onView, onStartCampaign, deletingId }) {
+export default function ProjectList({
+    projects,
+    onEdit,
+    onDelete,
+    onView,
+    onStartCampaign,
+    deletingId,
+    page = 1,
+    onPageChange,
+    hasMore = false,
+    isLoadingMore = false
+}) {
     const canEdit = usePermission('edit_projects')
     const canDelete = usePermission('delete_projects')
 
@@ -151,6 +162,29 @@ export default function ProjectList({ projects, onEdit, onDelete, onView, onStar
                     })}
                 </TableBody>
             </Table>
+
+            {/* Pagination Footer */}
+            <div className="flex items-center justify-end space-x-2 p-4 border-t bg-slate-50">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPageChange && onPageChange(page - 1)}
+                    disabled={page === 1 || isLoadingMore}
+                >
+                    Previous
+                </Button>
+                <div className="text-sm text-muted-foreground">
+                    Page {page}
+                </div>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onPageChange && onPageChange(page + 1)}
+                    disabled={!hasMore || isLoadingMore}
+                >
+                    Next
+                </Button>
+            </div>
         </div>
     )
 }

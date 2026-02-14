@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
+import { withAuth } from '@/lib/middleware/withAuth'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,22 +10,9 @@ export const dynamic = 'force-dynamic'
  * GET /api/analytics/overview
  * Returns dashboard overview statistics using updated schema
  */
-export async function GET(request) {
+export const GET = withAuth(async (request, context) => {
     try {
-        const supabase = await createServerSupabaseClient()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-        if (authError || !user) {
-            return corsJSON({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Get user's organization
-        const admin = createAdminClient()
-        const { data: profile } = await admin
-            .from('profiles')
-            .select('organization_id')
-            .eq('id', user.id)
-            .single()
+        const { user, profile } = context
 
         if (!profile?.organization_id) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
@@ -163,4 +151,4 @@ export async function GET(request) {
         console.error('analytics overview error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
-}
+})

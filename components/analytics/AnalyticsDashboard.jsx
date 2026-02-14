@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,23 +19,25 @@ import {
     PhoneForwarded,
     BarChart3,
     Activity,
-    ArrowRight
+    ArrowRight,
+    Download,
+    Lock
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'react-hot-toast'
 
-import { usePermission } from '@/contexts/PermissionContext'
+import { usePermission, usePermissions } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
-import { Download, Lock } from 'lucide-react'
 
 export default function AnalyticsDashboard() {
     const [overview, setOverview] = useState(null)
     const [campaigns, setCampaigns] = useState([])
-    const [loading, setLoading] = useState(true)
+    const [dataLoading, setDataLoading] = useState(true)
 
     const [isRefreshing, setIsRefreshing] = useState(false)
 
     // Permissions
+    const { loading: permissionsLoading } = usePermissions()
     const canViewOrg = usePermission('view_organization_analytics')
     const canViewTeam = usePermission('view_team_analytics')
     const canViewOwn = usePermission('view_own_analytics')
@@ -44,21 +46,23 @@ export default function AnalyticsDashboard() {
     const hasViewAccess = canViewOrg || canViewTeam || canViewOwn
 
     useEffect(() => {
-        if (hasViewAccess) {
-            fetchAnalytics()
-            // Auto-refresh every 30 seconds
-            const interval = setInterval(() => fetchAnalytics(), 30000)
-            return () => clearInterval(interval)
-        } else {
-            setLoading(false)
+        if (!permissionsLoading) {
+            if (hasViewAccess) {
+                fetchAnalytics()
+                // Auto-refresh every 30 seconds
+                const interval = setInterval(() => fetchAnalytics(), 30000)
+                return () => clearInterval(interval)
+            } else {
+                setDataLoading(false)
+            }
         }
-    }, [hasViewAccess])
+    }, [hasViewAccess, permissionsLoading])
 
     const fetchAnalytics = async (isManual = false) => {
         try {
             if (isManual) setIsRefreshing(true)
             // Don't set loading to true on background refreshes if data exists
-            else if (!overview) setLoading(true)
+            else if (!overview) setDataLoading(true)
 
             // Fetch overview
             const overviewRes = await fetch('/api/analytics/overview', { cache: 'no-store' })
@@ -83,7 +87,7 @@ export default function AnalyticsDashboard() {
                 toast.error("Refresh Failed: Could not load latest data.")
             }
         } finally {
-            setLoading(false)
+            setDataLoading(false)
             setIsRefreshing(false)
         }
     }
@@ -103,6 +107,25 @@ export default function AnalyticsDashboard() {
         return 'bg-secondary text-secondary-foreground hover:bg-secondary/80 font-normal border-transparent shadow-none'
     }
 
+    if (permissionsLoading) {
+        return (
+            <div className="p-6 space-y-6">
+                <div>
+                    <Skeleton className="h-9 w-32" />
+                    <Skeleton className="h-4 w-80 mt-2" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="border rounded-lg p-6">
+                            <Skeleton className="h-8 w-16 mb-2" />
+                            <Skeleton className="h-3 w-32" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
     if (!hasViewAccess) {
         return (
             <div className="flex flex-col items-center justify-center h-[50vh] text-center p-6 border border-dashed border-border rounded-xl bg-muted/10">
@@ -117,7 +140,7 @@ export default function AnalyticsDashboard() {
         )
     }
 
-    if (loading && !overview) {
+    if (dataLoading && !overview) {
         return (
             <div className="p-6 space-y-6">
                 <div>
