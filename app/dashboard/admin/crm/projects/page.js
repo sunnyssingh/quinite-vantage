@@ -27,12 +27,18 @@ const ProjectForm = dynamic(() => import('@/components/projects/ProjectForm'), {
   loading: () => <Skeleton className="h-96 w-full" />
 })
 
+// Helper for safe number parsing
+const safeParseFloat = (val) => {
+  const n = parseFloat(val)
+  return isNaN(n) ? 0 : n
+}
+
 export default function ProjectsPage() {
   const router = useRouter()
   const [page, setPage] = useState(1)
 
   // Data Fetching
-  const { data: projectsData, metadata: projectsMetadata, isLoading: loading, isPlaceholderData } = useProjects({
+  const { data: projectsData, metadata: projectsMetadata, isLoading: loading, isPlaceholderData, refetch } = useProjects({
     status: undefined, // Add filters if needed
     page,
     limit: 20
@@ -41,6 +47,7 @@ export default function ProjectsPage() {
   // useProjects now returns flattened data
   const projects = projectsData || []
   const metadata = projectsMetadata || {}
+
 
   const [submitting, setSubmitting] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -90,39 +97,41 @@ export default function ProjectsPage() {
         image_url: formData.imageUrl,
         image_path: formData.imagePath,
         // Inventory fields
-        total_units: Number(formData.totalUnits || 0),
+        total_units: safeParseFloat(formData.totalUnits),
         unit_types: formData.unitTypes,
-        price_range: { min: Number(formData.priceMin || 0), max: Number(formData.priceMax || 0) },
+        price_range: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
         project_status: formData.projectStatus || 'planning',
         show_in_inventory: formData.showInInventory !== false,
         real_estate: {
+          rera_number: formData.reraNumber,
           transaction: formData.transaction,
           property: {
+            plot_area: safeParseFloat(formData.plotArea),
             category: formData.propertyCategory,
             use_case: formData.propertyUseCase,
             ...(formData.propertyCategory === 'residential' ? {
               residential: {
                 bhk: formData.bhk,
-                carpet_area: Number(formData.carpetArea || 0),
-                built_up_area: Number(formData.builtUpArea || 0),
-                super_built_up_area: Number(formData.superBuiltUpArea || 0)
+                carpet_area: safeParseFloat(formData.carpetArea),
+                built_up_area: safeParseFloat(formData.builtUpArea),
+                super_built_up_area: safeParseFloat(formData.superBuiltUpArea)
               }
             } : {}),
             ...(formData.propertyCategory === 'commercial' ? {
               commercial: {
-                area: Number(formData.commercialArea || 0),
-                built_up_area: Number(formData.commercialBuiltUpArea || 0),
+                area: safeParseFloat(formData.commercialArea),
+                built_up_area: safeParseFloat(formData.commercialBuiltUpArea),
                 ground_floor: formData.groundFloor
               }
             } : {}),
             ...(formData.propertyCategory === 'land' ? {
               land: {
-                plot_area: Number(formData.plotArea || 0)
+                plot_area: safeParseFloat(formData.plotArea)
               }
             } : {})
           },
           location: { city: formData.locCity, locality: formData.locLocality, landmark: formData.locLandmark },
-          pricing: { min: Number(formData.priceMin || 0), max: Number(formData.priceMax || 0) },
+          pricing: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
           media: { thumbnail: formData.imageUrl || null },
           description: formData.description || ''
         }
@@ -137,7 +146,7 @@ export default function ProjectsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      setProjects(prev => [data.project, ...prev])
+      await refetch() // Refresh list instead of manual state update
       toast.success("Project created successfully!")
       setShowCreateForm(false)
     } catch (err) {
@@ -160,39 +169,41 @@ export default function ProjectsPage() {
         image_url: formData.imageUrl,
         image_path: formData.imagePath,
         // Inventory fields
-        total_units: Number(formData.totalUnits || 0),
+        total_units: safeParseFloat(formData.totalUnits),
         unit_types: formData.unitTypes,
-        price_range: { min: Number(formData.priceMin || 0), max: Number(formData.priceMax || 0) },
+        price_range: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
         project_status: formData.projectStatus || 'planning',
         show_in_inventory: formData.showInInventory !== false,
         real_estate: {
+          rera_number: formData.reraNumber,
           transaction: formData.transaction,
           property: {
+            plot_area: safeParseFloat(formData.plotArea),
             category: formData.propertyCategory,
             use_case: formData.propertyUseCase,
             ...(formData.propertyCategory === 'residential' ? {
               residential: {
                 bhk: formData.bhk,
-                carpet_area: Number(formData.carpetArea || 0),
-                built_up_area: Number(formData.builtUpArea || 0),
-                super_built_up_area: Number(formData.superBuiltUpArea || 0)
+                carpet_area: safeParseFloat(formData.carpetArea),
+                built_up_area: safeParseFloat(formData.builtUpArea),
+                super_built_up_area: safeParseFloat(formData.superBuiltUpArea)
               }
             } : {}),
             ...(formData.propertyCategory === 'commercial' ? {
               commercial: {
-                area: Number(formData.commercialArea || 0),
-                built_up_area: Number(formData.commercialBuiltUpArea || 0),
+                area: safeParseFloat(formData.commercialArea),
+                built_up_area: safeParseFloat(formData.commercialBuiltUpArea),
                 ground_floor: formData.groundFloor
               }
             } : {}),
             ...(formData.propertyCategory === 'land' ? {
               land: {
-                plot_area: Number(formData.plotArea || 0)
+                plot_area: safeParseFloat(formData.plotArea)
               }
             } : {})
           },
           location: { city: formData.locCity, locality: formData.locLocality, landmark: formData.locLandmark },
-          pricing: { min: Number(formData.priceMin || 0), max: Number(formData.priceMax || 0) },
+          pricing: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
           media: { thumbnail: formData.imageUrl || null },
           description: formData.description || ''
         }
@@ -207,7 +218,7 @@ export default function ProjectsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Update failed')
 
-      setProjects(prev => prev.map(p => p.id === data.project.id ? data.project : p))
+      await refetch() // Refresh list
       setEditOpen(false)
       toast.success("Project updated successfully!")
     } catch (err) {
@@ -226,7 +237,7 @@ export default function ProjectsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Delete failed')
 
-      setProjects(prev => prev.filter(p => p.id !== project.id))
+      await refetch() // Refresh list
       toast.success("Project deleted successfully!")
     } catch (err) {
       toast.error(err.message || "Delete failed")
@@ -625,14 +636,20 @@ export default function ProjectsPage() {
                               {[prop.category, prop.use_case].filter(Boolean).join(' - ') || 'N/A'}
                             </p>
                           </div>
-                          <div className="col-span-2">
-                            <p className="text-slate-500">Price Range</p>
-                            <p className="font-medium text-green-700 text-lg">
-                              {priceRange.min && priceRange.max
-                                ? `₹${priceRange.min.toLocaleString()} - ₹${priceRange.max.toLocaleString()}`
-                                : 'Price on Request'}
-                            </p>
-                          </div>
+                          {re.rera_number && (
+                            <div className="col-span-2">
+                              <p className="text-slate-500">RERA Number</p>
+                              <p className="font-medium text-slate-900">{re.rera_number}</p>
+                            </div>
+                          )}
+                          {priceRange.min && priceRange.max ? (
+                            <div className="col-span-2">
+                              <p className="text-slate-500">Price Range</p>
+                              <p className="font-medium text-green-700 text-lg">
+                                {`₹${priceRange.min.toLocaleString()} - ₹${priceRange.max.toLocaleString()}`}
+                              </p>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
@@ -710,7 +727,7 @@ export default function ProjectsPage() {
                           )}
                           {/* Commercial/Land Fallbacks */}
                           {comm.area > 0 && <div><p className="text-slate-500">Area</p><p className="font-medium">{comm.area} sq.ft</p></div>}
-                          {land.plot_area > 0 && <div><p className="text-slate-500">Plot Area</p><p className="font-medium">{land.plot_area} sq.ft</p></div>}
+                          {(prop.plot_area > 0 || land.plot_area > 0) && <div><p className="text-slate-500">Plot Area</p><p className="font-medium">{prop.plot_area || land.plot_area} sq.ft</p></div>}
                         </div>
                       </div>
 

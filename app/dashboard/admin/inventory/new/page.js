@@ -116,6 +116,21 @@ export default function NewPropertyPage() {
                                     <Input name="title" required value={formData.title} onChange={handleChange} placeholder="e.g. Luxury 3BHK in Indiranagar" />
                                 </div>
 
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Block/Tower</Label>
+                                        <Input name="block_name" value={formData.block_name || ''} onChange={handleChange} placeholder="e.g. A" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Floor No.</Label>
+                                        <Input name="floor_number" value={formData.floor_number || ''} onChange={handleChange} placeholder="e.g. 1" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Unit No.</Label>
+                                        <Input name="unit_number" value={formData.unit_number || ''} onChange={handleChange} placeholder="e.g. 101" />
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Price (₹) *</Label>
@@ -135,6 +150,11 @@ export default function NewPropertyPage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Configuration</Label>
+                                    <Input name="configuration" value={formData.configuration || ''} onChange={handleChange} placeholder="e.g. 3BHK" />
                                 </div>
 
                                 <div className="space-y-2">

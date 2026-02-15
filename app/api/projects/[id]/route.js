@@ -19,10 +19,9 @@ function handleCORS(response) {
 import { withAuth } from '@/lib/middleware/withAuth'
 import { ProjectService } from '@/services/project.service'
 
-export const PUT = withAuth(async (request, { params }) => {
+export const PUT = withAuth(async (request, { params, user, profile }) => {
     try {
         const { id } = await params
-        const { user, profile } = request.context
         const body = await request.json()
 
         if (!profile?.organization_id) {
@@ -77,7 +76,6 @@ export const PUT = withAuth(async (request, { params }) => {
         if (body.image_url !== undefined) updates.image_url = body.image_url
         if (body.image_path !== undefined) updates.image_path = body.image_path
 
-        // Inventory fields
         if (body.total_units !== undefined) updates.total_units = body.total_units
         if (body.unit_types !== undefined) updates.unit_types = body.unit_types
         if (body.price_range !== undefined) updates.price_range = body.price_range
@@ -123,82 +121,6 @@ export const PUT = withAuth(async (request, { params }) => {
             await supabase.storage
                 .from('project-images')
                 .remove([existing.image_path])
-        }
-
-        // 8️⃣ Sync Inventory Properties
-        // If unit_types changed, we need to ensure we have enough properties created
-        if (body.unit_types && Array.isArray(body.unit_types)) {
-            try {
-                // Fetch current counts
-                const { data: properties } = await adminClient
-                    .from('properties')
-                    .select('type')
-                    .eq('project_id', id)
-
-                const currentCounts = {}
-                properties?.forEach(p => {
-                    currentCounts[p.type] = (currentCounts[p.type] || 0) + 1
-                })
-
-                const inserts = []
-
-                for (const unit of body.unit_types) {
-                    const targetCount = Number(unit.count) || 0
-                    const typeKey = unit.configuration || unit.type // Use configuration (3BHK) or fallback to type
-                    const currentCount = currentCounts[typeKey] || currentCounts[unit.type] || 0 // Check both keys
-
-                    if (targetCount > currentCount) {
-                        const needed = targetCount - currentCount
-                        console.log(`[Inventory Sync] Creating ${needed} new units for ${typeKey}`)
-
-                        // Parse residential details
-                        let bedrooms = null
-                        let size_sqft = null
-                        let type = unit.type
-
-                        if (unit.configuration) {
-                            const match = unit.configuration.match(/(\d+)/)
-                            if (match) bedrooms = parseInt(match[0])
-                            type = unit.property_type || unit.type || 'Apartment'
-                        }
-
-                        if (unit.carpet_area) {
-                            size_sqft = Number(unit.carpet_area)
-                        }
-
-
-                        for (let i = 0; i < needed; i++) {
-                            inserts.push({
-                                organization_id: profile.organization_id,
-                                project_id: id,
-                                title: `${unit.configuration || unit.type} Unit ${currentCount + i + 1}`,
-                                description: `Auto-generated ${unit.property_type || unit.type} unit for ${project.name}`,
-                                type: type,
-                                status: 'available',
-                                price: Number(unit.price) || 0,
-                                bedrooms: bedrooms,
-                                size_sqft: size_sqft,
-                                created_by: user.id
-                            })
-                        }
-                    }
-                }
-
-                if (inserts.length > 0) {
-                    const { error: propError } = await adminClient
-                        .from('properties')
-                        .insert(inserts)
-
-                    if (propError) {
-                        console.error('Failed to sync properties:', propError)
-                    } else {
-                        console.log(`[Inventory Sync] Successfully added ${inserts.length} properties`)
-                    }
-                }
-
-            } catch (syncErr) {
-                console.error('[Inventory Sync] Error:', syncErr)
-            }
         }
 
         // 9️⃣ Audit

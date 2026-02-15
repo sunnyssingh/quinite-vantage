@@ -75,7 +75,8 @@ export async function POST(request) {
         const body = await request.json()
         const {
             title, description, projectId, address,
-            price, type, status, bedrooms, bathrooms, size
+            price, type, status, bedrooms, bathrooms, size,
+            block_name, floor_number, unit_number, configuration
         } = body
 
         if (!title || !price || !type) {
@@ -98,7 +99,11 @@ export async function POST(request) {
                 bedrooms: bedrooms || 0,
                 bathrooms: bathrooms || 0,
                 size_sqft: size || 0,
-                created_by: user.id
+                created_by: user.id,
+                block_name: block_name || null,
+                floor_number: floor_number || null,
+                unit_number: unit_number || null,
+                configuration: configuration || null
             })
             .select()
             .single()

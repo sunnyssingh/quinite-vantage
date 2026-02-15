@@ -331,7 +331,7 @@ export default function AdminHeader({ user, profile }) {
                             {isMounted ? (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="relative h-8 w-8 rounded-full ring-offset-background focus:ring-0 hover:bg-transparent p-0">
+                                        <Button variant="ghost" className="relative h-8 w-8 rounded-full ring-offset-background focus:ring-0 hover:bg-transparent p-0" suppressHydrationWarning>
                                             <Avatar className="h-8 w-8 border border-slate-200">
                                                 <AvatarImage src={profile?.avatar_url} alt={profile?.full_name} />
                                                 <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">

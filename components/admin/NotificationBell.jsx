@@ -143,7 +143,7 @@ export function NotificationBell() {
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded w-8 h-8">
+                <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded w-8 h-8" suppressHydrationWarning>
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
                         <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-600 ring-2 ring-white animate-pulse" />
