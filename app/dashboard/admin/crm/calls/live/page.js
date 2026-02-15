@@ -130,23 +130,20 @@ export default function LiveCallMonitor() {
     }
 
     const fetchAgentStats = async () => {
-        // Get agents currently on calls
-        const { data: agentCalls } = await supabase
-            .from('agent_calls')
-            .select('agent_id')
-            .is('ended_at', null)
-
-        // Get total available agents
-        const { data: agents } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('role', 'employee')
-            .not('phone', 'is', null)
-
-        setAgentStats({
-            available: (agents?.length || 0) - (agentCalls?.length || 0),
-            onCall: agentCalls?.length || 0
-        })
+        try {
+            const res = await fetch('/api/crm/agent-stats')
+            if (res.ok) {
+                const data = await res.json()
+                setAgentStats({
+                    available: data.available || 0,
+                    onCall: data.onCall || 0
+                })
+            } else {
+                console.error('Failed to fetch agent stats')
+            }
+        } catch (err) {
+            console.error('Error fetching agent stats:', err)
+        }
     }
 
     const getCallDuration = (startTime) => {
