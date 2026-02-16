@@ -257,6 +257,7 @@ export default function LeadsPage() {
         onOpenChange={setIsSourceDialogOpen}
         projectId={projectId}
         projects={projects || []}
+        users={users}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

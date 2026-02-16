@@ -16,129 +16,24 @@ import { FileText, UserPlus, Upload, Database, LayoutTemplate, Megaphone, Smartp
 import LeadForm from './LeadForm'
 import { toast } from 'react-hot-toast'
 import dynamic from 'next/dynamic'
-import {
-    MagicBricksIcon,
-    AcresIcon,
-    MetaIcon,
-    GoogleAdsIcon,
-    FacebookIcon,
-    GoogleFormsIcon,
-    TypeformIcon,
-    ZapierIcon,
-    WebhookIcon,
-    LinkedInIcon,
-    WhatsAppIcon,
-    ApiIcon
-} from '@/components/icons/BrandIcons'
+
+import { INTEGRATIONS } from './integrations-config'
 
 const FormBuilder = dynamic(() => import('./FormBuilder'), {
     loading: () => <div className="h-64 flex items-center justify-center text-slate-400">Loading builder...</div>,
     ssr: false
 })
 
-export default function LeadSourceDialog({ open, onOpenChange, projectId, projects }) {
+export default function LeadSourceDialog({ open, onOpenChange, projectId, projects, users = [] }) {
     const [activeTab, setActiveTab] = useState('manual')
     const [importProjectId, setImportProjectId] = useState(projectId || 'none')
     const [previewData, setPreviewData] = useState(null) // [NEW] Preview State
 
-    const connectorCards = [
-        {
-            id: "magicbricks",
-            name: "MagicBricks",
-            description: "Receive leads instantly from MagicBricks property listings.",
-            icon: MagicBricksIcon,
-            color: "bg-red-50 text-red-600",
-            status: "available",
-        },
-        {
-            id: "99acres",
-            name: "99Acres",
-            description: "Sync potential buyer leads from 99Acres automatically.",
-            icon: AcresIcon,
-            color: "bg-blue-50 text-blue-600",
-            status: "available",
-        },
-        {
-            id: "meta-ads",
-            name: "Meta Ads",
-            description: "Auto-sync leads from Meta advertising campaigns.",
-            icon: MetaIcon,
-            color: "bg-slate-50 text-slate-600",
-            status: "coming-soon"
-        },
-        {
-            id: "google-ads",
-            name: "Google Ads",
-            description: "Auto-sync leads from Google advertising campaigns.",
-            icon: GoogleAdsIcon,
-            color: "bg-yellow-50 text-yellow-600",
-            status: "coming-soon"
-        },
-        {
-            id: "facebook",
-            name: "Facebook Leads",
-            description: "Connect Meta Lead Forms directly to your dashboard.",
-            icon: FacebookIcon,
-            color: "bg-indigo-50 text-indigo-600",
-            status: "available",
-        },
-        {
-            id: "google-forms",
-            name: "Google Forms",
-            description: "Capture leads from Google Forms submissions.",
-            icon: GoogleFormsIcon,
-            color: "bg-purple-50 text-purple-600",
-            status: "coming-soon"
-        },
-        {
-            id: "typeform",
-            name: "Typeform",
-            description: "Sync form responses from Typeform automatically.",
-            icon: TypeformIcon,
-            color: "bg-stone-50 text-stone-600",
-            status: "coming-soon"
-        },
-        {
-            id: "zapier",
-            name: "Zapier",
-            description: "Connect 5000+ apps through Zapier automation.",
-            icon: ZapierIcon,
-            color: "bg-orange-50 text-orange-600",
-            status: "coming-soon"
-        },
-        {
-            id: "webhooks",
-            name: "Webhooks",
-            description: "Create custom webhook integrations for any platform.",
-            icon: WebhookIcon,
-            color: "bg-teal-50 text-teal-600",
-            status: "coming-soon"
-        },
-        {
-            id: "linkedin",
-            name: "LinkedIn Lead Gen",
-            description: "Sync leads from LinkedIn advertising campaigns.",
-            icon: LinkedInIcon,
-            color: "bg-sky-50 text-sky-700",
-            status: "coming-soon"
-        },
-        {
-            id: "whatsapp",
-            name: "WhatsApp",
-            description: "Capture leads from WhatsApp Business conversations.",
-            icon: WhatsAppIcon,
-            color: "bg-green-50 text-green-700",
-            status: "coming-soon"
-        },
-        {
-            id: "custom-api",
-            name: "Custom API",
-            description: "Build custom integrations using our REST API.",
-            icon: ApiIcon,
-            color: "bg-gray-50 text-gray-700",
-            status: "coming-soon"
-        }
-    ]
+    const connectorCards = [...INTEGRATIONS].sort((a, b) => {
+        if (a.status === 'available' && b.status !== 'available') return -1
+        if (a.status !== 'available' && b.status === 'available') return 1
+        return 0
+    })
 
     const downloadSampleCSV = () => {
         const headers = ['Name', 'Phone', 'Email', 'Project', 'Notes']
@@ -314,6 +209,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                                 <CardContent className="p-6">
                                     <LeadForm
                                         projects={projects}
+                                        users={users}
                                         initialData={{ project_id: projectId }}
                                         onSubmit={async (data) => {
                                             try {

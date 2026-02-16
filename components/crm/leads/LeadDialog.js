@@ -18,6 +18,7 @@ import {
     DialogTitle,
     DialogFooter
 } from '@/components/ui/dialog'
+import { formatIndianMobile } from '@/lib/utils'
 
 export function LeadDialog({
     open,
@@ -100,6 +101,7 @@ export function LeadDialog({
         // Convert 'none'/'unassigned' back to null
         const payload = {
             ...formData,
+            phone: formatIndianMobile(formData.phone),
             projectId: formData.projectId === 'none' ? null : formData.projectId,
             stageId: formData.stageId === 'none' ? null : formData.stageId,
             assignedTo: formData.assignedTo === 'unassigned' ? null : formData.assignedTo

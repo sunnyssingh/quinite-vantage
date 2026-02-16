@@ -1,6 +1,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
+import { formatIndianMobile } from '@/lib/utils'
 
 // POST /api/forms/submit - Public submission
 export async function POST(request) {
@@ -51,7 +52,7 @@ export async function POST(request) {
             } else if (field.type === 'email') {
                 leadData.email = value
             } else if (field.type === 'phone') {
-                leadData.phone = value
+                leadData.phone = formatIndianMobile(value)
             } else {
                 leadData.notes += `${field.label}: ${value}\n`
             }

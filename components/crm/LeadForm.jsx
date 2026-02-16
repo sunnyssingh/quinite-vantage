@@ -14,6 +14,7 @@ import { User, Mail, Phone, Building2, Target, FileText } from 'lucide-react'
 
 
 import { usePermission } from '@/contexts/PermissionContext' // Import hook
+import { formatIndianMobile } from '@/lib/utils'
 
 export default function LeadForm({
     initialData = null,
@@ -37,7 +38,7 @@ export default function LeadForm({
             id: initialData?.id,
             name: formData.get('name'),
             email: formData.get('email'),
-            phone: formData.get('phone'),
+            phone: formatIndianMobile(formData.get('phone')),
             projectId: formData.get('projectId') === 'none' ? null : formData.get('projectId'),
             // If we have stages, prioritize stageId. Otherwise use status.
             stageId: formData.get('stageId') || initialStageId || initialData?.stage_id,
