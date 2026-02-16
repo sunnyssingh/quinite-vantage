@@ -49,11 +49,16 @@ import { NotificationBell } from './NotificationBell'
 import { SystemStatus } from './SystemStatus'
 import { HelpMenu } from './HelpMenu'
 
+import { usePermissions } from '@/contexts/PermissionContext' // [NEW]
+
 export default function AdminHeader({ user, profile }) {
     const router = useRouter()
     const pathname = usePathname()
-    const [open, setOpen] = React.useState(false) // [NEW] State for mobile menu
+    const [open, setOpen] = React.useState(false)
     const [isMounted, setIsMounted] = React.useState(false)
+
+    // [NEW] Get permissions
+    const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions()
 
     React.useEffect(() => {
         setIsMounted(true)
@@ -65,32 +70,50 @@ export default function AdminHeader({ user, profile }) {
         router.push('/')
     }
 
+    // [NEW] Define permissions for main nav items (optional, but good for future)
     const navItems = [
-        { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard },
-        { label: 'CRM', href: '/dashboard/admin/crm/dashboard', icon: KanbanSquare },
-        { label: 'Inventory', href: '/dashboard/admin/inventory', icon: Building },
-        { label: 'Analytics', href: '/dashboard/admin/analytics', icon: BarChart3 }
+        { label: 'Overview', href: '/dashboard/admin', icon: LayoutDashboard }, // Public to dashboard users
+        { label: 'CRM', href: '/dashboard/admin/crm/dashboard', icon: KanbanSquare }, // Could gate, but sub-items are gated
+        { label: 'Inventory', href: '/dashboard/admin/inventory', icon: Building, permission: 'view_inventory' },
     ]
 
+    // [NEW] Define permissions for CRM nav items
     const crmNavItems = [
         { label: 'Dashboard', href: '/dashboard/admin/crm/dashboard', icon: LayoutDashboard },
-        { label: 'Projects', href: '/dashboard/admin/crm/projects', icon: FolderKanban },
-        { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone },
-        { label: 'Leads', href: '/dashboard/admin/crm/leads', icon: Users },
-        { label: 'Pipeline', href: '/dashboard/admin/crm?tab=pipeline', icon: KanbanSquare },
-        { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone },
-        { label: 'Call History', href: '/dashboard/admin/crm/calls/history', icon: Clock },
-        { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp },
-        { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: BarChart3 },
-        { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText },
-        { label: 'Settings', href: '/dashboard/admin/crm/settings', icon: Settings },
+        { label: 'Projects', href: '/dashboard/admin/crm/projects', icon: FolderKanban, permission: 'view_projects' },
+        { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone, permission: 'view_campaigns' },
+        { label: 'Leads', href: '/dashboard/admin/crm/leads', icon: Users, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
+        { label: 'Pipeline', href: '/dashboard/admin/crm?tab=pipeline', icon: KanbanSquare, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
+        { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone, permission: 'view_live_calls' },
+        { label: 'Call History', href: '/dashboard/admin/crm/calls/history', icon: Clock, permission: 'view_call_history' },
+        { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp, permission: 'view_crm_insights' },
+        { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: BarChart3, permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics'] },
+        { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText, permission: 'view_audit_logs' },
+        { label: 'Settings', href: '/dashboard/admin/crm/settings', icon: Settings, permission: 'view_settings' },
     ]
 
+    // [NEW] Define permissions for Inventory nav items
     const inventoryNavItems = [
-        { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard },
-        { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building },
-        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3 },
+        { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard, permission: 'view_inventory' },
+        { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building, permission: 'view_inventory' },
+        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3, permission: 'view_inventory' },
     ]
+
+    // Helper to filter items
+    const filterItems = (items) => {
+        if (permissionsLoading) return [] // Hide during load or logic choice
+        return items.filter(item => {
+            if (!item.permission) return true
+            if (Array.isArray(item.permission)) {
+                return hasAnyPermission(item.permission)
+            }
+            return hasPermission(item.permission)
+        })
+    }
+
+    const filteredNavItems = filterItems(navItems)
+    const filteredCrmItems = filterItems(crmNavItems)
+    const filteredInventoryItems = filterItems(inventoryNavItems)
 
     const isCrmModule = pathname?.startsWith('/dashboard/admin/crm')
     const isInventoryModule = pathname?.startsWith('/dashboard/admin/inventory')
@@ -124,7 +147,7 @@ export default function AdminHeader({ user, profile }) {
                                             </SheetTitle>
                                         </SheetHeader>
                                         <div className="p-4 flex flex-col gap-1">
-                                            {navItems.map((item) => {
+                                            {filteredNavItems.map((item) => {
                                                 // Determine if this nav item is active based on the current path
                                                 let isActive = false
 
@@ -167,7 +190,7 @@ export default function AdminHeader({ user, profile }) {
                                                     <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
                                                         CRM Module
                                                     </div>
-                                                    {crmNavItems.map((item) => {
+                                                    {filteredCrmItems.map((item) => {
                                                         const isActive = pathname === item.href || (item.label === 'Pipeline' && pathname === '/dashboard/admin/crm')
                                                         const Icon = item.icon
                                                         return (
@@ -197,7 +220,7 @@ export default function AdminHeader({ user, profile }) {
                                                     <div className="px-3 py-1.5 text-xs text-muted-foreground uppercase tracking-wider">
                                                         Inventory Module
                                                     </div>
-                                                    {inventoryNavItems.map((item) => {
+                                                    {filteredInventoryItems.map((item) => {
                                                         const isActive = pathname === item.href
                                                         const Icon = item.icon
                                                         return (
@@ -258,7 +281,7 @@ export default function AdminHeader({ user, profile }) {
 
                             {/* Desktop Nav */}
                             <nav className="hidden md:flex items-end h-full">
-                                {navItems.map((item) => {
+                                {filteredNavItems.map((item) => {
                                     // Determine if this nav item is active based on the current path
                                     let isActive = false
 

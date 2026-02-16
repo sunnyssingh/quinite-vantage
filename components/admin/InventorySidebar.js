@@ -19,7 +19,7 @@ export default function InventorySidebar() {
     const items = [
         { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard, permission: 'view_inventory' },
         { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building, permission: 'view_inventory' },
-        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3, permission: 'view_inventory_analytics' },
+        { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3, permission: 'view_inventory' },
     ]
 
     const { hasPermission, loading } = usePermissions()

@@ -30,9 +30,9 @@ export async function GET() {
             return NextResponse.json({ error: 'Organization not found' }, { status: 400 })
         }
 
-        const canView = await hasDashboardPermission(user.id, 'view_settings')
+        const canView = await hasDashboardPermission(user.id, 'view_audit_logs')
         if (!canView) {
-            return NextResponse.json({ error: 'Forbidden - Missing \"view_settings\" permission' }, { status: 403 })
+            return NextResponse.json({ error: 'Forbidden - Missing "view_audit_logs" permission' }, { status: 403 })
         }
 
         console.log(`📊 [Audit Stats] User: ${user.email} | Role: ${profile?.role} | IsPlatformAdmin: ${isPlatformAdmin} | Org: ${profile?.organization_id}`);

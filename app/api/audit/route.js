@@ -31,9 +31,9 @@ export async function GET(request) {
     }
 
     // Check permission
-    const canView = await hasDashboardPermission(user.id, 'view_settings')
+    const canView = await hasDashboardPermission(user.id, 'view_audit_logs')
     if (!canView) {
-      return NextResponse.json({ error: 'Forbidden - Missing \"view_settings\" permission' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden - Missing "view_audit_logs" permission' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)

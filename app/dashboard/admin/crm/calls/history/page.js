@@ -14,6 +14,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDistanceToNow, format } from 'date-fns'
 
+
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 import { Lock } from 'lucide-react'
@@ -29,13 +30,7 @@ export default function CallHistory() {
     const supabase = createClient()
 
     // Permissions
-    const canViewAll = usePermission('view_all_calls')
-    const canViewTeam = usePermission('view_team_calls') // Placeholder for future team logic
-    const canViewOwn = usePermission('view_own_calls')
-
-    // If user has view_all, they satisfy the requirement. 
-    // If not, but they have view_own, they satisfy it (with filtering).
-    const hasAccess = canViewAll || canViewTeam || canViewOwn
+    const hasAccess = usePermission('view_call_history')
 
     useEffect(() => {
         const getUser = async () => {
@@ -49,8 +44,6 @@ export default function CallHistory() {
         if (user && hasAccess) {
             fetchCallHistory()
         } else if (!loading && !hasAccess) {
-            // If we're done loading user and determined no access, stop loading
-            // actually loading is controlled by fetchCallHistory, so we need to set it false if we don't fetch
             setLoading(false)
         }
     }, [user, hasAccess])
@@ -81,12 +74,7 @@ export default function CallHistory() {
             .order('created_at', { ascending: false })
             .limit(100)
 
-        // Apply permission filters
-        if (!canViewAll && !canViewTeam && canViewOwn) {
-            // Only view own calls
-            // Assuming 'user_id' is the column name for the caller
-            query = query.eq('user_id', user.id)
-        }
+
 
         const { data, error } = await query
 

@@ -60,6 +60,8 @@ function SortableStage({ id, stage, onChange, onDelete, canDelete }) {
     )
 }
 
+import { PermissionGate } from '@/components/permissions/PermissionGate'
+
 export default function CrmSettingsPage() {
     const [pipelines, setPipelines] = useState([])
     const [selectedPipelineId, setSelectedPipelineId] = useState(null)
@@ -214,69 +216,74 @@ export default function CrmSettingsPage() {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Settings2 className="h-6 w-6 text-blue-600" />
-                        Pipeline Stages
-                    </h1>
-                    <p className="text-gray-500 mt-1">Customize your sales pipeline by adding, removing, and reordering stages.</p>
+        <PermissionGate
+            feature="edit_settings"
+            fallbackMessage="You do not have permission to manage CRM settings."
+        >
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                            <Settings2 className="h-6 w-6 text-blue-600" />
+                            Pipeline Stages
+                        </h1>
+                        <p className="text-gray-500 mt-1">Customize your sales pipeline by adding, removing, and reordering stages.</p>
+                    </div>
+
                 </div>
 
-            </div>
-
-            {/* Pipeline Stages Card */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Manage Stages</CardTitle>
-                    <CardDescription>
-                        Drag and drop to reorder stages. Minimum 3 stages required. Changes apply to the selected pipeline.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <SortableContext
-                            items={stages.map(s => s.id)}
-                            strategy={verticalListSortingStrategy}
+                {/* Pipeline Stages Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Manage Stages</CardTitle>
+                        <CardDescription>
+                            Drag and drop to reorder stages. Minimum 3 stages required. Changes apply to the selected pipeline.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
                         >
-                            {stages.map((stage) => (
-                                <SortableStage
-                                    key={stage.id}
-                                    id={stage.id}
-                                    stage={stage}
-                                    onChange={handleStageChange}
-                                    onDelete={handleDeleteStage}
-                                    canDelete={stages.length > 3}
-                                />
-                            ))}
-                        </SortableContext>
-                    </DndContext>
+                            <SortableContext
+                                items={stages.map(s => s.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {stages.map((stage) => (
+                                    <SortableStage
+                                        key={stage.id}
+                                        id={stage.id}
+                                        stage={stage}
+                                        onChange={handleStageChange}
+                                        onDelete={handleDeleteStage}
+                                        canDelete={stages.length > 3}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
 
-                    <Button
-                        variant="outline"
-                        className="w-full mt-4 border-dashed hover:border-blue-400 hover:text-blue-600 transition-colors"
-                        onClick={handleAddStage}
-                    >
-                        <Plus className="h-4 w-4 mr-2" /> Add New Stage
+                        <Button
+                            variant="outline"
+                            className="w-full mt-4 border-dashed hover:border-blue-400 hover:text-blue-600 transition-colors"
+                            onClick={handleAddStage}
+                        >
+                            <Plus className="h-4 w-4 mr-2" /> Add New Stage
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Save Button */}
+                <div className="flex justify-end">
+                    <Button onClick={handleSave} disabled={saving} size="lg" className="w-full sm:w-auto sm:min-w-[140px]">
+                        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {!saving && <Save className="h-4 w-4 mr-2" />}
+                        {saving ? 'Saving...' : 'Save Changes'}
                     </Button>
-                </CardContent>
-            </Card>
-
-            {/* Save Button */}
-            <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving} size="lg" className="w-full sm:w-auto sm:min-w-[140px]">
-                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {!saving && <Save className="h-4 w-4 mr-2" />}
-                    {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
+                </div>
             </div>
-        </div>
+        </PermissionGate>
     )
 }
 

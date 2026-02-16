@@ -55,8 +55,8 @@ export async function GET(request) {
         const canViewAllLeads = permissions.includes('view_all_leads')
         const canViewTeamLeads = permissions.includes('view_team_leads')
         const canViewOwnLeads = permissions.includes('view_own_leads')
-        const canViewSettings = permissions.includes('view_settings') || permissions.includes('view_organization_settings')
-        const canViewAnalytics = permissions.includes('view_organization_analytics') || permissions.includes('view_team_analytics') || permissions.includes('view_own_analytics')
+        const canViewAuditLogs = permissions.includes('view_audit_logs') || permissions.includes('view_settings') // Fallback to settings for admins
+        const canViewAnalytics = permissions.includes('view_org_analytics') || permissions.includes('view_organization_analytics') || permissions.includes('view_team_analytics') || permissions.includes('view_own_analytics')
 
         const leadsFilter = (query) => {
             if (canViewAllLeads) return query
@@ -120,7 +120,7 @@ export async function GET(request) {
                 : Promise.resolve({ data: [] }),
 
             // 5. Recent Activities
-            canViewSettings ? adminClient
+            canViewAuditLogs ? adminClient
                 .from('audit_logs')
                 .select('id, action, entity_type, created_at, user_name')
                 .eq('organization_id', organizationId)

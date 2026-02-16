@@ -11,12 +11,27 @@ import { Zap, CheckCircle2, Server, Database, Wifi, HardDrive } from 'lucide-rea
 import { cn } from "@/lib/utils"
 
 export function SystemStatus() {
+    const [isMounted, setIsMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
     const systems = [
         { name: 'API Server', status: 'operational', icon: Server },
         { name: 'Database', status: 'operational', icon: Database },
         { name: 'WebSocket', status: 'operational', icon: Wifi },
         { name: 'Storage', status: 'operational', icon: HardDrive },
     ]
+
+    if (!isMounted) {
+        return (
+            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-blue-50 hover:text-blue-600 w-8 h-8 rounded relative">
+                <Zap className="w-4 h-4" />
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-green-500 rounded-full border border-white"></span>
+            </Button>
+        )
+    }
 
     return (
         <Popover>

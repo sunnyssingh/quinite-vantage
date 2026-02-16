@@ -574,8 +574,7 @@ function InsightsSkeleton() {
 export default function ConversationInsightsDashboard(props) {
     return (
         <PermissionGate
-            feature="view_organization_analytics"
-            fallbackFeatures={['view_team_analytics', 'view_own_analytics']}
+            feature="view_crm_insights"
             fallbackMessage="You don't have permission to view insights. Contact your administrator."
         >
             <ConversationInsightsContent {...props} />

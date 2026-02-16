@@ -38,7 +38,7 @@ export default function AnalyticsDashboard() {
 
     // Permissions
     const { loading: permissionsLoading } = usePermissions()
-    const canViewOrg = usePermission('view_organization_analytics')
+    const canViewOrg = usePermission('view_org_analytics')
     const canViewTeam = usePermission('view_team_analytics')
     const canViewOwn = usePermission('view_own_analytics')
     const canExport = usePermission('export_reports')

@@ -15,6 +15,19 @@ import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 
 export function HelpMenu() {
     const [showShortcuts, setShowShortcuts] = React.useState(false)
+    const [isMounted, setIsMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
+    if (!isMounted) {
+        return (
+            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-blue-50 hover:text-blue-600 w-8 h-8 rounded hidden sm:flex">
+                <HelpCircle className="w-4 h-4" />
+            </Button>
+        )
+    }
 
     return (
         <>

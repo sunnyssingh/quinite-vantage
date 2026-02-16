@@ -26,11 +26,14 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { PermissionGate } from '@/components/permissions/PermissionGate'
+import { usePermissions } from '@/contexts/PermissionContext'
 
 export default function CrmSidebar() {
     const pathname = usePathname()
     const [isCollapsed, setIsCollapsed] = useState(false)
+    const { hasPermission, hasAnyPermission, loading } = usePermissions()
+
+    if (loading) return null
 
     // Grouped navigation structure with permissions
     const navigationSections = [
@@ -57,16 +60,16 @@ export default function CrmSidebar() {
         {
             title: 'Call Management',
             items: [
-                { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone, permission: 'make_calls' },
-                { label: 'Call History', href: '/dashboard/admin/crm/calls/history', icon: Clock, permission: ['view_own_calls', 'view_team_calls', 'view_all_calls'] },
-                { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp, permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics'] },
+                { label: 'Live Calls', href: '/dashboard/admin/crm/calls/live', icon: Phone, permission: ['view_live_calls'] },
+                { label: 'Call History', href: '/dashboard/admin/crm/calls/history', icon: Clock, permission: ['view_call_history'] },
+                { label: 'Insights', href: '/dashboard/admin/crm/insights', icon: TrendingUp, permission: ['view_crm_insights'] },
             ]
         },
         {
             title: 'Insights & Admin',
             items: [
                 { label: 'Analytics', href: '/dashboard/admin/crm/analytics', icon: BarChart3, permission: ['view_own_analytics', 'view_team_analytics', 'view_org_analytics'] },
-                { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText, permission: 'view_settings' },
+                { label: 'Audit Log', href: '/dashboard/admin/crm/auditlog', icon: FileText, permission: 'view_audit_logs' },
                 { label: 'Settings', href: '/dashboard/admin/crm/settings', icon: Settings, permission: 'view_settings' },
             ]
         }
@@ -100,57 +103,60 @@ export default function CrmSidebar() {
                                         const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/dashboard/admin/crm') || (item.label === 'Pipeline' && pathname === '/dashboard/admin/crm')
                                         const Icon = item.icon
 
+                                        // Permission Logic
+                                        let isAllowed = true
+                                        if (item.permission) {
+                                            if (Array.isArray(item.permission)) isAllowed = hasAnyPermission(item.permission)
+                                            else isAllowed = hasPermission(item.permission)
+                                        }
+
                                         const LinkContent = (
                                             <Link
-                                                href={item.href}
+                                                href={isAllowed ? item.href : '#'}
+                                                onClick={(e) => {
+                                                    if (!isAllowed) {
+                                                        e.preventDefault()
+                                                        toast.error(`You don't have permission to view ${item.label}`)
+                                                    }
+                                                }}
                                                 className={cn(
                                                     "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 group relative overflow-hidden",
-                                                    isActive
+                                                    isActive && isAllowed
                                                         ? "bg-blue-50 text-blue-700 shadow-sm"
-                                                        : "text-muted-foreground hover:bg-slate-50 hover:text-foreground",
+                                                        : isAllowed
+                                                            ? "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
+                                                            : "text-slate-400 cursor-not-allowed opacity-60 hover:bg-transparent",
                                                     isCollapsed && "justify-center px-2 py-3"
                                                 )}
                                             >
                                                 <Icon className={cn(
                                                     "w-5 h-5 transition-colors",
-                                                    isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
+                                                    isActive && isAllowed ? "text-blue-600" : isAllowed ? "text-slate-400 group-hover:text-slate-600" : "text-slate-300"
                                                 )} />
                                                 {!isCollapsed && (
-                                                    <span className="animate-in fade-in slide-in-from-left-2 duration-300 whitespace-nowrap">
+                                                    <span className="animate-in fade-in slide-in-from-left-2 duration-300 whitespace-nowrap flex-1">
                                                         {item.label}
                                                     </span>
                                                 )}
-                                                {isActive && !isCollapsed && (
+                                                {!isAllowed && !isCollapsed && <Lock className="w-3.5 h-3.5 text-slate-400" />}
+
+                                                {isActive && isAllowed && !isCollapsed && (
                                                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-full" />
                                                 )}
                                             </Link>
                                         )
 
-                                        // Wrap with PermissionGate if permission is specified
-                                        const GatedContent = item.permission ? (
-                                            <PermissionGate key={item.href} feature={item.permission}>
-                                                {isCollapsed ? (
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            {LinkContent}
-                                                        </TooltipTrigger>
-                                                        <TooltipContent side="right" className="font-medium bg-slate-900 text-white border-slate-800">
-                                                            {item.label}
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                ) : (
-                                                    LinkContent
-                                                )}
-                                            </PermissionGate>
-                                        ) : (
+                                        return (
                                             <div key={item.href}>
                                                 {isCollapsed ? (
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            {LinkContent}
+                                                            <div className={!isAllowed ? "cursor-not-allowed" : ""}>
+                                                                {LinkContent}
+                                                            </div>
                                                         </TooltipTrigger>
                                                         <TooltipContent side="right" className="font-medium bg-slate-900 text-white border-slate-800">
-                                                            {item.label}
+                                                            {item.label} {!isAllowed && "(Locked)"}
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 ) : (
@@ -158,8 +164,6 @@ export default function CrmSidebar() {
                                                 )}
                                             </div>
                                         )
-
-                                        return GatedContent
                                     })}
                                 </div>
                             </div>

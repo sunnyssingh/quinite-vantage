@@ -5,6 +5,8 @@ import { AnalyticsView } from '@/components/inventory/AnalyticsView'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { toast } from 'react-hot-toast'
 
+import { PermissionGate } from '@/components/permissions/PermissionGate'
+
 export default function AnalyticsPage() {
     const [properties, setProperties] = useState([])
     const [inventoryProjects, setInventoryProjects] = useState([])
@@ -52,16 +54,21 @@ export default function AnalyticsPage() {
     }
 
     return (
-        <div className="flex flex-col h-full animate-in fade-in duration-500">
-            <div className="flex flex-col gap-6 p-6 pb-0 border-b border-border bg-background shrink-0">
-                <div className="pb-6">
-                    <h1 className="text-3xl font-semibold tracking-tight text-foreground">Analytics</h1>
-                    <p className="text-muted-foreground mt-1 text-sm">Inventory insights and performance.</p>
+        <PermissionGate
+            feature="view_inventory"
+            fallbackMessage="You do not have permission to view inventory analytics."
+        >
+            <div className="flex flex-col h-full animate-in fade-in duration-500">
+                <div className="flex flex-col gap-6 p-6 pb-0 border-b border-border bg-background shrink-0">
+                    <div className="pb-6">
+                        <h1 className="text-3xl font-semibold tracking-tight text-foreground">Analytics</h1>
+                        <p className="text-muted-foreground mt-1 text-sm">Inventory insights and performance.</p>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                    <AnalyticsView properties={properties} projects={inventoryProjects} />
                 </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
-                <AnalyticsView properties={properties} projects={inventoryProjects} />
-            </div>
-        </div>
+        </PermissionGate>
     )
 }

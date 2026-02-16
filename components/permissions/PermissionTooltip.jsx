@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Lock } from 'lucide-react'
 
@@ -17,6 +18,24 @@ export function PermissionTooltip({
     children,
     showLockIcon = false
 }) {
+    // Fix hydration mismatch by waiting for mount
+    const [mounted, setMounted] = React.useState(false)
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        // Render children as-is during SSR/initial hydration to match server
+        // This assumes the "happy path" (permission granted) for initial render to avoid layout shift
+        // OR we can render a placeholder. 
+        // Given this wraps buttons, rendering the button (likely disabled or enabled) is safer than nothing.
+        // But if we render it enabled and then disable it, it might flash.
+        // However, hydration mismatch is worse.
+        // Let's render the "hasPermission" state by default (no tooltip wrapper) 
+        // because the wrapper <div> changes the DOM structure.
+        return <>{children}</>
+    }
+
     // If user has permission, render children without tooltip
     if (hasPermission) {
         return <>{children}</>
@@ -26,7 +45,7 @@ export function PermissionTooltip({
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <div className="inline-flex items-center gap-2">
+                <div className="inline-flex items-center gap-2 cursor-not-allowed">
                     {showLockIcon && <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
                     {children}
                 </div>
@@ -37,7 +56,10 @@ export function PermissionTooltip({
             >
                 <div className="flex items-start gap-2">
                     <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm">{message}</p>
+                    <div>
+                        <p className="font-semibold text-xs mb-0.5">Access Denied</p>
+                        <p className="text-xs opacity-90">{message}</p>
+                    </div>
                 </div>
             </TooltipContent>
         </Tooltip>
