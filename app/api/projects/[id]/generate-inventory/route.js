@@ -23,10 +23,10 @@ export async function POST(req, { params }) {
 
         const adminClient = createAdminClient()
 
-        // Fetch project organization_id to ensure data consistency
+        // Fetch project details including total_units
         const { data: projectData, error: projectError } = await adminClient
             .from('projects')
-            .select('organization_id')
+            .select('organization_id, total_units')
             .eq('id', projectId)
             .single()
 
@@ -34,7 +34,30 @@ export async function POST(req, { params }) {
             return corsJSON({ error: 'Project not found' }, { status: 404 })
         }
 
+        // Get current unit count
+        const { count: currentUnitCount, error: countError } = await adminClient
+            .from('properties')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', projectId)
+
+        if (countError) {
+            console.error('Error fetching unit count:', countError)
+            return corsJSON({ error: 'Failed to validate unit limits' }, { status: 500 })
+        }
+
         const newProperties = []
+
+        // Calculate total new units to be generated
+        const startF = parseInt(startFloor || 1)
+        const endF = parseInt(endFloor || 1)
+        const unitsPerF = parseInt(unitsPerFloor || 1)
+        const totalNewUnits = (endF - startF + 1) * unitsPerF
+
+        if (currentUnitCount + totalNewUnits > (projectData.total_units || 0)) {
+            return corsJSON({
+                error: `Cannot generate ${totalNewUnits} units. Project limit is ${projectData.total_units} units, and you already have ${currentUnitCount}.`
+            }, { status: 400 })
+        }
 
         // Logic: specific block generation
         // Loop through floors

@@ -231,7 +231,7 @@ export default function CallHistory() {
                         <div>
                             <p className="text-sm font-medium text-muted-foreground">Completed</p>
                             <h3 className="text-2xl font-semibold text-foreground mt-1">
-                                {calls.filter(c => c.call_status === 'completed' || c.call_status === 'transferred').length}
+                                {calls.filter(c => ['completed', 'transferred', 'disconnected'].includes(c.call_status)).length}
                             </h3>
                             <p className="text-xs text-muted-foreground mt-1">Successfully finished</p>
                         </div>

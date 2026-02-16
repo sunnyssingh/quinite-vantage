@@ -124,6 +124,7 @@ Return ONLY a valid JSON object with these exact fields:
             key_phrases: analysis.key_phrases || [],
             recommended_action: analysis.recommended_action,
             priority_score: analysis.priority_score,
+            purchase_readiness: analysis.timeline_mentioned ? 'short_term' : 'long_term', // Derived field
             analyzed_at: new Date().toISOString()
         }
 

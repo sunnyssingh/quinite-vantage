@@ -11,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 import { Lock } from 'lucide-react'
+import FailedCallsList from '@/components/crm/calls/FailedCallsList'
 
 export default function LiveCallMonitor() {
     const [activeCalls, setActiveCalls] = useState([])
@@ -18,6 +19,7 @@ export default function LiveCallMonitor() {
     const [agentStats, setAgentStats] = useState({ available: 0, onCall: 0 })
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState(null)
+    const [failedCallsOpen, setFailedCallsOpen] = useState(false)
     const supabase = createClient()
 
     // Permissions
@@ -274,9 +276,9 @@ export default function LiveCallMonitor() {
                                 </Badge>
                             )}
                         </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Failed</p>
-                            <h3 className="text-2xl font-semibold text-foreground mt-1">{queueStats.failed}</h3>
+                        <div className="cursor-pointer" onClick={() => setFailedCallsOpen(true)}>
+                            <p className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Failed</p>
+                            <h3 className="text-2xl font-semibold text-foreground mt-1 hover:text-red-600 transition-colors">{queueStats.failed}</h3>
                             <p className="text-xs text-muted-foreground mt-1">Requires attention</p>
                         </div>
                     </CardContent>
@@ -395,7 +397,10 @@ export default function LiveCallMonitor() {
                                 </div>
                                 <Activity className="w-8 h-8 text-blue-600/50" />
                             </div>
-                            <div className="flex items-center justify-between p-4 bg-red-50/50 rounded-lg border border-red-100">
+                            <div
+                                className="flex items-center justify-between p-4 bg-red-50/50 rounded-lg border border-red-100 cursor-pointer hover:bg-red-50 transition-colors"
+                                onClick={() => setFailedCallsOpen(true)}
+                            >
                                 <div>
                                     <p className="text-sm font-medium text-red-900">Failed</p>
                                     <p className="text-2xl font-bold text-red-700">{queueStats.failed}</p>
@@ -460,6 +465,8 @@ export default function LiveCallMonitor() {
                     </CardContent>
                 </Card>
             </div>
+
+            <FailedCallsList open={failedCallsOpen} onOpenChange={setFailedCallsOpen} />
         </div>
     )
 }

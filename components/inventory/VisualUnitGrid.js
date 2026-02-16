@@ -106,58 +106,111 @@ export default function VisualUnitGrid({ projectId, onMetricsUpdate }) {
                     <p className="text-xs mt-1">Go to "Edit Project" to bulk generate units.</p>
                 </div>
             ) : (
-                sortedBlocks.map(block => (
-                    <div key={block} className="space-y-3">
-                        {block !== 'Unassigned' && (
-                            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                                <Layers className="w-4 h-4" />
-                                Block {block}
-                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full text-xs">
-                                    {groupedProperties[block].length}
-                                </span>
-                            </div>
-                        )}
+                sortedBlocks.map(block => {
+                    // Group by Floor within Block
+                    const blockProps = groupedProperties[block]
+                    // Group by floor
+                    const floorGroups = blockProps.reduce((acc, prop) => {
+                        // Normalize floor number for sorting
+                        // Try to parse floor number. If standard numeric string, easy.
+                        // If "Ground", "G", etc., handle appropriately or treat as 0.
+                        const floorKey = prop.floor_number || 'Unassigned'
+                        if (!acc[floorKey]) acc[floorKey] = []
+                        acc[floorKey].push(prop)
+                        return acc
+                    }, {})
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
-                            {groupedProperties[block].map(property => {
-                                const Icon = getPropertyIcon(property.type)
-                                return (
-                                    <TooltipProvider key={property.id}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    onClick={() => handleUnitClick(property)}
-                                                    className={`
-                                                        aspect-square rounded-lg border-b-4 transition-all active:scale-95 flex flex-col items-center justify-center p-2 gap-1 text-white shadow-sm relative overflow-hidden group
-                                                        ${getStatusColor(property.status)}
-                                                    `}
-                                                >
-                                                    <Icon className="w-5 h-5 opacity-90 group-hover:scale-110 transition-transform" />
-                                                    <span className="font-bold text-xs truncate w-full text-center">
-                                                        {property.unit_number || property.title.replace(/^(Unit|Flat|Apt)\s*/i, '')}
-                                                    </span>
-                                                    {property.configuration && (
-                                                        <span className="absolute top-1 right-1 text-[8px] bg-black/20 px-1 rounded">
-                                                            {property.configuration}
-                                                        </span>
-                                                    )}
-                                                </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <div className="text-xs">
-                                                    <p className="font-bold">{property.title}</p>
-                                                    <p>{property.configuration} • {property.size} sqft</p>
-                                                    <p>₹{parseInt(property.price).toLocaleString()}</p>
-                                                    <p className="capitalize text-muted-foreground mt-1">{property.status}</p>
-                                                </div>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                )
-                            })}
+                    // Sort floors descending (building view)
+                    const sortedFloors = Object.keys(floorGroups).sort((a, b) => {
+                        // Check for numeric floors
+                        const numA = parseInt(a)
+                        const numB = parseInt(b)
+
+                        // Handle non-numeric cases (like 'Unassigned' or 'Ground')
+                        if (isNaN(numA) && isNaN(numB)) return a.localeCompare(b)
+                        if (isNaN(numA)) return 1 // Non-numbers at bottom
+                        if (isNaN(numB)) return -1
+
+                        return numB - numA // Descending
+                    })
+
+                    // Sort units within floors
+                    sortedFloors.forEach(f => {
+                        floorGroups[f].sort((a, b) =>
+                            a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' })
+                        )
+                    })
+
+                    return (
+                        <div key={block} className="space-y-4 pt-4 first:pt-0">
+                            {block !== 'Unassigned' && (
+                                <div className="flex items-center gap-2 text-base font-semibold text-foreground border-b pb-2">
+                                    <Building2 className="w-5 h-5 text-primary" />
+                                    Block {block}
+                                    <Badge variant="secondary" className="ml-2">
+                                        {blockProps.length} Units
+                                    </Badge>
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                {sortedFloors.map(floor => (
+                                    <div key={floor} className="flex flex-col sm:flex-row gap-4 border-l-2 border-slate-200 pl-4 py-1">
+                                        {/* Floor Label */}
+                                        <div className="w-full sm:w-24 shrink-0 flex items-start pt-2">
+                                            <div className="bg-slate-100 px-3 py-1 rounded text-xs font-semibold text-slate-600 w-full text-center sm:text-left">
+                                                {floor === '0' || floor === 'Unassigned' ? floor : `Floor ${floor}`}
+                                            </div>
+                                        </div>
+
+                                        {/* Units Grid */}
+                                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
+                                            {floorGroups[floor].map(property => {
+                                                const Icon = getPropertyIcon(property.type)
+                                                return (
+                                                    <TooltipProvider key={property.id}>
+                                                        <Tooltip delayDuration={300}>
+                                                            <TooltipTrigger asChild>
+                                                                <button
+                                                                    onClick={() => handleUnitClick(property)}
+                                                                    className={`
+                                                                          aspect-square rounded-lg border-b-4 transition-all active:scale-95 flex flex-col items-center justify-center p-2 gap-1 text-white shadow-sm relative overflow-hidden group
+                                                                          ${getStatusColor(property.status)}
+                                                                      `}
+                                                                >
+                                                                    <Icon className="w-4 h-4 opacity-90 group-hover:scale-110 transition-transform" />
+                                                                    <span className="font-bold text-[10px] sm:text-xs truncate w-full text-center leading-tight">
+                                                                        {property.unit_number || property.title.replace(/^(Unit|Flat|Apt)\s*/i, '')}
+                                                                    </span>
+                                                                    {property.configuration && (
+                                                                        <span className="absolute top-1 right-1 text-[7px] bg-black/20 px-1 rounded backdrop-blur-[1px]">
+                                                                            {property.configuration}
+                                                                        </span>
+                                                                    )}
+                                                                </button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="top">
+                                                                <div className="text-xs space-y-1">
+                                                                    <p className="font-bold border-b pb-1 mb-1">{property.title}</p>
+                                                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                                                        <span className="text-muted-foreground">Type:</span> <span>{property.configuration}</span>
+                                                                        <span className="text-muted-foreground">Area:</span> <span>{property.size_sqft} sqft</span>
+                                                                        <span className="text-muted-foreground">Price:</span> <span>₹{parseInt(property.price).toLocaleString()}</span>
+                                                                        <span className="text-muted-foreground">Status:</span> <span className="capitalize font-medium">{property.status}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ))
+                    )
+                })
             )}
 
             {/* Modals */}
