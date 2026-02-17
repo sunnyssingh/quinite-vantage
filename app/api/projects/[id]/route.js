@@ -81,6 +81,7 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
         if (body.price_range !== undefined) updates.price_range = body.price_range
         if (body.project_status !== undefined) updates.project_status = body.project_status
         if (body.show_in_inventory !== undefined) updates.show_in_inventory = body.show_in_inventory
+        if (body.public_visibility !== undefined) updates.public_visibility = body.public_visibility
         // Validate optional real_estate payload
         const realEstate = body.real_estate || (body.metadata && body.metadata.real_estate)
         if (realEstate) {

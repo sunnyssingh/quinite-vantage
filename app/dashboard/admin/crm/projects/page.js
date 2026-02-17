@@ -246,6 +246,27 @@ export default function ProjectsPage() {
     }
   }
 
+  const handleToggleVisibility = async (project) => {
+    try {
+      const newVisibility = !project.public_visibility
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ public_visibility: newVisibility })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to update visibility')
+      }
+
+      await refetch()
+      toast.success(`Project is now ${newVisibility ? 'Public' : 'Hidden'}`)
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
   const handleCreateCampaign = async (e) => {
     e.preventDefault()
     setSubmitting(true)
@@ -420,6 +441,7 @@ export default function ProjectsPage() {
                     // Navigate to Campaigns page filtered by project
                     router.push(`/dashboard/admin/crm/projects/${p.id}/campaigns`)
                   }}
+                  onToggleVisibility={handleToggleVisibility}
                   deleting={deletingId === project.id}
                 />
               ))
@@ -467,6 +489,7 @@ export default function ProjectsPage() {
                   setCampProjectId(p.id)
                   setAddOpen(true)
                 }}
+                onToggleVisibility={handleToggleVisibility}
                 deletingId={deletingId}
                 page={page}
                 onPageChange={setPage}

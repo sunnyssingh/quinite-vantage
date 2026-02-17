@@ -170,7 +170,8 @@ export async function POST(request) {
       project_status: body.project_status || 'planning',
       show_in_inventory: body.show_in_inventory !== false,
       organization_id: profile.organization_id,
-      created_by: user.id
+      created_by: user.id,
+      public_visibility: body.public_visibility !== undefined ? body.public_visibility : false
     }
 
     const { data: project, error } = await admin

@@ -1,6 +1,6 @@
 'use client'
 
-import { Building2, CreditCard, Plug2, Users, Lock } from 'lucide-react'
+import { Building2, CreditCard, Plug2, Users, Lock, Layout } from 'lucide-react'
 import Link from 'next/link'
 import { usePermissions } from '@/contexts/PermissionContext'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -70,6 +70,18 @@ export default function SettingsPage() {
                                     <h3 className="text-lg font-semibold text-slate-900 mb-2 group-hover:text-indigo-700 transition-colors">Subscription</h3>
                                     <p className="text-sm text-slate-500 leading-relaxed">
                                         View your current plan, manage billing methods, and download invoices.
+                                    </p>
+                                </div>
+                            </Link>
+
+                            <Link href="/dashboard/admin/settings/website" className="group">
+                                <div className="h-full p-6 rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200 hover:shadow-md hover:border-pink-200 group-hover:ring-1 group-hover:ring-pink-100">
+                                    <div className="mb-5 inline-flex items-center justify-center h-12 w-12 rounded-lg bg-pink-50 text-pink-600 group-hover:bg-pink-600 group-hover:text-white transition-colors duration-200">
+                                        <Layout className="h-6 w-6" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-2 group-hover:text-pink-700 transition-colors">Website Builder</h3>
+                                    <p className="text-sm text-slate-500 leading-relaxed">
+                                        Customize your public profile, domain, and showcase your projects to the world.
                                     </p>
                                 </div>
                             </Link>

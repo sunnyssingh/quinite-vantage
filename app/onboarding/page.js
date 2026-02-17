@@ -281,21 +281,24 @@ export default function OnboardingPage() {
     if (numericValue.length === 6) {
       setFetchingPincode(true)
       try {
-        const response = await fetch(`https://api.postalpincode.in/pincode/${numericValue}`)
-        const data = await response.json()
+        // Only fetch Indian pincode details if country is India or not selected (default)
+        if (formData.country === 'India' || !formData.country) {
+          const response = await fetch(`https://api.postalpincode.in/pincode/${numericValue}`)
+          const data = await response.json()
 
-        if (data && data[0].Status === 'Success') {
-          const details = data[0].PostOffice[0]
-          setFormData(prev => ({
-            ...prev,
-            city: details.District,
-            state: details.State,
-            country: 'India'
-          }))
-          toast.success(`Location found: ${details.District}, ${details.State}`)
-        } else {
-          toast.error('Invalid Pincode or location not found')
-          setFormData(prev => ({ ...prev, city: '', state: '' }))
+          if (data && data[0].Status === 'Success') {
+            const details = data[0].PostOffice[0]
+            setFormData(prev => ({
+              ...prev,
+              city: details.District,
+              state: details.State,
+              country: 'India'
+            }))
+            toast.success(`Location found: ${details.District}, ${details.State}`)
+          } else {
+            toast.error('Invalid Pincode or location not found')
+            setFormData(prev => ({ ...prev, city: '', state: '' }))
+          }
         }
       } catch (err) {
         console.error('Error fetching pincode:', err)
@@ -322,7 +325,7 @@ export default function OnboardingPage() {
           addressLine2: formData.addressLine2,
           city: formData.city,
           state: formData.state,
-          country: formData.country,
+          country: formData.country || '', // Ensure country is saved, default to empty if not selected
           pincode: formData.pincode,
           isComplete: false
         })
@@ -352,11 +355,18 @@ export default function OnboardingPage() {
           setError('Contact number is required')
           return false
         }
-        // Validate phone number (10 digits)
-        const phoneRegex = /^[6-9]\d{9}$/
-        if (!phoneRegex.test(formData.contactNumber.replace(/[^\d]/g, ''))) {
-          setError('Please enter a valid 10-digit Indian mobile number')
-          return false
+        // Validate phone number (10 digits for India, general check for others)
+        if (formData.country === 'India') {
+          const phoneRegex = /^[6-9]\d{9}$/
+          if (!phoneRegex.test(formData.contactNumber.replace(/[^\d]/g, ''))) {
+            setError('Please enter a valid 10-digit Indian mobile number')
+            return false
+          }
+        } else {
+          if (formData.contactNumber.length < 5) { // A more general minimum length for international numbers
+            setError('Please enter a valid contact number')
+            return false
+          }
         }
         return true
       case 4:
@@ -419,7 +429,7 @@ export default function OnboardingPage() {
         addressLine2: formData.addressLine2,
         city: formData.city,
         state: formData.state,
-        country: formData.country,
+        country: formData.country || '', // Ensure country is sent, default to empty if not selected
         pincode: formData.pincode,
         isComplete: true
       }
@@ -544,22 +554,23 @@ export default function OnboardingPage() {
 
               return (
                 <div key={step.id} className="flex-1 flex items-center">
-                  <div className="flex flex-col items-center w-full">
-                    <div className={`
+                  <div className={`
                       w-10 h-10 rounded-full flex items-center justify-center
                       ${isCompleted ? 'bg-green-600 text-white' : ''}
                       ${isCurrent ? 'bg-blue-600 text-white' : ''}
                       ${!isCurrent && !isCompleted ? 'bg-gray-300 text-gray-600' : ''}
                     `}>
-                      {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                    </div>
-                    <p className={`text-xs mt-2 text-center ${isCurrent ? 'font-bold' : ''}`}>
-                      {step.title}
-                    </p>
+                    {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   </div>
-                  {index < STEPS.length - 1 && (
-                    <div className={`flex-1 h-1 mx-2 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
-                  )}
+                  <p className={`text-xs mt-2 text-center ${isCurrent ? 'font-bold' : ''}`}>
+                    {step.title}
+                  </p>
+
+                  {
+                    index < STEPS.length - 1 && (
+                      <div className={`flex-1 h-1 mx-2 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
+                    )
+                  }
                 </div>
               )
             })}
@@ -698,14 +709,14 @@ export default function OnboardingPage() {
                       const value = e.target.value.replace(/\D/g, '').slice(0, 10)
                       updateFormData('contactNumber', value)
                     }}
-                    placeholder="+91 XXXXXXXXXX"
+                    placeholder={formData.country === 'India' ? "+91 XXXXXXXXXX" : "Enter contact number"}
                     className="mt-1"
-                    maxLength={10}
-                    pattern="[6-9][0-9]{9}"
-                    title="Please enter a valid 10-digit Indian mobile number starting with 6-9"
+                    maxLength={formData.country === 'India' ? 10 : undefined} // Max length for India
+                    pattern={formData.country === 'India' ? "[6-9][0-9]{9}" : undefined}
+                    title={formData.country === 'India' ? "Please enter a valid 10-digit Indian mobile number starting with 6-9" : "Please enter a valid contact number"}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Enter 10-digit mobile number (starting with 6, 7, 8, or 9)
+                    {formData.country === 'India' ? 'Enter 10-digit mobile number (starting with 6, 7, 8, or 9)' : 'Enter your contact number'}
                   </p>
                 </div>
               </div>
@@ -743,9 +754,9 @@ export default function OnboardingPage() {
                       id="state"
                       value={formData.state}
                       onChange={(e) => updateFormData('state', e.target.value)}
-                      placeholder="State (Auto-filled)"
+                      placeholder="State (Auto-filled for India)"
                       className="mt-1 bg-gray-50"
-                      readOnly={fetchingPincode}
+                      readOnly={formData.country === 'India' && fetchingPincode} // Read-only only if India and fetching
                     />
                   </div>
 
@@ -755,9 +766,9 @@ export default function OnboardingPage() {
                       id="city"
                       value={formData.city}
                       onChange={(e) => updateFormData('city', e.target.value)}
-                      placeholder="City (Auto-filled)"
+                      placeholder="City (Auto-filled for India)"
                       className="mt-1 bg-gray-50"
-                      readOnly={fetchingPincode}
+                      readOnly={formData.country === 'India' && fetchingPincode} // Read-only only if India and fetching
                     />
                   </div>
                 </div>
@@ -765,13 +776,28 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="country">Country</Label>
-                    <Input
-                      id="country"
+                    <Select
                       value={formData.country}
-                      onChange={(e) => updateFormData('country', e.target.value)}
-                      className="mt-1"
-                      disabled
-                    />
+                      onValueChange={(value) => {
+                        updateFormData('country', value)
+                        // Clear city/state/pincode if country changes and it's not India
+                        if (value !== 'India') {
+                          setFormData(prev => ({ ...prev, city: '', state: '', pincode: '' }))
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select a country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="India">India</SelectItem>
+                        <SelectItem value="United States">United States</SelectItem>
+                        <SelectItem value="Canada">Canada</SelectItem>
+                        <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                        <SelectItem value="Australia">Australia</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>

@@ -19,10 +19,13 @@ import {
     Store,
     LandPlot,
     Briefcase,
-    Lock
+    Lock,
+    Globe
 } from 'lucide-react'
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+
+import { formatCurrency } from '@/lib/utils/currency'
 
 // Helper Components
 const PropertyCategoryIcon = ({ category }) => {
@@ -42,7 +45,7 @@ const TransactionBadge = ({ transaction }) => {
     )
 }
 
-export default function ProjectCard({ project, onEdit, onDelete, onView, onStartCampaign, deleting }) {
+export default function ProjectCard({ project, onEdit, onDelete, onView, onStartCampaign, onToggleVisibility, deleting, currency = 'INR', locale = 'en-IN' }) {
     const canEdit = usePermission('edit_projects')
     const canDelete = usePermission('delete_projects')
 
@@ -80,13 +83,6 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
         return ''
     }
 
-    const formatPrice = (price) => {
-        if (!price) return '0'
-        if (price >= 10000000) return `₹${(price / 10000000).toFixed(2)} Cr`
-        if (price >= 100000) return `₹${(price / 100000).toFixed(2)} L`
-        return `₹${price.toLocaleString()}`
-    }
-
     return (
         <Card className="hover:shadow-md transition-all duration-300 border-border bg-card group overflow-hidden rounded-xl">
             <div className="relative h-48 bg-muted/30">
@@ -102,6 +98,11 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                     </div>
                 )}
                 <div className="absolute top-3 right-3 flex gap-2">
+                    {project.public_visibility && (
+                        <Badge variant="default" className="bg-green-500/90 hover:bg-green-600/90 backdrop-blur-sm border-0 text-[10px] uppercase tracking-wider">
+                            Public
+                        </Badge>
+                    )}
                     <TransactionBadge transaction={re.transaction || 'sell'} />
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
@@ -152,11 +153,11 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                                 <div className="flex items-baseline gap-1 text-foreground">
                                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Range:</span>
                                     <span className="text-base font-semibold">
-                                        {formatPrice(minPrice)}
+                                        {formatCurrency(minPrice, currency, locale)}
                                     </span>
                                     <span className="text-muted-foreground text-sm">-</span>
                                     <span className="text-base font-semibold">
-                                        {formatPrice(maxPrice)}
+                                        {formatCurrency(maxPrice, currency, locale)}
                                     </span>
                                 </div>
                             )
@@ -168,11 +169,11 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                             <div className="flex items-baseline gap-1 text-foreground">
                                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Range:</span>
                                 <span className="text-base font-semibold">
-                                    {formatPrice(pricing.min)}
+                                    {formatCurrency(pricing.min, currency, locale)}
                                 </span>
                                 <span className="text-muted-foreground text-sm">-</span>
                                 <span className="text-base font-semibold">
-                                    {formatPrice(pricing.max)}
+                                    {formatCurrency(pricing.max, currency, locale)}
                                 </span>
                             </div>
                         )
@@ -221,6 +222,25 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                     </PermissionTooltip>
 
                     <PermissionTooltip
+                        hasPermission={canEdit}
+                        message="You need 'Edit Projects' permission to change visibility."
+                    >
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`flex-1 h-7 text-xs ${project.public_visibility ? 'text-green-600 hover:text-green-700 hover:bg-green-50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
+                            onClick={() => {
+                                if (!canEdit) return
+                                onToggleVisibility && onToggleVisibility(project)
+                            }}
+                            disabled={!canEdit || !onToggleVisibility}
+                        >
+                            <Globe className="w-3.5 h-3.5 mr-1.5" />
+                            {project.public_visibility ? 'Public' : 'Hidden'}
+                        </Button>
+                    </PermissionTooltip>
+
+                    <PermissionTooltip
                         hasPermission={canDelete}
                         message="You need 'Delete Projects' permission to delete projects."
                     >
@@ -240,6 +260,6 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                     </PermissionTooltip>
                 </div>
             </CardContent>
-        </Card>
+        </Card >
     )
 }

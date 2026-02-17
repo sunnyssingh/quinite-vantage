@@ -134,6 +134,10 @@ export async function PUT(request) {
         if (body.country !== undefined) updates.country = body.country
         if (body.currency !== undefined) updates.currency = body.currency
         if (body.currency_symbol !== undefined) updates.currency_symbol = body.currency_symbol
+        if (body.slug !== undefined) updates.slug = body.slug
+        if (body.custom_domain !== undefined) updates.custom_domain = body.custom_domain
+        if (body.public_profile_enabled !== undefined) updates.public_profile_enabled = body.public_profile_enabled
+        if (body.website_config !== undefined) updates.website_config = body.website_config
 
         // Always include settings as we might have merged updates
         updates.settings = updatedSettings

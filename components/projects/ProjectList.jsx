@@ -9,7 +9,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Edit, Trash2, Eye, Megaphone, Building2, MapPin, Lock } from "lucide-react"
+import { Edit, Trash2, Eye, Megaphone, Building2, MapPin, Lock, Globe } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
@@ -20,7 +20,9 @@ export default function ProjectList({
     onDelete,
     onView,
     onStartCampaign,
+    onToggleVisibility, // Add this
     deletingId,
+
     page = 1,
     onPageChange,
     hasMore = false,
@@ -163,6 +165,26 @@ export default function ProjectList({
                                             >
                                                 <Eye className="w-3.5 h-3.5" />
                                             </Button>
+
+                                            <PermissionTooltip
+                                                hasPermission={canEdit}
+                                                message="You need 'Edit Projects' permission to change visibility."
+                                            >
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (!canEdit) return
+                                                        onToggleVisibility && onToggleVisibility(project)
+                                                    }}
+                                                    disabled={!canEdit || !onToggleVisibility}
+                                                    className={`h-8 w-8 p-0 ${project.public_visibility ? 'text-green-600 hover:text-green-700 bg-green-50/50' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    title={project.public_visibility ? 'Public (Click to Hide)' : 'Hidden (Click to Publish)'}
+                                                >
+                                                    <Globe className="w-3.5 h-3.5" />
+                                                </Button>
+                                            </PermissionTooltip>
+
                                             <PermissionTooltip
                                                 hasPermission={canEdit}
                                                 message="You need 'Edit Projects' permission to edit projects."
