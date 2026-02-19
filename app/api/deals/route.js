@@ -6,8 +6,21 @@ import { withPermission } from '@/lib/middleware/withAuth'
 import { DealService } from '@/services/deal.service'
 
 /**
+ * Maps deal status → inventory property status
+ * 'won' / 'closed won' → 'sold'
+ * 'active' / 'in_progress' / 'negotiation' / 'pending' → 'reserved'
+ * 'lost' → 'available'
+ */
+function dealStatusToPropertyStatus(dealStatus) {
+    const s = (dealStatus || '').toLowerCase()
+    if (s === 'won' || s === 'closed' || s === 'closed won') return 'sold'
+    if (s === 'lost') return 'available'
+    return 'reserved' // active, pending, negotiation, in_progress
+}
+
+/**
  * POST /api/deals
- * Create a new deal
+ * Create a new deal and auto-sync inventory property status
  */
 export const POST = withPermission('create_deals', async (request, context) => {
     try {
@@ -37,19 +50,26 @@ export const POST = withPermission('create_deals', async (request, context) => {
         // Create deal using service
         const deal = await DealService.createDeal(dealData, profile.organization_id, user.id)
 
-        // Sync Lead's Property/Project with the new Deal
         const adminClient = createAdminClient()
         const leadUpdate = {}
 
+        // Link property / project to the lead
         if (property_id) {
             leadUpdate.property_id = property_id
-            // Fetch project_id for the property to keep lead consistent
             const { data: propData } = await adminClient
                 .from('properties')
                 .select('project_id')
                 .eq('id', property_id)
                 .single()
             if (propData?.project_id) leadUpdate.project_id = propData.project_id
+
+            // ✅ Auto-sync inventory: update property status based on deal status
+            const newPropertyStatus = dealStatusToPropertyStatus(status || 'active')
+            await adminClient
+                .from('properties')
+                .update({ status: newPropertyStatus, updated_at: new Date().toISOString() })
+                .eq('id', property_id)
+
         } else if (project_id) {
             leadUpdate.project_id = project_id
         }

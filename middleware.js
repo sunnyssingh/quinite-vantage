@@ -168,8 +168,8 @@ export async function middleware(request) {
     default-src 'self';
     script-src 'self' 'unsafe-eval' 'unsafe-inline' https://dlbxhbukzyygbabrujuv.supabase.co https://checkout.razorpay.com;
     style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://dlbxhbukzyygbabrujuv.supabase.co;
-    font-src 'self';
+    img-src 'self' blob: data: https://dlbxhbukzyygbabrujuv.supabase.co https://images.unsplash.com https://placehold.co;
+    font-src 'self' data:;
     frame-src 'self' https://api.razorpay.com;
     connect-src 'self' https://dlbxhbukzyygbabrujuv.supabase.co wss://dlbxhbukzyygbabrujuv.supabase.co https://api.postalpincode.in https://api.razorpay.com https://lumberjack.razorpay.com;
     frame-ancestors 'self';

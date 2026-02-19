@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
@@ -8,7 +8,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { toast } from 'react-hot-toast'
-import { CopyPlus, ArrowLeft, Loader2, Save, Monitor, Smartphone, Eye, LayoutTemplate, Plus, Settings } from 'lucide-react'
+import { CopyPlus, ArrowLeft, Loader2, Save, Monitor, Smartphone, Eye, LayoutTemplate, Plus, Settings, Building2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -31,6 +31,7 @@ export default function WebsiteBuilderPage() {
     const [viewMode, setViewMode] = useState('desktop')
     const [editingSectionId, setEditingSectionId] = useState(null)
     const [showSiteSettings, setShowSiteSettings] = useState(false)
+    const [orgDetails, setOrgDetails] = useState(null) // Cache for org details
 
     // Template System State
     const [showTemplateSelector, setShowTemplateSelector] = useState(false)
@@ -39,119 +40,11 @@ export default function WebsiteBuilderPage() {
     const [newTemplateDesc, setNewTemplateDesc] = useState('')
     const [savingTemplate, setSavingTemplate] = useState(false)
 
-    const handleApplyTemplate = async (config) => {
-        let enrichedSections = config.sections || []
-
-        // Fetch Organization Data for pre-filling
-        try {
-            const { data: orgData } = await supabase
-                .from('organizations')
-                .select('company_name, city, sector, contact_number, address_line_1')
-                .eq('id', profile.organization_id)
-                .single()
-
-            if (orgData) {
-                enrichedSections = enrichedSections.map(s => {
-                    const newId = `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-
-                    // Enrich Hero Data
-                    if (s.type === 'hero' && orgData.company_name) {
-                        return {
-                            ...s,
-                            id: newId,
-                            content: {
-                                ...s.content,
-                                title: orgData.company_name,
-                                subtitle: s.content.subtitle || `Premier ${orgData.sector || 'Real Estate'} in ${orgData.city || 'your area'}`
-                            }
-                        }
-                    }
-
-                    // Enrich About Data
-                    if (s.type === 'about') {
-                        return {
-                            ...s,
-                            id: newId,
-                            content: {
-                                ...s.content,
-                                heading: `About ${orgData.company_name || 'Us'}`,
-                                text: `We are a leading ${orgData.sector || 'real estate'} company based in ${orgData.city || 'the region'}. ${s.content.text || ''}`
-                            }
-                        }
-                    }
-
-                    // Enrich Contact Data (if exists or if we add it)
-                    if (s.type === 'contact') {
-                        return {
-                            ...s,
-                            id: newId,
-                            content: {
-                                ...s.content,
-                                address: orgData.address_line_1,
-                                phone: orgData.contact_number
-                            }
-                        }
-                    }
-
-                    return { ...s, id: newId }
-                })
-            } else {
-                // Fallback if fetch fails or no data
-                enrichedSections = enrichedSections.map(s => ({
-                    ...s,
-                    id: `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-                }))
-            }
-        } catch (error) {
-            console.error("Error fetching org data for template", error)
-            // Fallback ID generation
-            enrichedSections = enrichedSections.map(s => ({
-                ...s,
-                id: `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-            }))
-        }
-
-        setSections(enrichedSections)
-
-        if (config.settings) {
-            // Merge settings to preserve existing values like logo/siteName if not provided by template
-            setSettings(prev => ({ ...prev, ...config.settings }))
-        }
-        setShowTemplateSelector(false)
-        toast.success("Template applied with your data! Don't forget to click 'Save Changes' to publish.", {
-            duration: 5000,
-            icon: '💾'
-        })
-    }
-
-    const handleSaveTemplate = async () => {
-        setSavingTemplate(true)
-        try {
-            const { error } = await supabase.from('website_templates').insert({
-                name: newTemplateName,
-                description: newTemplateDesc,
-                config: { sections, settings },
-                created_by: user.id
-            })
-            if (error) throw error
-            toast.success('Template created successfully!')
-            setShowSaveTemplateModal(false)
-            setNewTemplateName('')
-            setNewTemplateDesc('')
-        } catch (err) {
-            console.error('Failed to save template', err)
-            toast.error('Failed to save template')
-        } finally {
-            setSavingTemplate(false)
-        }
-    }
-
-    // Load initial config
+    // Load initial config and org details
     useEffect(() => {
         if (authLoading) return
 
         if (!profile?.organization_id) {
-            // Profile loaded but no org ID? Stop loading to show UI (or redirect)
             setLoading(false)
             return
         }
@@ -159,14 +52,39 @@ export default function WebsiteBuilderPage() {
     }, [profile?.organization_id, authLoading])
 
     const loadConfig = async () => {
+        console.time('loadConfig')
         try {
-            const { data, error } = await supabase
+            console.log('Starting loadConfig for org:', profile.organization_id)
+            // Fetch both config and details in one query if possible, or parallel
+            const start = performance.now()
+
+            const fetchPromise = supabase
                 .from('organizations')
-                .select('website_config')
+                .select('website_config, company_name, city, sector, contact_number, address_line_1')
                 .eq('id', profile.organization_id)
                 .single()
 
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timed out')), 10000)
+            )
+
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
+
+            const end = performance.now()
+            console.log(`Supabase fetch took ${end - start}ms`)
+
             if (error) throw error
+
+            // Store org details for template enrichment
+            setOrgDetails({
+                company_name: data.company_name,
+                city: data.city,
+                sector: data.sector,
+                contact_number: data.contact_number,
+                address_line_1: data.address_line_1
+            })
+
+            console.log('Website Config Size:', data.website_config ? JSON.stringify(data.website_config).length : 0, 'bytes')
 
             if (data.website_config) {
                 if (Array.isArray(data.website_config.sections)) {
@@ -183,9 +101,109 @@ export default function WebsiteBuilderPage() {
             }
         } catch (err) {
             console.error('Error loading config:', err)
-            // toast.error('Failed to load website configuration')
+            toast.error('Failed to load website configuration')
         } finally {
+            console.timeEnd('loadConfig')
             setLoading(false)
+        }
+    }
+
+    const handleApplyTemplate = async (config) => {
+        let enrichedSections = config.sections || []
+        const dataToUse = orgDetails || {} // Use cached data
+
+        try {
+            if (dataToUse) {
+                enrichedSections = enrichedSections.map(s => {
+                    const newId = `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+
+                    // Enrich Hero Data
+                    if (s.type === 'hero' && dataToUse.company_name) {
+                        return {
+                            ...s,
+                            id: newId,
+                            content: {
+                                ...s.content,
+                                title: dataToUse.company_name,
+                                subtitle: s.content.subtitle || `Premier ${dataToUse.sector || 'Real Estate'} in ${dataToUse.city || 'your area'}`
+                            }
+                        }
+                    }
+
+                    // Enrich About Data
+                    if (s.type === 'about') {
+                        return {
+                            ...s,
+                            id: newId,
+                            content: {
+                                ...s.content,
+                                heading: `About ${dataToUse.company_name || 'Us'}`,
+                                text: `We are a leading ${dataToUse.sector || 'real estate'} company based in ${dataToUse.city || 'the region'}. ${s.content.text || ''}`
+                            }
+                        }
+                    }
+
+                    // Enrich Contact Data
+                    if (s.type === 'contact') {
+                        return {
+                            ...s,
+                            id: newId,
+                            content: {
+                                ...s.content,
+                                address: dataToUse.address_line_1,
+                                phone: dataToUse.contact_number
+                            }
+                        }
+                    }
+
+                    return { ...s, id: newId }
+                })
+            } else {
+                // Fallback
+                enrichedSections = enrichedSections.map(s => ({
+                    ...s,
+                    id: `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+                }))
+            }
+
+            // Apply new sections
+            setSections(enrichedSections)
+
+            if (config.settings) {
+                setSettings(prev => ({ ...prev, ...config.settings }))
+            }
+
+            setShowTemplateSelector(false)
+            toast.success("Template applied successfully!", {
+                icon: '✨'
+            })
+
+        } catch (error) {
+            console.error("Error applying template", error)
+            toast.error("Issue applying template")
+        }
+    }
+
+    const handleSaveTemplate = async () => {
+        setSavingTemplate(true)
+        try {
+            const { error } = await supabase.from('website_templates').insert({
+                name: newTemplateName,
+                description: newTemplateDesc,
+                config: { sections, settings },
+                created_by: user.id,
+                is_active: true // Auto-activate for now
+            })
+            if (error) throw error
+            toast.success('Template created successfully!')
+            setShowSaveTemplateModal(false)
+            setNewTemplateName('')
+            setNewTemplateDesc('')
+        } catch (err) {
+            console.error('Failed to save template', err)
+            toast.error('Failed to save template')
+        } finally {
+            setSavingTemplate(false)
         }
     }
 
@@ -197,7 +215,7 @@ export default function WebsiteBuilderPage() {
                 .update({
                     website_config: {
                         sections,
-                        settings, // Save settings too
+                        settings,
                         updated_at: new Date().toISOString()
                     }
                 })
@@ -205,7 +223,6 @@ export default function WebsiteBuilderPage() {
                 .select()
 
             if (error) throw error
-            if (!data || data.length === 0) throw new Error('Update failed. You might not have permission.')
 
             toast.success('Website saved successfully')
         } catch (err) {
@@ -240,22 +257,24 @@ export default function WebsiteBuilderPage() {
         setActiveId(null)
     }
 
-    const handleDeleteSection = (id) => {
-        setSections(sections.filter(s => s.id !== id))
-    }
+    const handleDeleteSection = useCallback((id) => {
+        setSections(prev => prev.filter(s => s.id !== id))
+    }, [])
 
-    const handleUpdateSection = (updatedSection) => {
-        setSections(sections.map(s => s.id === updatedSection.id ? updatedSection : s))
-    }
+    const handleUpdateSection = useCallback((updatedSection) => {
+        setSections(prev => prev.map(s => s.id === updatedSection.id ? updatedSection : s))
+    }, [])
 
-    const handleUpdateSettings = (fullConfig) => {
-        // fullConfig is { sections, settings: {...} } or just updated parts?
-        // SiteSettingsEditor calls onChange({ ...config, settings: ... })
-        // Let's adjust SiteSettingsEditor call below to match expectations
+    const handleEditSection = useCallback((id) => {
+        setEditingSectionId(id)
+        setShowSiteSettings(false)
+    }, [])
+
+    const handleUpdateSettings = useCallback((fullConfig) => {
         if (fullConfig.settings) {
             setSettings(fullConfig.settings)
         }
-    }
+    }, [])
 
     if (loading) {
         return <div className="flex items-center justify-center h-screen"><Loader2 className="w-8 h-8 animate-spin" /></div>
@@ -266,111 +285,146 @@ export default function WebsiteBuilderPage() {
     return (
         <div className="flex flex-col h-screen bg-slate-100 overflow-hidden">
             {/* Top Bar */}
-            <div className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-10">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="mr-2">
-                        <ArrowLeft className="w-4 h-4" />
+            <div className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-6 shrink-0 z-20 sticky top-0">
+                <div className="flex items-center gap-6">
+                    <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/50 rounded-full">
+                        <ArrowLeft className="w-5 h-5" />
                     </Button>
-                    {/* ... Title ... */}
-                    <h1 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                        <LayoutTemplate className="w-5 h-5 text-primary" />
-                        Website Builder
-                    </h1>
-                    {/* ... Device Toggles ... */}
-                    <div className="bg-slate-100 rounded-lg p-1 flex border border-slate-200">
-                        {/* ... */}
+
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                            <LayoutTemplate className="w-5 h-5" />
+                        </div>
+                        <h1 className="font-bold text-lg text-slate-900 tracking-tight">
+                            Website Builder
+                        </h1>
+                    </div>
+
+                    <div className="h-6 w-px bg-slate-200 mx-2" />
+
+                    {/* Device Toggles */}
+                    <div className="bg-slate-100/80 p-1 rounded-full flex gap-1 border border-slate-200/50">
                         <Button
                             variant="ghost"
                             size="sm"
-                            className={`h-7 w-7 p-0 ${viewMode === 'desktop' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'}`}
+                            className={`h-8 px-3 rounded-full transition-all duration-300 ${viewMode === 'desktop' ? 'bg-white shadow-sm text-primary font-medium' : 'text-slate-500 hover:text-slate-700'}`}
                             onClick={() => setViewMode('desktop')}
                         >
-                            <Monitor className="w-4 h-4" />
+                            <Monitor className="w-4 h-4 mr-2" />
+                            <span className="text-xs">Desktop</span>
                         </Button>
                         <Button
                             variant="ghost"
                             size="sm"
-                            className={`h-7 w-7 p-0 ${viewMode === 'mobile' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'}`}
+                            className={`h-8 px-3 rounded-full transition-all duration-300 ${viewMode === 'mobile' ? 'bg-white shadow-sm text-primary font-medium' : 'text-slate-500 hover:text-slate-700'}`}
                             onClick={() => setViewMode('mobile')}
                         >
-                            <Smartphone className="w-4 h-4" />
+                            <Smartphone className="w-4 h-4 mr-2" />
+                            <span className="text-xs">Mobile</span>
                         </Button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant={showSiteSettings ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => {
-                            setShowSiteSettings(true)
-                            setEditingSectionId(null) // Close section editor
-                        }}
-                    >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Settings
-                    </Button>
-                    {/* Template Button */}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowTemplateSelector(true)}
-                    >
-                        <LayoutTemplate className="w-4 h-4 mr-2" />
-                        Templates
-                    </Button>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200/50 mr-2">
+                        <Button
+                            variant={showSiteSettings ? "secondary" : "ghost"}
+                            size="sm"
+                            className={`h-8 text-xs font-medium ${showSiteSettings ? 'bg-white shadow-sm' : 'text-slate-600'}`}
+                            onClick={() => {
+                                setShowSiteSettings(true)
+                                setEditingSectionId(null)
+                            }}
+                        >
+                            <Settings className="w-3.5 h-3.5 mr-2" />
+                            Settings
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs font-medium text-slate-600 hover:text-primary hover:bg-white/50"
+                            onClick={() => setShowTemplateSelector(true)}
+                        >
+                            <LayoutTemplate className="w-3.5 h-3.5 mr-2" />
+                            Templates
+                        </Button>
+                    </div>
 
-                    {/* Admin: Save as Template */}
                     {['super_admin', 'platform_admin'].includes(profile?.role) && (
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setShowSaveTemplateModal(true)}
+                            className="text-slate-500 hover:text-primary"
                         >
-                            <CopyPlus className="w-4 h-4 mr-2" />
-                            Save Tpl
+                            <CopyPlus className="w-4 h-4" />
                         </Button>
                     )}
 
-                    {/* ... Preview/Save ... */}
-                    <Button variant="outline" size="sm" onClick={() => window.open(`/p/${profile?.slug || 'preview'}`, '_blank')}>
+                    <div className="h-6 w-px bg-slate-200" />
+
+                    <Button variant="outline" size="sm" onClick={() => {
+                        const baseUrl = profile?.slug ? `/p/${profile.slug}` : `/p/preview?id=${profile?.organization_id}`;
+                        const freshUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+                        window.open(freshUrl, '_blank');
+                    }} className="rounded-full px-4 border-slate-200 hover:bg-slate-50 text-slate-600">
                         <Eye className="w-4 h-4 mr-2" />
                         Preview
                     </Button>
-                    <Button onClick={handleSave} disabled={saving} size="sm">
+
+                    <Button onClick={handleSave} disabled={saving} size="sm" className="rounded-full px-5 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95">
                         {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                        Save Changes
+                        {saving ? 'Saving...' : 'Publish'}
                     </Button>
                 </div>
             </div>
 
             {/* Main Workspace */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden relative">
                 {/* Sidebar (Tools) - Left */}
-                {/* ... */}
-                <div className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 z-10 hidden md:flex">
-                    {/* ... Tools List ... */}
-                    <div className="p-4 border-b border-slate-100">
-                        <h2 className="font-semibold text-sm text-slate-700">Add Section</h2>
+                <div className="w-72 bg-white/80 backdrop-blur-sm border-r border-slate-200 flex flex-col shrink-0 z-10 hidden md:flex transition-all duration-300">
+                    <div className="p-5 border-b border-slate-100">
+                        <h2 className="font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                            <Plus className="w-4 h-4 text-primary" />
+                            Add Section
+                        </h2>
                     </div>
-                    <div className="p-4 space-y-2 overflow-y-auto">
+                    <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar">
                         {['Hero', 'About', 'Projects', 'Contact'].map((type) => (
-                            <Button
-                                key={type}
-                                variant="outline"
-                                className="w-full justify-start h-10 border-slate-200 hover:border-primary/50 hover:bg-slate-50"
-                                onClick={() => {
-                                    setSections([...sections, {
-                                        id: `${type.toLowerCase()}-${Date.now()}`,
-                                        type: type.toLowerCase(),
-                                        content: type === 'Hero' ? { title: 'New Hero', subtitle: 'Subtitle' } : {}
-                                    }])
-                                }}
-                            >
-                                <Plus className="w-4 h-4 mr-2" />
-                                {type}
-                            </Button>
+                            <div key={type} className="group relative">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start h-14 border-slate-200 hover:border-primary/30 hover:bg-slate-50/80 transition-all rounded-xl relative overflow-hidden"
+                                    onClick={() => {
+                                        setSections([...sections, {
+                                            id: `${type.toLowerCase()}-${Date.now()}`,
+                                            type: type.toLowerCase(),
+                                            content: type === 'Hero' ? { title: 'New Hero', subtitle: 'Subtitle' } : {}
+                                        }])
+                                        toast.success(`Added ${type} section`)
+                                    }}
+                                >
+                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mr-3 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                        {type === 'Hero' && <LayoutTemplate className="w-4 h-4" />}
+                                        {type === 'About' && <div className="text-xs font-bold">Ab</div>}
+                                        {type === 'Projects' && <Building2 className="w-4 h-4" />}
+                                        {type === 'Contact' && <Smartphone className="w-4 h-4" />}
+                                    </div>
+                                    <div className="flex flex-col items-start">
+                                        <span className="font-semibold text-slate-700 group-hover:text-slate-900">{type}</span>
+                                        <span className="text-[10px] text-slate-400 font-normal">Drag to reorder</span>
+                                    </div>
+                                    <Plus className="w-4 h-4 absolute right-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+                                </Button>
+                            </div>
                         ))}
+                    </div>
+
+                    <div className="mt-auto p-4 border-t border-slate-100">
+                        <div className="bg-slate-50 rounded-xl p-4 text-xs text-slate-500 border border-slate-100">
+                            <p className="font-medium text-slate-700 mb-1">Pro Tip</p>
+                            You can reorder sections by dragging them in the canvas.
+                        </div>
                     </div>
                 </div>
 
@@ -416,10 +470,7 @@ export default function WebsiteBuilderPage() {
                                                 key={section.id}
                                                 id={section.id}
                                                 section={section}
-                                                onEdit={(s) => {
-                                                    setEditingSectionId(s.id)
-                                                    setShowSiteSettings(false) // Close settings
-                                                }}
+                                                onEdit={handleEditSection}
                                                 onDelete={handleDeleteSection}
                                             >
                                                 <SectionRenderer type={section.type} content={section.content} />

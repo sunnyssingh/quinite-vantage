@@ -16,7 +16,7 @@ export class PropertyService {
             .select(`
                 *,
                 project:projects(id, name, address),
-                leads:leads(count)
+                leads:leads(id, name, email, phone)
             `)
             .eq('organization_id', organizationId)
             .order('created_at', { ascending: false })

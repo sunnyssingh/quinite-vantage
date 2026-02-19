@@ -1,8 +1,9 @@
+import React, { memo } from 'react'
 import HeroSection from './sections/HeroSection'
 import ProjectsSection from './sections/ProjectsSection'
 import AboutSection from './sections/AboutSection'
 
-export default function SectionRenderer({ type, content }) {
+const SectionRenderer = memo(({ type, content = {} }) => {
     switch (type) {
         case 'hero':
             return <HeroSection content={content} />
@@ -15,4 +16,8 @@ export default function SectionRenderer({ type, content }) {
         default:
             return <div className="p-4 text-center text-red-500">Unknown Section Type: {type}</div>
     }
-}
+}, (prev, next) => {
+    return prev.type === next.type && prev.content === next.content
+})
+
+export default SectionRenderer

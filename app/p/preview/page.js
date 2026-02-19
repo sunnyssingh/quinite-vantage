@@ -3,39 +3,18 @@ import PublicSectionRenderer from '@/components/website-public/PublicSectionRend
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
-// Force dynamic rendering to ensure fresh data
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }) {
-    const { slug } = await params
+export default async function PreviewPage({ searchParams }) {
+    const { id } = await searchParams
     const supabase = createClient()
 
-    const { data: org } = await supabase
-        .from('organizations')
-        .select('name, website_config')
-        .eq('slug', slug)
-        .single()
+    if (!id) return notFound()
 
-    if (!org) return { title: 'Not Found' }
-
-    return {
-        title: org.website_config?.settings?.siteName || org.name,
-        description: 'Welcome to our official website.',
-        icons: {
-            icon: org.website_config?.settings?.logoUrl || '/favicon.ico'
-        }
-    }
-}
-
-export default async function PublicProfilePage({ params }) {
-    const { slug } = await params
-    const supabase = createClient()
-
-    // Fetch organization and config
     const { data: org, error } = await supabase
         .from('organizations')
         .select('id, name, website_config, settings, slug')
-        .eq('slug', slug)
+        .eq('id', id)
         .single()
 
     if (error || !org) {
@@ -46,17 +25,21 @@ export default async function PublicProfilePage({ params }) {
     const sections = config.sections || []
     const settings = config.settings || {}
 
-    // Theme Variables (Inline Styles for simplicity in this MVP)
+    // Theme Variables
     const themeStyles = {
         '--primary': settings.primaryColor || '#0f172a',
         '--primary-foreground': '#ffffff',
-        // We could calculate contrast color here
     }
 
     return (
         <div className="min-h-screen bg-white font-sans text-slate-900" style={themeStyles}>
+            {/* Preview Banner */}
+            <div className="bg-blue-600 text-white text-center py-2 text-sm font-medium sticky top-0 z-[60]">
+                Preview Mode - Changes may take a moment to reflect here.
+            </div>
+
             {/* Header */}
-            <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <header className="sticky top-8 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
                 <div className="container flex h-16 items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-xl">
                         {settings.logoUrl && (
@@ -65,15 +48,11 @@ export default async function PublicProfilePage({ params }) {
                         <span>{settings.siteName || org.name}</span>
                     </div>
                     <nav className="hidden md:flex gap-6 text-sm font-medium">
-                        <Link href={`/p/${slug}`} className="transition-colors hover:text-primary">Home</Link>
-                        <Link href={`/p/${slug}#projects`} className="transition-colors hover:text-primary">Projects</Link>
-                        <Link href={`/p/${slug}#about`} className="transition-colors hover:text-primary">About</Link>
-                        <Link href={`/p/${slug}#contact`} className="transition-colors hover:text-primary">Contact</Link>
+                        <Link href="#" className="transition-colors hover:text-primary pointer-events-none">Home</Link>
+                        <Link href="#" className="transition-colors hover:text-primary pointer-events-none">Projects</Link>
+                        <Link href="#" className="transition-colors hover:text-primary pointer-events-none">About</Link>
+                        <Link href="#" className="transition-colors hover:text-primary pointer-events-none">Contact</Link>
                     </nav>
-                    <button className="md:hidden">
-                        {/* Mobile Menu Trigger */}
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>
-                    </button>
                 </div>
             </header>
 
@@ -85,7 +64,7 @@ export default async function PublicProfilePage({ params }) {
                                 type={section.type}
                                 content={section.content}
                                 organizationId={org.id}
-                                slug={slug}
+                                slug={org.slug || 'preview'}
                             />
                         </div>
                     ))
@@ -101,7 +80,6 @@ export default async function PublicProfilePage({ params }) {
             <footer className="border-t border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-500">
                 <div className="container">
                     <p>&copy; {new Date().getFullYear()} {settings.siteName || org.name}. All rights reserved.</p>
-                    <p className="mt-2">Powered by Quinite Vantage</p>
                 </div>
             </footer>
         </div>

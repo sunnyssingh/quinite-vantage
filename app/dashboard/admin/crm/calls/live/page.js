@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Phone, Users, Clock, TrendingUp, PhoneOff, PhoneForwarded, Activity, Sparkles } from 'lucide-react'
+import { Phone, Users, Clock, TrendingUp, PhoneOff, PhoneForwarded, Activity, Sparkles, RefreshCw, StopCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { toast } from 'react-hot-toast'
 
 
 import { usePermission } from '@/contexts/PermissionContext'
@@ -19,6 +21,7 @@ export default function LiveCallMonitor() {
     const [queueStats, setQueueStats] = useState({ queued: 0, processing: 0, failed: 0 })
     const [agentStats, setAgentStats] = useState({ available: 0, onCall: 0 })
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [user, setUser] = useState(null)
     const [failedCallsOpen, setFailedCallsOpen] = useState(false)
     const supabase = createClient()
@@ -37,29 +40,56 @@ export default function LiveCallMonitor() {
 
     useEffect(() => {
         if (user && hasAccess) {
-            fetchActiveCalls()
-            fetchQueueStats()
-            fetchAgentStats()
-            setLoading(false)
+            handleRefresh()
         } else if (!loading && (!hasAccess || !user)) {
             setLoading(false)
         }
     }, [user, hasAccess])
 
+    const handleRefresh = async () => {
+        setRefreshing(true)
+        await Promise.all([
+            fetchActiveCalls(),
+            fetchQueueStats(),
+            fetchAgentStats()
+        ])
+        setRefreshing(false)
+        setLoading(false)
+    }
+
+    const handleForceEnd = async (callId) => {
+        if (!confirm('Are you sure you want to force end this call? This will mark it as failed.')) return
+
+        const toastId = toast.loading('Ending call...')
+        try {
+            const response = await fetch(`/api/crm/calls/${callId}/cancel`, {
+                method: 'POST'
+            })
+
+            if (!response.ok) throw new Error('Failed to cancel call')
+
+            toast.success('Call ended successfully', { id: toastId })
+            handleRefresh()
+        } catch (error) {
+            console.error('Error cancelling call:', error)
+            toast.error('Failed to end call', { id: toastId })
+        }
+    }
+
     // Subscribe to real-time updates
     useEffect(() => {
         if (!user || !hasAccess) return
 
-        // Subscribe to call_logs changes
+        // Subscribe to call_logs changes (ALL events to catch completions/failures)
         const callLogsChannel = supabase
             .channel('call_logs_changes')
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
-                table: 'call_logs',
-                filter: 'call_status=in.(in_progress,ringing)'
+                table: 'call_logs'
             }, (payload) => {
                 console.log('Call log change:', payload)
+                // Refresh to ensure we capture status changes cleanly
                 fetchActiveCalls()
             })
             .subscribe()
@@ -186,6 +216,14 @@ export default function LiveCallMonitor() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleRefresh}
+                        disabled={refreshing}
+                        className={`p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all ${refreshing ? 'animate-spin' : ''}`}
+                        title="Refresh Data"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                    </button>
                     <Badge variant="outline" className="px-3 py-1 gap-2 border-green-200 bg-green-50 text-green-700">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -309,11 +347,22 @@ export default function LiveCallMonitor() {
                                                 </CardTitle>
                                                 <p className="text-sm text-muted-foreground">{call.lead?.phone || call.callee_number}</p>
                                             </div>
-                                            <Badge
-                                                className={`${getStatusColor(call.call_status)} text-white`}
-                                            >
-                                                {call.call_status === 'in_progress' ? 'In Progress' : 'Ringing'}
-                                            </Badge>
+                                            <div className="flex items-center gap-2">
+                                                <Badge
+                                                    className={`${getStatusColor(call.call_status)} text-white`}
+                                                >
+                                                    {call.call_status === 'in_progress' ? 'In Progress' : 'Ringing'}
+                                                </Badge>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    onClick={() => handleForceEnd(call.id)}
+                                                    title="Force End Call"
+                                                >
+                                                    <StopCircle className="w-4 h-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
@@ -521,5 +570,3 @@ function LiveCallsSkeleton() {
         </div>
     )
 }
-
-

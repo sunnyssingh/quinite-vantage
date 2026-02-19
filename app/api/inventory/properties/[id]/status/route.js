@@ -13,7 +13,7 @@ export async function PATCH(request, { params }) {
         const adminClient = createAdminClient()
         const { id } = await params
         const body = await request.json()
-        const { status } = body
+        const { status, lead_id } = body
 
         // Validate status
         const validStatuses = ['available', 'reserved', 'sold']
@@ -45,7 +45,6 @@ export async function PATCH(request, { params }) {
         }
 
         // Update property status
-        // The database trigger will automatically sync with project
         const { data: updated, error } = await adminClient
             .from('properties')
             .update({
@@ -57,6 +56,31 @@ export async function PATCH(request, { params }) {
             .single()
 
         if (error) throw error
+
+        // Handle lead linking / unlinking
+        if (lead_id && (status === 'reserved' || status === 'sold')) {
+            // First clear any previous lead linked to this property
+            await adminClient
+                .from('leads')
+                .update({ property_id: null })
+                .eq('property_id', id)
+                .neq('id', lead_id)
+
+            // Link the selected lead to this property
+            const { error: leadError } = await adminClient
+                .from('leads')
+                .update({ property_id: id })
+                .eq('id', lead_id)
+                .eq('organization_id', profile.organization_id)
+
+            if (leadError) console.error('Failed to link lead to property:', leadError)
+        } else if (status === 'available') {
+            // Unlink all leads from this property when it becomes available again
+            await adminClient
+                .from('leads')
+                .update({ property_id: null })
+                .eq('property_id', id)
+        }
 
         // Fetch updated project metrics if property is linked to a project
         let projectMetrics = null

@@ -1,11 +1,10 @@
-'use client'
-
+import React, { memo } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Trash2, GripVertical, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export default function SortableSection({ id, section, onEdit, onDelete, children }) {
+const SortableSection = memo(({ id, section, onEdit, onDelete, children }) => {
     const {
         attributes,
         listeners,
@@ -42,7 +41,7 @@ export default function SortableSection({ id, section, onEdit, onDelete, childre
                 <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
                     <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{section.type} Section</span>
                     <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => onEdit(section)}>
+                        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => onEdit(section.id)}>
                             <Edit className="w-3.5 h-3.5 mr-1" />
                             Edit
                         </Button>
@@ -59,4 +58,16 @@ export default function SortableSection({ id, section, onEdit, onDelete, childre
             </div>
         </div>
     )
-}
+}, (prevProps, nextProps) => {
+    // Custom comparison to prevent re-renders when parent re-renders but this section hasn't changed
+    return (
+        prevProps.id === nextProps.id &&
+        prevProps.section === nextProps.section &&
+        // We don't compare functions (onEdit, onDelete) because we'll stabilize them with useCallback
+        // children (SectionRenderer) should inevitably be stable if section data is stable
+        prevProps.children.type === nextProps.children.type &&
+        prevProps.children.props.content === nextProps.children.props.content
+    )
+})
+
+export default SortableSection

@@ -61,21 +61,26 @@ export default function ProjectsSection({ content }) {
     }
 
     return (
-        <div className="w-full py-16 px-8 bg-white">
-            <div className="max-w-6xl mx-auto">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold text-slate-900">{content.title || 'Our Projects'}</h2>
-                    {content.description && <p className="mt-4 text-lg text-slate-600">{content.description}</p>}
+        <div className="w-full py-24 px-8 bg-slate-50">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center mb-16 space-y-4">
+                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">{content.title || 'Our Projects'}</h2>
+                    {content.description && <p className="text-xl text-slate-600 max-w-2xl mx-auto font-light">{content.description}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pointer-events-none select-none">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                     {loading ? (
                         [1, 2, 3].map((i) => (
-                            <div key={i} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-pulse">
-                                <div className="h-48 bg-slate-100" />
-                                <div className="p-6 space-y-3">
-                                    <div className="h-4 w-3/4 bg-slate-100 rounded" />
+                            <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 animate-pulse">
+                                <div className="h-64 bg-slate-100" />
+                                <div className="p-6 space-y-4">
+                                    <div className="h-6 w-3/4 bg-slate-100 rounded" />
                                     <div className="h-4 w-1/2 bg-slate-100 rounded" />
+                                    <div className="grid grid-cols-3 gap-4 pt-4">
+                                        <div className="h-10 bg-slate-100 rounded" />
+                                        <div className="h-10 bg-slate-100 rounded" />
+                                        <div className="h-10 bg-slate-100 rounded" />
+                                    </div>
                                 </div>
                             </div>
                         ))
@@ -83,70 +88,72 @@ export default function ProjectsSection({ content }) {
                         projects.map((project) => {
                             const details = getProjectDetails(project)
                             return (
-                                <div key={project.id} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col bg-white">
-                                    <div className="h-56 bg-slate-100 relative group overflow-hidden">
+                                <div key={project.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-slate-100 flex flex-col transform hover:-translate-y-1">
+                                    {/* Image Container */}
+                                    <div className="relative h-72 overflow-hidden">
                                         {details.image ? (
                                             <img
                                                 src={details.image}
                                                 alt={project.name}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                             />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-slate-50">
-                                                <Building2 className="w-12 h-12 text-slate-300" />
+                                            <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                                                <Building2 className="w-16 h-16 text-slate-300" />
                                             </div>
                                         )}
-                                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                                        {/* Overlay Gradient */}
+                                        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+
+                                        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-800 shadow-sm uppercase tracking-wider">
                                             {project.status || 'Active'}
                                         </div>
                                     </div>
 
-                                    <div className="p-5 flex-1 flex flex-col">
-                                        <h3 className="text-xl font-bold text-slate-900 mb-1 truncate">{project.name}</h3>
-                                        <div className="flex items-center text-slate-500 text-sm mb-4">
-                                            <MapPin className="w-4 h-4 mr-1 shrink-0" />
-                                            <span className="truncate">{details.address}</span>
+                                    <div className="p-6 flex-1 flex flex-col relative">
+                                        {/* Floating Type Badge */}
+                                        <div className="absolute -top-6 left-6">
+                                            <span className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg">
+                                                {details.type}
+                                            </span>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 py-4 border-t border-slate-100 mt-auto">
-                                            {details.bhk ? (
-                                                <div className="flex flex-col items-center justify-center p-2 bg-slate-50 rounded-lg">
-                                                    <Bed className="w-4 h-4 text-slate-400 mb-1" />
-                                                    <span className="text-xs font-medium text-slate-700">{details.bhk}</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col items-center justify-center p-2 bg-slate-50 rounded-lg opacity-50">
-                                                    <Bed className="w-4 h-4 text-slate-400 mb-1" />
-                                                    <span className="text-xs text-slate-400">- Beds</span>
-                                                </div>
-                                            )}
-
-                                            <div className="flex flex-col items-center justify-center p-2 bg-slate-50 rounded-lg opacity-50">
-                                                <Bath className="w-4 h-4 text-slate-400 mb-1" />
-                                                <span className="text-xs text-slate-400">- Baths</span>
+                                        <div className="pt-4 mb-4">
+                                            <h3 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors line-clamp-1">{project.name}</h3>
+                                            <div className="flex items-center text-slate-500 text-sm font-medium">
+                                                <MapPin className="w-4 h-4 mr-1.5 text-primary shrink-0" />
+                                                <span className="truncate">{details.address}</span>
                                             </div>
+                                        </div>
 
-                                            {details.area ? (
-                                                <div className="flex flex-col items-center justify-center p-2 bg-slate-50 rounded-lg">
-                                                    <Ruler className="w-4 h-4 text-slate-400 mb-1" />
-                                                    <span className="text-xs font-medium text-slate-700">{details.area}</span>
+                                        <div className="grid grid-cols-3 gap-3 py-5 border-t border-slate-100 mt-auto">
+                                            {[
+                                                { icon: Bed, label: 'Beds', value: details.bhk },
+                                                { icon: Bath, label: 'Baths', value: '- Baths' }, // Placeholder as we don't have bath data yet
+                                                { icon: Ruler, label: 'Area', value: details.area }
+                                            ].map((stat, idx) => (
+                                                <div key={idx} className="flex flex-col items-center justify-center text-center p-2 rounded-lg bg-slate-50 group-hover:bg-primary/5 transition-colors">
+                                                    <stat.icon className="w-5 h-5 text-slate-400 group-hover:text-primary mb-1 transition-colors" />
+                                                    <span className="text-xs font-semibold text-slate-700">{stat.value || '-'}</span>
                                                 </div>
-                                            ) : (
-                                                <div className="flex flex-col items-center justify-center p-2 bg-slate-50 rounded-lg opacity-50">
-                                                    <Ruler className="w-4 h-4 text-slate-400 mb-1" />
-                                                    <span className="text-xs text-slate-400">- SqFt</span>
-                                                </div>
-                                            )}
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-primary font-semibold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
+                                            <span>View Details</span>
+                                            <ArrowRight className="w-4 h-4" />
                                         </div>
                                     </div>
                                 </div>
                             )
                         })
                     ) : (
-                        <div className="col-span-3 text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                            <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                            <h3 className="text-slate-900 font-medium">No projects found</h3>
-                            <p className="text-slate-500 text-sm mt-1">Mark your projects as "Public" to see them here.</p>
+                        <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
+                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Building2 className="w-8 h-8 text-slate-300" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-slate-900">No projects to display</h3>
+                            <p className="text-slate-500 mt-2">Projects marked as "Public" will appear here.</p>
                         </div>
                     )}
                 </div>
