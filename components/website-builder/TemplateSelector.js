@@ -1,264 +1,392 @@
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+'use client'
+
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Loader2, LayoutTemplate, CheckCircle2, AlertTriangle, Sparkles } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Sparkles, ArrowRight } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-const DEFAULT_TEMPLATES = [
+// ─── 3 Curated Templates ──────────────────────────────────────────────────────
+
+const TEMPLATES = [
     {
-        id: 'tpl_modern_real_estate',
-        name: 'Modern Real Estate',
-        description: 'A premium, high-conversion design tailored for luxury property developers. Features large imagery and clean typography.',
-        is_default: true,
-        thumbnail_url: 'https://placehold.co/600x400/0f172a/ffffff?text=Modern+Real+Estate',
+        id: 'tpl_luxe',
+        name: 'Luxe Estate',
+        tag: 'Premium',
+        tagColor: 'bg-amber-50 text-amber-700 border-amber-200',
+        description: 'Dark, cinematic hero with gold accents. Perfect for luxury developers.',
+        // SVG inline preview
+        preview: (
+            <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                <rect width="320" height="200" fill="#0c1220" />
+                {/* Nav */}
+                <rect x="0" y="0" width="320" height="28" fill="#111827" />
+                <rect x="16" y="9" width="40" height="6" rx="2" fill="#c9a84c" opacity="0.9" />
+                <rect x="220" y="10" width="24" height="4" rx="1" fill="#6b7280" />
+                <rect x="252" y="10" width="24" height="4" rx="1" fill="#6b7280" />
+                <rect x="284" y="9" width="22" height="6" rx="3" fill="#c9a84c" />
+                {/* Hero */}
+                <rect x="0" y="28" width="320" height="100" fill="#0f172a" />
+                <rect x="20" y="45" width="60" height="4" rx="1" fill="#c9a84c" opacity="0.6" />
+                <rect x="20" y="55" width="180" height="10" rx="2" fill="#ffffff" />
+                <rect x="20" y="71" width="140" height="10" rx="2" fill="#ffffff" opacity="0.6" />
+                <rect x="20" y="87" width="100" height="8" rx="2" fill="#ffffff" opacity="0.3" />
+                <rect x="20" y="103" width="64" height="14" rx="3" fill="#c9a84c" />
+                <rect x="92" y="103" width="64" height="14" rx="3" fill="none" stroke="#c9a84c" strokeWidth="1.5" />
+                {/* Cards row */}
+                <rect x="0" y="132" width="320" height="68" fill="#111827" />
+                <rect x="14" y="140" width="82" height="52" rx="4" fill="#1e293b" />
+                <rect x="14" y="176" width="60" height="3" rx="1" fill="#c9a84c" opacity="0.4" />
+                <rect x="104" y="140" width="82" height="52" rx="4" fill="#1e293b" />
+                <rect x="104" y="176" width="50" height="3" rx="1" fill="#c9a84c" opacity="0.4" />
+                <rect x="195" y="140" width="82" height="52" rx="4" fill="#1e293b" />
+                <rect x="195" y="176" width="55" height="3" rx="1" fill="#c9a84c" opacity="0.4" />
+                {/* Accent shimmer */}
+                <rect x="0" y="28" width="3" height="100" fill="#c9a84c" opacity="0.5" />
+            </svg>
+        ),
         config: {
             sections: [
                 {
-                    id: 'hero-default',
+                    id: `hero-${Date.now()}-1`,
                     type: 'hero',
                     content: {
-                        title: 'Experience Luxury Living at Its Finest',
-                        subtitle: 'Discover a world of elegance and comfort in our exclusive residential projects. Designed for those who appreciate the finer things in life, our homes offer a perfect blend of modern architecture and sustainable living.',
-                        buttonText: 'View Our Projects',
-                        backgroundImage: 'https://placehold.co/1920x1080/0f172a/ffffff?text=Hero+Background',
-                        overlayOpacity: 0.5
+                        title: 'Crafting Iconic Spaces',
+                        subtitle: 'Award-winning real estate development focused on luxury living and architectural excellence.',
+                        buttonText: 'Explore Projects',
+                        backgroundColor: '#0f172a',
+                        textColor: '#ffffff',
                     }
                 },
                 {
-                    id: 'about-default',
+                    id: `about-${Date.now()}-2`,
                     type: 'about',
                     content: {
-                        heading: 'Building Dreams Since 2010',
-                        text: 'At Quinite Estates, we believe that a home is more than just bricks and mortar. It is a sanctuary where memories are made. With over a decade of experience in the real estate industry, we have established ourselves as a trusted name in luxury property development. Our commitment to quality, innovation, and customer satisfaction sets us apart. We work with world-class architects and designers to create spaces that inspire and elevate your lifestyle.',
-                        image: 'https://placehold.co/800x600/e2e8f0/64748b?text=About+Us'
+                        heading: 'A Legacy of Excellence',
+                        text: 'With over a decade of shaping skylines, we bring together visionary architecture, meticulous craftsmanship, and a commitment to sustainable luxury. Every project is a statement.'
                     }
                 },
                 {
-                    id: 'projects-default',
+                    id: `projects-${Date.now()}-3`,
                     type: 'projects',
                     content: {
-                        title: 'Our Signature Developments',
-                        description: 'Explore our portfolio of award-winning properties. From high-rise apartments in the city center to serene villas in the suburbs, we have something for every discerning buyer. Each project is a testament to our dedication to excellence.'
+                        title: 'Signature Developments',
+                        description: 'A curated portfolio of award‑winning properties.'
+                    }
+                },
+                {
+                    id: `contact-${Date.now()}-4`,
+                    type: 'contact',
+                    content: {
+                        heading: 'Begin Your Journey',
+                        subtext: 'Connect with our team to explore exclusive opportunities.'
                     }
                 }
             ],
             settings: {
                 primaryColor: '#0f172a',
-                secondaryColor: '#64748b'
+                secondaryColor: '#c9a84c',
             }
         }
     },
     {
-        id: 'tpl_minimalist',
-        name: 'Minimalist Portfolio',
-        description: 'Clean, spacious, and focused on content. Perfect for architectural firms and design studios.',
-        is_default: true,
-        thumbnail_url: 'https://placehold.co/600x400/ffffff/000000?text=Minimalist',
+        id: 'tpl_arc',
+        name: 'Arc Studio',
+        tag: 'Minimal',
+        tagColor: 'bg-slate-50 text-slate-600 border-slate-200',
+        description: 'Pure white canvas with bold typography. Ideal for boutique studios.',
+        preview: (
+            <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                <rect width="320" height="200" fill="#ffffff" />
+                {/* Nav */}
+                <rect x="0" y="0" width="320" height="24" fill="#ffffff" />
+                <line x1="0" y1="24" x2="320" y2="24" stroke="#e2e8f0" strokeWidth="1" />
+                <rect x="16" y="8" width="32" height="5" rx="1.5" fill="#0f172a" />
+                <rect x="220" y="9" width="22" height="3" rx="1" fill="#94a3b8" />
+                <rect x="250" y="9" width="22" height="3" rx="1" fill="#94a3b8" />
+                <rect x="280" y="9" width="22" height="3" rx="1" fill="#94a3b8" />
+                {/* Hero — big bold text */}
+                <rect x="0" y="24" width="320" height="96" fill="#ffffff" />
+                <rect x="20" y="36" width="220" height="16" rx="2" fill="#0f172a" />
+                <rect x="20" y="58" width="160" height="16" rx="2" fill="#0f172a" />
+                <rect x="20" y="80" width="110" height="8" rx="1.5" fill="#94a3b8" />
+                <rect x="20" y="96" width="56" height="12" rx="2" fill="#0f172a" />
+                <rect x="84" y="96" width="56" height="12" rx="2" fill="none" stroke="#0f172a" strokeWidth="1.5" />
+                {/* Two-col grid */}
+                <rect x="0" y="124" width="320" height="76" fill="#f8fafc" />
+                <rect x="16" y="134" width="130" height="56" rx="3" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1" />
+                <rect x="24" y="166" width="80" height="4" rx="1" fill="#0f172a" opacity="0.3" />
+                <rect x="174" y="134" width="130" height="56" rx="3" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1" />
+                <rect x="182" y="166" width="70" height="4" rx="1" fill="#0f172a" opacity="0.3" />
+            </svg>
+        ),
         config: {
             sections: [
                 {
-                    id: 'hero-min',
+                    id: `hero-${Date.now()}-1`,
                     type: 'hero',
                     content: {
-                        title: 'Less is More. Design that Speaks.',
-                        subtitle: 'We are a boutique architectural firm focused on creating minimalist, functional, and sustainable spaces. Our philosophy is rooted in the belief that simplicity is the ultimate sophistication.',
-                        buttonText: 'See Our Work',
+                        title: 'Less is More.',
+                        subtitle: 'Boutique architecture and development studio focused on clean, purposeful, and timeless spaces.',
+                        buttonText: 'View Work',
                         backgroundColor: '#ffffff',
-                        textColor: '#000000'
+                        textColor: '#0f172a',
                     }
                 },
                 {
-                    id: 'projects-min',
+                    id: `projects-${Date.now()}-2`,
                     type: 'projects',
                     content: {
                         title: 'Selected Works',
-                        description: 'A curated selection of our most recent architectural endeavors. Each project represents a unique challenge and a bespoke solution.'
+                        description: 'A focused selection of our best architectural endeavors.'
+                    }
+                },
+                {
+                    id: `about-${Date.now()}-3`,
+                    type: 'about',
+                    content: {
+                        heading: 'Studio Philosophy',
+                        text: 'We believe architecture should speak quietly and confidently. Our work strips away the unnecessary to reveal spaces that are as functional as they are beautiful.'
+                    }
+                },
+                {
+                    id: `contact-${Date.now()}-4`,
+                    type: 'contact',
+                    content: {
+                        heading: 'Let\'s Talk',
+                        subtext: 'We\'d love to hear about your next project.'
                     }
                 }
             ],
             settings: {
-                primaryColor: '#000000',
-                secondaryColor: '#94a3b8'
+                primaryColor: '#0f172a',
+                secondaryColor: '#64748b',
+                siteName: '',
+            }
+        }
+    },
+    {
+        id: 'tpl_vivid',
+        name: 'Vivid Blue',
+        tag: 'Bold',
+        tagColor: 'bg-blue-50 text-blue-700 border-blue-200',
+        description: 'Clean, professional, and high-energy. Built for growth-focused brands.',
+        preview: (
+            <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                <rect width="320" height="200" fill="#f0f7ff" />
+                {/* Nav */}
+                <rect x="0" y="0" width="320" height="26" fill="#ffffff" />
+                <line x1="0" y1="26" x2="320" y2="26" stroke="#dbeafe" strokeWidth="1" />
+                <rect x="16" y="8" width="40" height="8" rx="4" fill="#2563eb" />
+                <rect x="208" y="10" width="24" height="4" rx="1" fill="#94a3b8" />
+                <rect x="240" y="10" width="24" height="4" rx="1" fill="#94a3b8" />
+                <rect x="272" y="8" width="32" height="8" rx="4" fill="#2563eb" />
+                {/* Hero gradient */}
+                <defs>
+                    <linearGradient id="gvivid" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#1d4ed8" />
+                        <stop offset="100%" stopColor="#2563eb" />
+                    </linearGradient>
+                </defs>
+                <rect x="0" y="26" width="320" height="90" fill="url(#gvivid)" />
+                <rect x="20" y="38" width="48" height="6" rx="2" fill="#93c5fd" opacity="0.7" />
+                <rect x="20" y="52" width="200" height="12" rx="2" fill="#ffffff" />
+                <rect x="20" y="70" width="150" height="8" rx="1.5" fill="#bfdbfe" opacity="0.8" />
+                <rect x="20" y="86" width="64" height="14" rx="3" fill="#ffffff" />
+                <rect x="92" y="86" width="64" height="14" rx="3" fill="none" stroke="#93c5fd" strokeWidth="1.5" />
+                {/* 3-col cards */}
+                <rect x="0" y="120" width="320" height="80" fill="#f0f7ff" />
+                <rect x="12" y="128" width="88" height="60" rx="5" fill="#ffffff" stroke="#dbeafe" strokeWidth="1" />
+                <rect x="16" y="134" width="80" height="28" rx="3" fill="#dbeafe" />
+                <rect x="18" y="168" width="50" height="4" rx="1" fill="#0f172a" opacity="0.3" />
+                <rect x="108" y="128" width="88" height="60" rx="5" fill="#ffffff" stroke="#dbeafe" strokeWidth="1" />
+                <rect x="112" y="134" width="80" height="28" rx="3" fill="#dbeafe" />
+                <rect x="114" y="168" width="55" height="4" rx="1" fill="#0f172a" opacity="0.3" />
+                <rect x="204" y="128" width="88" height="60" rx="5" fill="#ffffff" stroke="#dbeafe" strokeWidth="1" />
+                <rect x="208" y="134" width="80" height="28" rx="3" fill="#dbeafe" />
+                <rect x="210" y="168" width="45" height="4" rx="1" fill="#0f172a" opacity="0.3" />
+            </svg>
+        ),
+        config: {
+            sections: [
+                {
+                    id: `hero-${Date.now()}-1`,
+                    type: 'hero',
+                    content: {
+                        title: 'Build. Grow. Inspire.',
+                        subtitle: 'Modern real estate development with a forward-thinking approach. Quality homes, delivered on time.',
+                        buttonText: 'See Projects',
+                        backgroundColor: '#1d4ed8',
+                        textColor: '#ffffff',
+                    }
+                },
+                {
+                    id: `projects-${Date.now()}-2`,
+                    type: 'projects',
+                    content: {
+                        title: 'Featured Projects',
+                        description: 'Explore our growing portfolio of residential and commercial developments.'
+                    }
+                },
+                {
+                    id: `about-${Date.now()}-3`,
+                    type: 'about',
+                    content: {
+                        heading: 'Who We Are',
+                        text: 'A dynamic real estate company built on transparency, innovation, and community. We bring fresh thinking to every project we deliver.'
+                    }
+                },
+                {
+                    id: `contact-${Date.now()}-4`,
+                    type: 'contact',
+                    content: {
+                        heading: 'Get in Touch',
+                        subtext: 'Our team is ready to help you find or build your next home.'
+                    }
+                }
+            ],
+            settings: {
+                primaryColor: '#2563eb',
+                secondaryColor: '#1d4ed8',
             }
         }
     }
 ]
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function TemplateSelector({ isOpen, onClose, onSelect }) {
-    const [templates, setTemplates] = useState(DEFAULT_TEMPLATES)
-    const [loading, setLoading] = useState(false) // Start false because we have defaults
-    const [selectedTemplate, setSelectedTemplate] = useState(null)
+    const [selected, setSelected] = useState(null)
     const [confirming, setConfirming] = useState(false)
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchTemplates()
-            setSelectedTemplate(null)
-            setConfirming(false)
-        }
-    }, [isOpen])
-
-    const fetchTemplates = async () => {
-        // We don't set loading=true here to avoid flashing the loader if we already have defaults.
-        // Or we can use a separate 'fetching' state if we want to show a small spinner.
-        try {
-            const supabase = createClient()
-            const { data, error } = await supabase
-                .from('website_templates')
-                .select('*')
-                .eq('is_active', true)
-                .order('created_at', { ascending: false })
-
-            if (error) {
-                // Ignore 404/empty errors silently as we have defaults
-                console.warn('Could not fetch custom templates:', error.message)
-                return
-            }
-
-            if (data && data.length > 0) {
-                setTemplates([...DEFAULT_TEMPLATES, ...data])
-            }
-        } catch (err) {
-            console.error('Error fetching templates:', err)
-        }
+    const handleClose = () => {
+        setSelected(null)
+        setConfirming(false)
+        onClose()
     }
 
-    const handleApply = () => {
-        if (!selectedTemplate) return
+    const handleContinue = () => {
+        if (!selected) return
         setConfirming(true)
     }
 
-    const confirmApply = () => {
-        onSelect(selectedTemplate.config)
-        onClose()
-        toast.success(`Applied "${selectedTemplate.name}" template`)
+    const handleConfirm = () => {
+        onSelect(selected.config)
+        handleClose()
+        toast.success(`"${selected.name}" applied`, { icon: '✨' })
     }
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden flex flex-col gap-0 bg-slate-50/50 backdrop-blur-xl">
-                <div className="p-6 border-b border-slate-100 bg-white/80">
+        <Dialog open={isOpen} onOpenChange={handleClose}>
+            <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 bg-white border-0 shadow-2xl rounded-2xl">
+
+                {/* Header */}
+                <div className="px-8 pt-7 pb-5 border-b border-slate-100">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-xl">
-                            <Sparkles className="w-5 h-5 text-primary" />
+                        <DialogTitle className="flex items-center gap-2.5 text-xl font-bold text-slate-900">
+                            <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <Sparkles className="w-3.5 h-3.5 text-white" />
+                            </div>
                             Choose a Template
                         </DialogTitle>
-                        <DialogDescription className="text-base">
-                            Select a professionally designed template to jumpstart your website.
+                        <DialogDescription className="text-slate-500 text-sm mt-1">
+                            Pick a design to jumpstart your website. You can customise everything after.
                         </DialogDescription>
                     </DialogHeader>
                 </div>
 
-                {!confirming ? (
-                    <div className="flex-1 overflow-y-auto p-8">
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center h-64 gap-4">
-                                <Loader2 className="animate-spin w-10 h-10 text-primary/50" />
-                                <p className="text-slate-500 font-medium">Loading templates...</p>
-                            </div>
-                        ) : templates.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {templates.map(template => (
-                                    <div
-                                        key={template.id}
-                                        className={`group relative cursor-pointer rounded-xl transition-all duration-300 ${selectedTemplate?.id === template.id ? 'ring-2 ring-primary ring-offset-4 ring-offset-slate-50' : 'hover:-translate-y-1 hover:shadow-xl'
-                                            }`}
-                                        onClick={() => setSelectedTemplate(template)}
-                                    >
-                                        <Card className="overflow-hidden border-0 shadow-md h-full flex flex-col">
-                                            <div className="aspect-[16/10] bg-slate-100 relative overflow-hidden">
-                                                {template.thumbnail_url ? (
-                                                    <img
-                                                        src={template.thumbnail_url}
-                                                        alt={template.name}
-                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 text-slate-300 gap-2">
-                                                        <LayoutTemplate className="w-12 h-12 stroke-1" />
-                                                        <span className="text-xs font-medium uppercase tracking-wider opacity-50">No Preview</span>
-                                                    </div>
-                                                )}
-
-                                                {/* Selection Overlay */}
-                                                <div className={`absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center transition-opacity duration-200 ${selectedTemplate?.id === template.id ? 'opacity-100' : 'opacity-0'}`}>
-                                                    <div className="bg-white text-primary rounded-full p-3 shadow-lg transform scale-100 transition-transform">
-                                                        <CheckCircle2 className="w-8 h-8" />
-                                                    </div>
-                                                </div>
-
-                                                {/* Hover Overlay (Active when not selected) */}
-                                                <div className={`absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${selectedTemplate?.id === template.id ? 'hidden' : ''}`}>
-                                                    <Button variant="secondary" className="shadow-lg font-medium">Preview Design</Button>
-                                                </div>
-                                            </div>
-                                            <CardContent className="p-5 flex-1 flex flex-col bg-white">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <h3 className="font-bold text-slate-900 text-lg group-hover:text-primary transition-colors">{template.name}</h3>
-                                                    {selectedTemplate?.id === template.id && (
-                                                        <Badge variant="default" className="bg-primary/10 text-primary hover:bg-primary/20 border-0">Selected</Badge>
-                                                    )}
-                                                </div>
-                                                <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">{template.description}</p>
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-64 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-white/50">
-                                <LayoutTemplate className="w-12 h-12 text-slate-300 mb-3" />
-                                <h3 className="text-lg font-medium text-slate-900">No Templates Found</h3>
-                                <p className="text-slate-500 max-w-sm mt-1">
-                                    We couldn't find any templates. Try creating one from the builder first!
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-6">
-                        <div className="w-20 h-20 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center mb-2 animate-in zoom-in duration-300">
-                            <AlertTriangle className="w-10 h-10" />
-                        </div>
-                        <div className="space-y-2 max-w-md mx-auto">
-                            <h3 className="text-2xl font-bold text-slate-900">Replace current design?</h3>
-                            <p className="text-slate-600">
-                                Applying <strong>{selectedTemplate.name}</strong> will overwrite your existing sections and settings. This action cannot be undone.
-                            </p>
-                        </div>
-                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-sm text-slate-500 max-w-sm mx-auto">
-                            <p><strong>Tip:</strong> Create a "Save as Template" of your current design first if you want to keep it.</p>
-                        </div>
-                    </div>
-                )}
-
-                <DialogFooter className="p-6 border-t border-slate-100 bg-white/80">
+                {/* Body */}
+                <div className="flex-1 overflow-y-auto">
                     {!confirming ? (
-                        <div className="flex justify-between w-full items-center">
-                            <p className="text-sm text-slate-400 hidden md:block">
-                                {selectedTemplate ? `Selected: ${selectedTemplate.name}` : 'Select a template to continue'}
-                            </p>
-                            <div className="flex gap-3">
-                                <Button variant="outline" onClick={onClose} className="px-6">Cancel</Button>
-                                <Button onClick={handleApply} disabled={!selectedTemplate} className="px-8 shadow-lg shadow-primary/20">
-                                    Continue
-                                </Button>
-                            </div>
+                        <div className="p-8 grid grid-cols-3 gap-5">
+                            {TEMPLATES.map(tpl => {
+                                const isSelected = selected?.id === tpl.id
+                                return (
+                                    <button
+                                        key={tpl.id}
+                                        onClick={() => setSelected(tpl)}
+                                        className={`group text-left rounded-xl overflow-hidden border-2 transition-all duration-200 focus:outline-none ${isSelected
+                                                ? 'border-blue-600 shadow-lg shadow-blue-100 scale-[1.02]'
+                                                : 'border-transparent hover:border-slate-200 hover:shadow-md'
+                                            }`}
+                                    >
+                                        {/* Preview */}
+                                        <div className="relative aspect-[16/10] bg-slate-50 overflow-hidden">
+                                            {tpl.preview}
+                                            {/* Selected overlay */}
+                                            {isSelected && (
+                                                <div className="absolute inset-0 bg-blue-600/10 flex items-end justify-end p-2">
+                                                    <div className="bg-blue-600 text-white rounded-full p-1">
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Info */}
+                                        <div className="p-4 bg-white">
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <span className="font-bold text-slate-900 text-sm">{tpl.name}</span>
+                                                <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${tpl.tagColor}`}>
+                                                    {tpl.tag}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{tpl.description}</p>
+                                        </div>
+                                    </button>
+                                )
+                            })}
                         </div>
                     ) : (
-                        <div className="flex gap-3 justify-center w-full">
-                            <Button variant="ghost" onClick={() => setConfirming(false)} className="px-6">Go Back</Button>
-                            <Button variant="destructive" onClick={confirmApply} className="px-8 bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/20">
-                                Yes, Replace Everything
+                        <div className="flex flex-col items-center justify-center text-center px-10 py-16 space-y-5">
+                            <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center">
+                                <AlertTriangle className="w-8 h-8 text-amber-500" />
+                            </div>
+                            <div className="space-y-2 max-w-sm">
+                                <h3 className="text-xl font-bold text-slate-900">Replace current design?</h3>
+                                <p className="text-slate-500 text-sm leading-relaxed">
+                                    Applying <span className="font-semibold text-slate-700">{selected?.name}</span> will overwrite your existing sections. This cannot be undone.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between">
+                    {!confirming ? (
+                        <>
+                            <span className="text-xs text-slate-400">
+                                {selected ? `Selected: ${selected.name}` : 'Select a template to continue'}
+                            </span>
+                            <div className="flex gap-3">
+                                <Button variant="outline" onClick={handleClose} className="rounded-lg px-5 text-sm">
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleContinue}
+                                    disabled={!selected}
+                                    className="rounded-lg px-6 text-sm bg-blue-600 hover:bg-blue-700 text-white gap-2 shadow-sm shadow-blue-200"
+                                >
+                                    Continue <ArrowRight className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex gap-3 w-full justify-end">
+                            <Button variant="ghost" onClick={() => setConfirming(false)} className="rounded-lg px-5 text-sm">
+                                Go Back
+                            </Button>
+                            <Button
+                                onClick={handleConfirm}
+                                className="rounded-lg px-6 text-sm bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-200"
+                            >
+                                Yes, Replace Design
                             </Button>
                         </div>
                     )}
-                </DialogFooter>
+                </div>
             </DialogContent>
         </Dialog>
     )
 }
-

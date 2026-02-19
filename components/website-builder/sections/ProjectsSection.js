@@ -1,163 +1,200 @@
-import { useState, useEffect } from 'react'
-import { Building2, MapPin, Bed, Bath, Ruler, ArrowRight } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+'use client'
 
-export default function ProjectsSection({ content }) {
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { ExternalLink, MapPin } from 'lucide-react'
+
+const supabase = createClient()
+
+function ProjectCard({ project }) {
+    const thumbnail = project.image_url || null
+    const projectStatus = project.project_status || project.status || 'active'
+    const statusLabel = {
+        planning: 'Planning',
+        under_construction: 'Under Construction',
+        ready_to_move: 'Ready to Move',
+        completed: 'Completed',
+        active: 'Active',
+    }[projectStatus] || projectStatus
+    const statusColors = {
+        planning: { bg: '#dbeafe', text: '#1e40af' },
+        under_construction: { bg: '#fef9c3', text: '#854d0e' },
+        ready_to_move: { bg: '#dcfce7', text: '#166534' },
+        completed: { bg: '#f0fdf4', text: '#15803d' },
+        active: { bg: '#f1f5f9', text: '#475569' },
+    }
+    const sc = statusColors[projectStatus] || { bg: '#f1f5f9', text: '#475569' }
+    const priceMin = project.price_range?.min
+    const priceMax = project.price_range?.max
+
+    return (
+        <div className="group bg-white rounded-2xl overflow-hidden border border-slate-100 hover:border-blue-200 shadow-sm hover:shadow-lg transition-all duration-300">
+            {/* Thumbnail */}
+            <div className="relative aspect-video bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
+                {thumbnail ? (
+                    <img
+                        src={thumbnail}
+                        alt={project.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-center space-y-2">
+                            <div className="w-12 h-12 mx-auto bg-slate-200 rounded-xl flex items-center justify-center">
+                                <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                            </div>
+                            <p className="text-xs text-slate-400 font-medium">{project.name}</p>
+                        </div>
+                    </div>
+                )}
+                {/* Status badge */}
+                <span
+                    className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                    style={{ background: sc.bg, color: sc.text }}
+                >
+                    {statusLabel}
+                </span>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 space-y-3">
+                <div>
+                    <h3 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
+                        {project.name}
+                    </h3>
+                    {project.address && (
+                        <p className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{project.address}</span>
+                        </p>
+                    )}
+                </div>
+
+                {project.description && (
+                    <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                        {project.description}
+                    </p>
+                )}
+
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                    {priceMin ? (
+                        <span className="text-xs font-bold text-blue-600">
+                            ₹{Number(priceMin).toLocaleString('en-IN')}{priceMax ? ` – ₹${Number(priceMax).toLocaleString('en-IN')}` : '+'}
+                        </span>
+                    ) : (
+                        <span className="text-xs text-slate-300">Price on request</span>
+                    )}
+                    <button className="flex items-center gap-1 text-[11px] font-semibold text-blue-500 hover:text-blue-700 transition-colors">
+                        View <ExternalLink className="w-3 h-3" />
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function SkeletonCard() {
+    return (
+        <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm animate-pulse">
+            <div className="aspect-video bg-slate-100" />
+            <div className="p-4 space-y-3">
+                <div className="h-4 bg-slate-100 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 rounded w-1/2" />
+                <div className="h-3 bg-slate-100 rounded w-full" />
+                <div className="h-3 bg-slate-100 rounded w-4/5" />
+            </div>
+        </div>
+    )
+}
+
+export default function ProjectsSection({ content = {}, organizationId }) {
     const [projects, setProjects] = useState([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const fetchProjects = async () => {
-            const supabase = createClient()
-            try {
-                // In builder, we show all projects that *would* be public
-                // or just a sample of them. Let's show up to 3 public projects.
-                const { data, error } = await supabase
-                    .from('projects')
-                    .select('*')
-                    .eq('public_visibility', true)
-                    .limit(3)
+    const {
+        title = 'Our Projects',
+        subtitle = 'Explore our portfolio of exceptional properties',
+        bgColor = '#f8fafc',
+        textColor = '#111827',
+        paddingTop = 80,
+        paddingBottom = 80,
+        limit = 6,
+    } = content
 
-                if (!error && data) {
-                    setProjects(data)
-                }
-            } catch (err) {
-                console.error('Failed to fetch projects for preview', err)
+    useEffect(() => {
+        async function load() {
+            setLoading(true)
+            try {
+                let q = supabase
+                    .from('projects')
+                    .select('id, name, description, address, project_status, status, price_range, image_url')
+                    .order('created_at', { ascending: false })
+                    .limit(limit)
+
+                if (organizationId) q = q.eq('organization_id', organizationId)
+
+                const { data } = await q
+                setProjects(data || [])
+            } catch {
+                setProjects([])
             } finally {
                 setLoading(false)
             }
         }
-        fetchProjects()
-    }, [])
-
-    const getProjectDetails = (project) => {
-        const meta = project.metadata || {}
-        const realEstate = meta.real_estate || {}
-        const residential = realEstate.property?.residential || {}
-        const location = realEstate.location || {}
-        const unitTypes = meta.unit_types || []
-
-        // Image
-        const image = project.image_url || realEstate.media?.thumbnail || null
-
-        // Location
-        const address = project.address || `${location.locality || ''}, ${location.city || ''}`
-        const displayAddress = address.replace(/^, /, '') || 'Location unavailable'
-
-        // Stats
-        const bhk = residential.bhk || (unitTypes.length > 0 ? unitTypes[0].configuration : null)
-        const area = residential.carpet_area || (unitTypes.length > 0 ? unitTypes[0].carpet_area : null)
-
-        // Price
-        // const price = unitTypes.length > 0 ? unitTypes[0].price : null
-
-        return {
-            image,
-            address: displayAddress,
-            bhk: bhk ? bhk.replace('bhk', ' BHK').toUpperCase() : null,
-            area: area ? `${area} sqft` : null,
-            type: realEstate.property?.use_case || project.project_type || 'Residential'
-        }
-    }
+        load()
+    }, [organizationId, limit])
 
     return (
-        <div className="w-full py-24 px-8 bg-slate-50">
-            <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-16 space-y-4">
-                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">{content.title || 'Our Projects'}</h2>
-                    {content.description && <p className="text-xl text-slate-600 max-w-2xl mx-auto font-light">{content.description}</p>}
-                </div>
+        <section
+            style={{
+                backgroundColor: bgColor,
+                paddingTop: `${paddingTop}px`,
+                paddingBottom: `${paddingBottom}px`,
+            }}
+        >
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                    {loading ? (
-                        [1, 2, 3].map((i) => (
-                            <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 animate-pulse">
-                                <div className="h-64 bg-slate-100" />
-                                <div className="p-6 space-y-4">
-                                    <div className="h-6 w-3/4 bg-slate-100 rounded" />
-                                    <div className="h-4 w-1/2 bg-slate-100 rounded" />
-                                    <div className="grid grid-cols-3 gap-4 pt-4">
-                                        <div className="h-10 bg-slate-100 rounded" />
-                                        <div className="h-10 bg-slate-100 rounded" />
-                                        <div className="h-10 bg-slate-100 rounded" />
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    ) : projects.length > 0 ? (
-                        projects.map((project) => {
-                            const details = getProjectDetails(project)
-                            return (
-                                <div key={project.id} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-slate-100 flex flex-col transform hover:-translate-y-1">
-                                    {/* Image Container */}
-                                    <div className="relative h-72 overflow-hidden">
-                                        {details.image ? (
-                                            <img
-                                                src={details.image}
-                                                alt={project.name}
-                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                                                <Building2 className="w-16 h-16 text-slate-300" />
-                                            </div>
-                                        )}
-                                        {/* Overlay Gradient */}
-                                        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-
-                                        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-800 shadow-sm uppercase tracking-wider">
-                                            {project.status || 'Active'}
-                                        </div>
-                                    </div>
-
-                                    <div className="p-6 flex-1 flex flex-col relative">
-                                        {/* Floating Type Badge */}
-                                        <div className="absolute -top-6 left-6">
-                                            <span className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg">
-                                                {details.type}
-                                            </span>
-                                        </div>
-
-                                        <div className="pt-4 mb-4">
-                                            <h3 className="text-2xl font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors line-clamp-1">{project.name}</h3>
-                                            <div className="flex items-center text-slate-500 text-sm font-medium">
-                                                <MapPin className="w-4 h-4 mr-1.5 text-primary shrink-0" />
-                                                <span className="truncate">{details.address}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-3 gap-3 py-5 border-t border-slate-100 mt-auto">
-                                            {[
-                                                { icon: Bed, label: 'Beds', value: details.bhk },
-                                                { icon: Bath, label: 'Baths', value: '- Baths' }, // Placeholder as we don't have bath data yet
-                                                { icon: Ruler, label: 'Area', value: details.area }
-                                            ].map((stat, idx) => (
-                                                <div key={idx} className="flex flex-col items-center justify-center text-center p-2 rounded-lg bg-slate-50 group-hover:bg-primary/5 transition-colors">
-                                                    <stat.icon className="w-5 h-5 text-slate-400 group-hover:text-primary mb-1 transition-colors" />
-                                                    <span className="text-xs font-semibold text-slate-700">{stat.value || '-'}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-primary font-semibold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
-                                            <span>View Details</span>
-                                            <ArrowRight className="w-4 h-4" />
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        })
-                    ) : (
-                        <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Building2 className="w-8 h-8 text-slate-300" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-slate-900">No projects to display</h3>
-                            <p className="text-slate-500 mt-2">Projects marked as "Public" will appear here.</p>
-                        </div>
+                {/* Section header */}
+                <div className="text-center mb-10">
+                    <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full mb-4">
+                        Portfolio
+                    </span>
+                    <h2
+                        style={{ color: textColor }}
+                        className="text-2xl sm:text-3xl lg:text-4xl font-extrabold"
+                    >
+                        {title}
+                    </h2>
+                    {subtitle && (
+                        <p className="mt-3 text-sm sm:text-base text-slate-500 max-w-xl mx-auto">
+                            {subtitle}
+                        </p>
                     )}
                 </div>
+
+                {/* Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                    {loading
+                        ? Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+                        : projects.length > 0
+                            ? projects.map(p => <ProjectCard key={p.id} project={p} />)
+                            : (
+                                <div className="col-span-full text-center py-16">
+                                    <div className="w-16 h-16 mx-auto bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+                                        <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-slate-400 text-sm font-medium">No projects to display yet</p>
+                                    <p className="text-slate-300 text-xs mt-1">Projects added to your portfolio will appear here</p>
+                                </div>
+                            )
+                    }
+                </div>
             </div>
-        </div>
+        </section>
     )
 }

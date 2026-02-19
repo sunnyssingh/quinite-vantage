@@ -1,233 +1,358 @@
+'use client'
+
+import { useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { X, Type, Image as ImageIcon, Layout, Palette, ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
+import {
+    X, Type, Image as ImageIcon, Palette,
+    Sparkles, User, Building2, Phone, FileText,
+    AlignLeft, AlignCenter, AlignRight, Sliders,
+    Monitor, Smartphone, Link
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export default function SectionEditor({ section, onChange, onClose }) {
-    if (!section) return null
+const TABS = [
+    { id: 'content', label: 'Content', Icon: Type },
+    { id: 'style', label: 'Style', Icon: Palette },
+    { id: 'advanced', label: 'Advanced', Icon: Sliders },
+]
 
-    const handleChange = (field, value) => {
-        onChange({
-            ...section,
-            content: {
-                ...section.content,
-                [field]: value
-            }
-        })
-    }
+const SECTION_ICONS = {
+    hero: Sparkles,
+    about: User,
+    projects: Building2,
+    contact: Phone,
+}
 
+const SECTION_COLORS = {
+    hero: 'from-violet-500 to-purple-600',
+    about: 'from-blue-500 to-cyan-500',
+    projects: 'from-emerald-500 to-teal-500',
+    contact: 'from-rose-500 to-pink-500',
+}
+
+function FieldGroup({ label, children }) {
     return (
-        <div className="w-80 bg-white/95 backdrop-blur-sm border-l border-slate-200 flex flex-col h-full shrink-0 shadow-2xl z-20 animate-in slide-in-from-right duration-300">
-            {/* Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${getIconBgColor(section.type)}`}>
-                        <EditIcon type={section.type} />
-                    </div>
-                    <div>
-                        <h2 className="font-bold text-sm text-slate-900 capitalize leading-tight">
-                            {section.type} Section
-                        </h2>
-                        <p className="text-[10px] text-slate-500 font-medium tracking-wide uppercase">Properties</p>
-                    </div>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900 rounded-full" onClick={onClose}>
-                    <X className="w-4 h-4" />
-                </Button>
-            </div>
-
-            {/* Content Form */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-                {section.type === 'hero' && (
-                    <div className="space-y-6 animate-in fade-in duration-500">
-                        <div className="space-y-3">
-                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Content</Label>
-                            <div className="space-y-4">
-                                <div className="space-y-1.5">
-                                    <Label className="text-sm font-medium">Headline</Label>
-                                    <Input
-                                        value={section.content.title || ''}
-                                        onChange={(e) => handleChange('title', e.target.value)}
-                                        placeholder="Enter main title"
-                                        className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-sm font-medium">Subtitle</Label>
-                                    <Textarea
-                                        value={section.content.subtitle || ''}
-                                        onChange={(e) => handleChange('subtitle', e.target.value)}
-                                        placeholder="Enter subtitle"
-                                        className="min-h-[80px] bg-slate-50 border-slate-200 focus:bg-white transition-colors resize-none"
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-sm font-medium">Button Text</Label>
-                                    <Input
-                                        value={section.content.buttonText || ''}
-                                        onChange={(e) => handleChange('buttonText', e.target.value)}
-                                        placeholder="e.g. Contact Us"
-                                        className="bg-slate-50 border-slate-200 focus:bg-white"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <Separator className="bg-slate-100" />
-
-                        <div className="space-y-3">
-                            <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Appearance</Label>
-
-                            <div className="space-y-4">
-                                <Label className="text-sm font-medium">Background Image URL (Link Only)</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        value={section.content.backgroundImage || ''}
-                                        onChange={(e) => handleChange('backgroundImage', e.target.value)}
-                                        placeholder="https://"
-                                        className="bg-slate-50 border-slate-200 text-xs"
-                                    />
-                                    {/* Future: Upload Button */}
-                                </div>
-                                <p className="text-[10px] text-slate-400">Leave empty for solid color</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <ColorPicker
-                                    label="Text Color"
-                                    value={section.content.textColor || '#000000'}
-                                    onChange={(val) => handleChange('textColor', val)}
-                                />
-                                <ColorPicker
-                                    label="Background"
-                                    value={section.content.backgroundColor || '#f8fafc'}
-                                    onChange={(val) => handleChange('backgroundColor', val)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                )}
-
-                {section.type === 'projects' && (
-                    <div className="space-y-6 animate-in fade-in duration-500">
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-sm font-medium">Section Title</Label>
-                                <Input
-                                    value={section.content.title || ''}
-                                    onChange={(e) => handleChange('title', e.target.value)}
-                                    placeholder="Our Projects"
-                                    className="bg-slate-50 border-slate-200"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-sm font-medium">Description</Label>
-                                <Textarea
-                                    value={section.content.description || ''}
-                                    onChange={(e) => handleChange('description', e.target.value)}
-                                    placeholder="Browse our latest work..."
-                                    className="resize-none bg-slate-50 border-slate-200"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500 leading-relaxed">
-                            <p><strong>Note:</strong> This section automatically displays projects marked as "Public" in your CRM.</p>
-                        </div>
-                    </div>
-                )}
-
-                {section.type === 'about' && (
-                    <div className="space-y-6 animate-in fade-in duration-500">
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-sm font-medium">Heading</Label>
-                                <Input
-                                    value={section.content.heading || ''}
-                                    onChange={(e) => handleChange('heading', e.target.value)}
-                                    placeholder="About Us"
-                                    className="bg-slate-50 border-slate-200"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-sm font-medium">Main Text</Label>
-                                <Textarea
-                                    value={section.content.text || ''}
-                                    onChange={(e) => handleChange('text', e.target.value)}
-                                    placeholder="Tell your story..."
-                                    className="min-h-[150px] bg-slate-50 border-slate-200 resize-none"
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label className="text-sm font-medium">Image URL (Link Only)</Label>
-                                <Input
-                                    value={section.content.image || ''}
-                                    onChange={(e) => handleChange('image', e.target.value)}
-                                    placeholder="https://"
-                                    className="bg-slate-50 border-slate-200 text-xs"
-                                />
-                            </div>
-
-                            <div className="flex items-center justify-between border border-slate-200 p-3 rounded-lg bg-white shadow-sm">
-                                <div className="space-y-0.5">
-                                    <Label className="cursor-pointer text-sm font-medium">Show Image</Label>
-                                    <p className="text-[10px] text-slate-400">Toggle image visibility</p>
-                                </div>
-                                <Switch
-                                    checked={section.content.image !== false}
-                                    onCheckedChange={(checked) => handleChange('image', checked)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+        <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
+            <div className="space-y-3">{children}</div>
         </div>
     )
 }
 
-function ColorPicker({ label, value, onChange }) {
+function Field({ label, children }) {
     return (
         <div className="space-y-1.5">
             <Label className="text-xs font-medium text-slate-600">{label}</Label>
-            <div className="flex items-center gap-2 p-1 rounded-lg border border-slate-200 bg-white shadow-sm hover:border-slate-300 transition-colors">
-                <div className="relative shrink-0 w-8 h-8 rounded-md overflow-hidden ring-1 ring-black/5">
-                    <input
-                        type="color"
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] cursor-pointer p-0 border-0"
-                    />
-                </div>
-                <Input
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    className="h-8 border-0 bg-transparent p-0 text-xs font-mono uppercase focus-visible:ring-0"
-                />
-            </div>
+            {children}
         </div>
     )
 }
 
-function EditIcon({ type }) {
-    switch (type) {
-        case 'hero': return <Type className="w-5 h-5 text-blue-600" />
-        case 'about': return <ImageIcon className="w-5 h-5 text-purple-600" />
-        case 'projects': return <Layout className="w-5 h-5 text-green-600" />
-        default: return <Palette className="w-5 h-5 text-slate-600" />
-    }
+const inputCls = "h-8 text-sm bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 focus:border-blue-400 focus:ring-0 focus:ring-offset-0"
+const textareaCls = "text-sm bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 focus:border-blue-400 min-h-[72px] resize-none"
+
+function ContentForm({ section, handleChange }) {
+    const { type, content } = section
+
+    if (type === 'hero') return (
+        <div className="space-y-5">
+            <FieldGroup label="Text">
+                <Field label="Headline">
+                    <Input value={content.title || ''} onChange={e => handleChange('title', e.target.value)} placeholder="Main headline…" className={inputCls} />
+                </Field>
+                <Field label="Subtitle">
+                    <Textarea value={content.subtitle || ''} onChange={e => handleChange('subtitle', e.target.value)} placeholder="Supporting subtitle…" className={textareaCls} />
+                </Field>
+            </FieldGroup>
+            <FieldGroup label="Call-to-Action">
+                <Field label="Button Label">
+                    <Input value={content.ctaText || ''} onChange={e => handleChange('ctaText', e.target.value)} placeholder="e.g. View Projects" className={inputCls} />
+                </Field>
+                <Field label="Button URL">
+                    <div className="relative">
+                        <Link className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                        <Input value={content.ctaUrl || ''} onChange={e => handleChange('ctaUrl', e.target.value)} placeholder="/projects" className={cn(inputCls, 'pl-7')} />
+                    </div>
+                </Field>
+            </FieldGroup>
+            <FieldGroup label="Media">
+                <Field label="Background Image URL">
+                    <div className="relative">
+                        <ImageIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300" />
+                        <Input value={content.bgImage || ''} onChange={e => handleChange('bgImage', e.target.value)} placeholder="https://…" className={cn(inputCls, 'pl-7')} />
+                    </div>
+                </Field>
+            </FieldGroup>
+        </div>
+    )
+
+    if (type === 'about') return (
+        <div className="space-y-5">
+            <FieldGroup label="Text">
+                <Field label="Heading">
+                    <Input value={content.heading || ''} onChange={e => handleChange('heading', e.target.value)} placeholder="About Us" className={inputCls} />
+                </Field>
+                <Field label="Body Text">
+                    <Textarea value={content.text || ''} onChange={e => handleChange('text', e.target.value)} placeholder="Tell your story…" className={cn(textareaCls, 'min-h-[96px]')} />
+                </Field>
+            </FieldGroup>
+            <FieldGroup label="Highlights">
+                <Field label="Highlight 1">
+                    <Input value={content.highlight1 || ''} onChange={e => handleChange('highlight1', e.target.value)} placeholder="e.g. 10+ Years" className={inputCls} />
+                </Field>
+                <Field label="Highlight 2">
+                    <Input value={content.highlight2 || ''} onChange={e => handleChange('highlight2', e.target.value)} placeholder="e.g. 500 Projects" className={inputCls} />
+                </Field>
+            </FieldGroup>
+        </div>
+    )
+
+    if (type === 'projects') return (
+        <div className="space-y-5">
+            <FieldGroup label="Section Header">
+                <Field label="Heading">
+                    <Input value={content.title || ''} onChange={e => handleChange('title', e.target.value)} placeholder="Our Projects" className={inputCls} />
+                </Field>
+                <Field label="Subheading">
+                    <Input value={content.subtitle || ''} onChange={e => handleChange('subtitle', e.target.value)} placeholder="What we've built" className={inputCls} />
+                </Field>
+            </FieldGroup>
+            <FieldGroup label="Display">
+                <Field label="Items to show">
+                    <Input type="number" value={content.limit || 6} min={1} max={12} onChange={e => handleChange('limit', parseInt(e.target.value))} className={inputCls} />
+                </Field>
+            </FieldGroup>
+        </div>
+    )
+
+    if (type === 'contact') return (
+        <div className="space-y-5">
+            <FieldGroup label="Header">
+                <Field label="Heading">
+                    <Input value={content.heading || ''} onChange={e => handleChange('heading', e.target.value)} placeholder="Get in Touch" className={inputCls} />
+                </Field>
+            </FieldGroup>
+            <FieldGroup label="Contact Details">
+                <Field label="Phone">
+                    <Input value={content.phone || ''} onChange={e => handleChange('phone', e.target.value)} placeholder="+91 99999 00000" className={inputCls} />
+                </Field>
+                <Field label="Email">
+                    <Input value={content.email || ''} onChange={e => handleChange('email', e.target.value)} placeholder="hello@company.com" className={inputCls} />
+                </Field>
+                <Field label="Address">
+                    <Textarea value={content.address || ''} onChange={e => handleChange('address', e.target.value)} placeholder="123 Main St…" className={textareaCls} />
+                </Field>
+            </FieldGroup>
+        </div>
+    )
+
+    return (
+        <div className="p-4 text-center text-slate-400 text-sm">
+            <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+            No editable fields for this section type.
+        </div>
+    )
 }
 
-function getIconBgColor(type) {
-    switch (type) {
-        case 'hero': return 'bg-blue-100'
-        case 'about': return 'bg-purple-100'
-        case 'projects': return 'bg-green-100'
-        default: return 'bg-slate-100'
+function StyleForm({ section, handleChange }) {
+    const { content } = section
+    return (
+        <div className="space-y-5">
+            <FieldGroup label="Colors">
+                <Field label="Background">
+                    <div className="flex items-center gap-2">
+                        <div
+                            className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer shrink-0"
+                            style={{ background: content.bgColor || '#ffffff' }}
+                        />
+                        <Input
+                            type="color"
+                            value={content.bgColor || '#ffffff'}
+                            onChange={e => handleChange('bgColor', e.target.value)}
+                            className="h-8 w-full cursor-pointer bg-white border-slate-200"
+                        />
+                    </div>
+                </Field>
+                <Field label="Text Color">
+                    <div className="flex items-center gap-2">
+                        <div
+                            className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer shrink-0"
+                            style={{ background: content.textColor || '#111111' }}
+                        />
+                        <Input
+                            type="color"
+                            value={content.textColor || '#111111'}
+                            onChange={e => handleChange('textColor', e.target.value)}
+                            className="h-8 w-full cursor-pointer bg-white border-slate-200"
+                        />
+                    </div>
+                </Field>
+            </FieldGroup>
+
+            <FieldGroup label="Spacing">
+                <Field label={`Padding Top: ${content.paddingTop ?? 64}px`}>
+                    <input
+                        type="range" min={0} max={160} step={8}
+                        value={content.paddingTop ?? 64}
+                        onChange={e => handleChange('paddingTop', Number(e.target.value))}
+                        className="w-full accent-blue-500"
+                    />
+                </Field>
+                <Field label={`Padding Bottom: ${content.paddingBottom ?? 64}px`}>
+                    <input
+                        type="range" min={0} max={160} step={8}
+                        value={content.paddingBottom ?? 64}
+                        onChange={e => handleChange('paddingBottom', Number(e.target.value))}
+                        className="w-full accent-blue-500"
+                    />
+                </Field>
+            </FieldGroup>
+
+            <FieldGroup label="Alignment">
+                <Field label="Text Align">
+                    <div className="flex gap-1">
+                        {[
+                            { value: 'left', Icon: AlignLeft },
+                            { value: 'center', Icon: AlignCenter },
+                            { value: 'right', Icon: AlignRight },
+                        ].map(({ value, Icon }) => (
+                            <button
+                                key={value}
+                                onClick={() => handleChange('textAlign', value)}
+                                className={cn(
+                                    'flex-1 flex items-center justify-center h-8 rounded-md border text-xs transition-colors',
+                                    (content.textAlign || 'left') === value
+                                        ? 'bg-blue-50 border-blue-300 text-blue-600'
+                                        : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                )}
+                            >
+                                <Icon className="w-4 h-4" />
+                            </button>
+                        ))}
+                    </div>
+                </Field>
+            </FieldGroup>
+        </div>
+    )
+}
+
+function AdvancedForm({ section, handleChange }) {
+    const { content } = section
+    return (
+        <div className="space-y-5">
+            <FieldGroup label="Anchor">
+                <Field label="Section ID / Anchor">
+                    <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">#</span>
+                        <Input
+                            value={content.anchorId || ''}
+                            onChange={e => handleChange('anchorId', e.target.value)}
+                            placeholder="e.g. about-us"
+                            className={cn(inputCls, 'pl-5')}
+                        />
+                    </div>
+                    <p className="text-[10px] text-slate-400">Used for navigation links like <code className="text-slate-500">#about-us</code></p>
+                </Field>
+            </FieldGroup>
+
+            <FieldGroup label="Visibility">
+                <Field label="">
+                    <div className="space-y-2">
+                        {[
+                            { key: 'showOnDesktop', Icon: Monitor, label: 'Show on Desktop' },
+                            { key: 'showOnMobile', Icon: Smartphone, label: 'Show on Mobile' },
+                        ].map(({ key, Icon, label }) => (
+                            <label key={key} className="flex items-center justify-between p-2.5 rounded-lg cursor-pointer group bg-slate-50 border border-slate-200">
+                                <div className="flex items-center gap-2">
+                                    <Icon className="w-3.5 h-3.5 text-slate-400" />
+                                    <span className="text-xs font-medium text-slate-700">{label}</span>
+                                </div>
+                                <Switch
+                                    checked={content[key] !== false}
+                                    onCheckedChange={val => handleChange(key, val)}
+                                    className="data-[state=checked]:bg-blue-600"
+                                />
+                            </label>
+                        ))}
+                    </div>
+                </Field>
+            </FieldGroup>
+
+            <FieldGroup label="Custom CSS Class">
+                <Field label="Extra CSS Classes">
+                    <Input
+                        value={content.customClass || ''}
+                        onChange={e => handleChange('customClass', e.target.value)}
+                        placeholder="e.g. my-section"
+                        className={inputCls}
+                    />
+                </Field>
+            </FieldGroup>
+        </div>
+    )
+}
+
+export default function SectionEditor({ section, onChange, onClose }) {
+    const [activeTab, setActiveTab] = useState('content')
+
+    if (!section) return null
+
+    const handleChange = (field, value) => {
+        onChange({ ...section, content: { ...section.content, [field]: value } })
     }
+
+    const IconComp = SECTION_ICONS[section.type] || FileText
+    const gradColor = SECTION_COLORS[section.type] || 'from-slate-400 to-slate-500'
+
+    return (
+        <aside
+            className="w-72 shrink-0 flex flex-col border-l bg-white border-slate-200 animate-in slide-in-from-right duration-200"
+        >
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 shrink-0">
+                <div className={cn('w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center shrink-0', gradColor)}>
+                    <IconComp className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 capitalize">{section.type} Section</p>
+                    <p className="text-[10px] text-slate-400">Properties</p>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                    <X className="w-3.5 h-3.5" />
+                </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-100 shrink-0">
+                {TABS.map(({ id, label, Icon }) => (
+                    <button
+                        key={id}
+                        onClick={() => setActiveTab(id)}
+                        className={cn(
+                            'flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors border-b-2',
+                            activeTab === id
+                                ? 'text-blue-600 border-blue-500 bg-blue-50/50'
+                                : 'text-slate-400 border-transparent hover:text-slate-600'
+                        )}
+                    >
+                        <Icon className="w-3.5 h-3.5" />
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-50/50">
+                {activeTab === 'content' && <ContentForm section={section} handleChange={handleChange} />}
+                {activeTab === 'style' && <StyleForm section={section} handleChange={handleChange} />}
+                {activeTab === 'advanced' && <AdvancedForm section={section} handleChange={handleChange} />}
+            </div>
+        </aside>
+    )
 }

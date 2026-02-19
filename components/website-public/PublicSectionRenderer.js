@@ -1,17 +1,20 @@
-import PublicHeroSection from './sections/HeroSection'
-import PublicProjectsSection from './sections/ProjectsSection'
-import PublicAboutSection from './sections/AboutSection'
+// PublicSectionRenderer re-uses the same section components as the builder
+// so that the live site and preview always look identical.
+import HeroSection from '@/components/website-builder/sections/HeroSection'
+import AboutSection from '@/components/website-builder/sections/AboutSection'
+import ProjectsSection from '@/components/website-builder/sections/ProjectsSection'
+import ContactSection from '@/components/website-builder/sections/ContactSection'
 
 export default function PublicSectionRenderer({ type, content, organizationId, slug }) {
     switch (type) {
         case 'hero':
-            return <PublicHeroSection content={content} />
-        case 'projects':
-            return <PublicProjectsSection content={content} organizationId={organizationId} slug={slug} />
+            return <HeroSection content={content} />
         case 'about':
-            return <PublicAboutSection content={content} />
+            return <AboutSection content={content} />
+        case 'projects':
+            return <ProjectsSection content={content} organizationId={organizationId} slug={slug} />
         case 'contact':
-            return <div className="py-20 text-center bg-slate-50">Contact Section (Coming Soon)</div>
+            return <ContactSection content={content} organizationId={organizationId} />
         default:
             return null
     }

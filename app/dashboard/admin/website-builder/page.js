@@ -6,32 +6,64 @@ import { useAuth } from '@/contexts/AuthContext'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core'
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { toast } from 'react-hot-toast'
-import { CopyPlus, ArrowLeft, Loader2, Save, Monitor, Smartphone, Eye, LayoutTemplate, Plus, Settings, Building2 } from 'lucide-react'
+import {
+    CopyPlus, ArrowLeft, Loader2, Monitor, Smartphone, Eye,
+    LayoutTemplate, Plus, Settings, Building2, ChevronDown,
+    Tablet, Layers, PanelLeft, Undo2, Redo2, CheckCircle2,
+    FileText, Phone, User, Sparkles, Grid3X3, Globe,
+    EyeOff, Trash2, GripVertical, ZoomIn, ZoomOut
+} from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import TemplateSelector from '@/components/website-builder/TemplateSelector'
-
-// Imports at top...
 import SortableSection from '@/components/website-builder/SortableSection'
 import SectionRenderer from '@/components/website-builder/SectionRenderer'
 import SectionEditor from '@/components/website-builder/SectionEditor'
 import SiteSettingsEditor from '@/components/website-builder/SiteSettingsEditor'
+import { cn } from '@/lib/utils'
+
+const SECTION_TYPES = [
+    {
+        group: 'Hero',
+        items: [
+            { type: 'hero', label: 'Hero', description: 'Full-width opening banner', icon: Sparkles, color: 'from-violet-500 to-purple-600' },
+        ]
+    },
+    {
+        group: 'Content',
+        items: [
+            { type: 'about', label: 'About', description: 'Company or team overview', icon: User, color: 'from-blue-500 to-cyan-500' },
+            { type: 'projects', label: 'Projects', description: 'Showcase portfolio grid', icon: Building2, color: 'from-emerald-500 to-teal-500' },
+        ]
+    },
+    {
+        group: 'Contact',
+        items: [
+            { type: 'contact', label: 'Contact', description: 'Get in touch form & details', icon: Phone, color: 'from-rose-500 to-pink-500' },
+        ]
+    },
+]
+
+const ZOOM_LEVELS = [50, 75, 100, 125, 150]
 
 export default function WebsiteBuilderPage() {
     const { user, profile, loading: authLoading } = useAuth()
     const supabase = createClient()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [lastSaved, setLastSaved] = useState(null)
     const [sections, setSections] = useState([])
     const [settings, setSettings] = useState({})
     const [activeId, setActiveId] = useState(null)
     const [viewMode, setViewMode] = useState('desktop')
+    const [zoom, setZoom] = useState(100)
     const [editingSectionId, setEditingSectionId] = useState(null)
     const [showSiteSettings, setShowSiteSettings] = useState(false)
-    const [orgDetails, setOrgDetails] = useState(null) // Cache for org details
+    const [orgDetails, setOrgDetails] = useState(null)
+    const [leftTab, setLeftTab] = useState('sections') // 'sections' | 'layers'
+    const [hiddenSections, setHiddenSections] = useState(new Set())
 
     // Template System State
     const [showTemplateSelector, setShowTemplateSelector] = useState(false)
@@ -40,59 +72,38 @@ export default function WebsiteBuilderPage() {
     const [newTemplateDesc, setNewTemplateDesc] = useState('')
     const [savingTemplate, setSavingTemplate] = useState(false)
 
-    // Load initial config and org details
     useEffect(() => {
+        // Wait for auth to finish — runs on first mount AND whenever auth state changes
         if (authLoading) return
-
         if (!profile?.organization_id) {
             setLoading(false)
             return
         }
         loadConfig()
-    }, [profile?.organization_id, authLoading])
+    }, [authLoading, profile?.organization_id]) // authLoading first so it triggers immediately when it flips to false
 
     const loadConfig = async () => {
-        console.time('loadConfig')
         try {
-            console.log('Starting loadConfig for org:', profile.organization_id)
-            // Fetch both config and details in one query if possible, or parallel
-            const start = performance.now()
-
-            const fetchPromise = supabase
+            const { data, error } = await supabase
                 .from('organizations')
-                .select('website_config, company_name, city, sector, contact_number, address_line_1')
+                .select('website_config, company_name, slug, city, sector, contact_number, address_line_1')
                 .eq('id', profile.organization_id)
                 .single()
 
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timed out')), 10000)
-            )
-
-            const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
-
-            const end = performance.now()
-            console.log(`Supabase fetch took ${end - start}ms`)
-
             if (error) throw error
 
-            // Store org details for template enrichment
             setOrgDetails({
                 company_name: data.company_name,
+                slug: data.slug,
                 city: data.city,
                 sector: data.sector,
                 contact_number: data.contact_number,
                 address_line_1: data.address_line_1
             })
 
-            console.log('Website Config Size:', data.website_config ? JSON.stringify(data.website_config).length : 0, 'bytes')
-
             if (data.website_config) {
-                if (Array.isArray(data.website_config.sections)) {
-                    setSections(data.website_config.sections)
-                }
-                if (data.website_config.settings) {
-                    setSettings(data.website_config.settings)
-                }
+                if (Array.isArray(data.website_config.sections)) setSections(data.website_config.sections)
+                if (data.website_config.settings) setSettings(data.website_config.settings)
             } else {
                 setSections([
                     { id: 'hero-1', type: 'hero', content: { title: 'Welcome', subtitle: 'Building the Future' } },
@@ -103,84 +114,27 @@ export default function WebsiteBuilderPage() {
             console.error('Error loading config:', err)
             toast.error('Failed to load website configuration')
         } finally {
-            console.timeEnd('loadConfig')
             setLoading(false)
         }
     }
 
     const handleApplyTemplate = async (config) => {
         let enrichedSections = config.sections || []
-        const dataToUse = orgDetails || {} // Use cached data
-
+        const d = orgDetails || {}
         try {
-            if (dataToUse) {
-                enrichedSections = enrichedSections.map(s => {
-                    const newId = `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-
-                    // Enrich Hero Data
-                    if (s.type === 'hero' && dataToUse.company_name) {
-                        return {
-                            ...s,
-                            id: newId,
-                            content: {
-                                ...s.content,
-                                title: dataToUse.company_name,
-                                subtitle: s.content.subtitle || `Premier ${dataToUse.sector || 'Real Estate'} in ${dataToUse.city || 'your area'}`
-                            }
-                        }
-                    }
-
-                    // Enrich About Data
-                    if (s.type === 'about') {
-                        return {
-                            ...s,
-                            id: newId,
-                            content: {
-                                ...s.content,
-                                heading: `About ${dataToUse.company_name || 'Us'}`,
-                                text: `We are a leading ${dataToUse.sector || 'real estate'} company based in ${dataToUse.city || 'the region'}. ${s.content.text || ''}`
-                            }
-                        }
-                    }
-
-                    // Enrich Contact Data
-                    if (s.type === 'contact') {
-                        return {
-                            ...s,
-                            id: newId,
-                            content: {
-                                ...s.content,
-                                address: dataToUse.address_line_1,
-                                phone: dataToUse.contact_number
-                            }
-                        }
-                    }
-
-                    return { ...s, id: newId }
-                })
-            } else {
-                // Fallback
-                enrichedSections = enrichedSections.map(s => ({
-                    ...s,
-                    id: `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
-                }))
-            }
-
-            // Apply new sections
-            setSections(enrichedSections)
-
-            if (config.settings) {
-                setSettings(prev => ({ ...prev, ...config.settings }))
-            }
-
-            setShowTemplateSelector(false)
-            toast.success("Template applied successfully!", {
-                icon: '✨'
+            enrichedSections = enrichedSections.map(s => {
+                const newId = `${s.type}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+                if (s.type === 'hero' && d.company_name) return { ...s, id: newId, content: { ...s.content, title: d.company_name, subtitle: s.content.subtitle || `Premier ${d.sector || 'Real Estate'} in ${d.city || 'your area'}` } }
+                if (s.type === 'about') return { ...s, id: newId, content: { ...s.content, heading: `About ${d.company_name || 'Us'}`, text: `We are a leading ${d.sector || 'real estate'} company based in ${d.city || 'the region'}. ${s.content.text || ''}` } }
+                if (s.type === 'contact') return { ...s, id: newId, content: { ...s.content, address: d.address_line_1, phone: d.contact_number } }
+                return { ...s, id: newId }
             })
-
+            setSections(enrichedSections)
+            if (config.settings) setSettings(prev => ({ ...prev, ...config.settings }))
+            setShowTemplateSelector(false)
+            toast.success('Template applied!', { icon: '✨' })
         } catch (error) {
-            console.error("Error applying template", error)
-            toast.error("Issue applying template")
+            toast.error('Issue applying template')
         }
     }
 
@@ -188,19 +142,14 @@ export default function WebsiteBuilderPage() {
         setSavingTemplate(true)
         try {
             const { error } = await supabase.from('website_templates').insert({
-                name: newTemplateName,
-                description: newTemplateDesc,
-                config: { sections, settings },
-                created_by: user.id,
-                is_active: true // Auto-activate for now
+                name: newTemplateName, description: newTemplateDesc,
+                config: { sections, settings }, created_by: user.id, is_active: true
             })
             if (error) throw error
-            toast.success('Template created successfully!')
+            toast.success('Template created!')
             setShowSaveTemplateModal(false)
-            setNewTemplateName('')
-            setNewTemplateDesc('')
+            setNewTemplateName(''); setNewTemplateDesc('')
         } catch (err) {
-            console.error('Failed to save template', err)
             toast.error('Failed to save template')
         } finally {
             setSavingTemplate(false)
@@ -208,49 +157,40 @@ export default function WebsiteBuilderPage() {
     }
 
     const handleSave = async () => {
+        if (!profile?.organization_id) {
+            toast.error('Organization not loaded yet. Please wait.')
+            return
+        }
         setSaving(true)
         try {
             const { data, error } = await supabase
                 .from('organizations')
-                .update({
-                    website_config: {
-                        sections,
-                        settings,
-                        updated_at: new Date().toISOString()
-                    }
-                })
+                .update({ website_config: { sections, settings, updated_at: new Date().toISOString() } })
                 .eq('id', profile.organization_id)
-                .select()
-
+                .select('id')
             if (error) throw error
-
-            toast.success('Website saved successfully')
+            if (!data || data.length === 0) throw new Error('Permission denied — only admins can publish the website.')
+            setLastSaved(new Date())
+            toast.success('Published successfully!', { icon: '🚀' })
         } catch (err) {
-            console.error('Error saving:', err)
             toast.error(err.message || 'Failed to save changes')
         } finally {
             setSaving(false)
         }
     }
 
+
     const sensors = useSensors(
         useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     )
-
-    const handleDragStart = (event) => {
-        setActiveId(event.active.id)
-    }
 
     const handleDragEnd = (event) => {
         const { active, over } = event
-
         if (active.id !== over?.id) {
-            setSections((items) => {
-                const oldIndex = items.findIndex((item) => item.id === active.id)
-                const newIndex = items.findIndex((item) => item.id === over.id)
+            setSections(items => {
+                const oldIndex = items.findIndex(i => i.id === active.id)
+                const newIndex = items.findIndex(i => i.id === over.id)
                 return arrayMove(items, oldIndex, newIndex)
             })
         }
@@ -259,7 +199,8 @@ export default function WebsiteBuilderPage() {
 
     const handleDeleteSection = useCallback((id) => {
         setSections(prev => prev.filter(s => s.id !== id))
-    }, [])
+        if (editingSectionId === id) setEditingSectionId(null)
+    }, [editingSectionId])
 
     const handleUpdateSection = useCallback((updatedSection) => {
         setSections(prev => prev.map(s => s.id === updatedSection.id ? updatedSection : s))
@@ -271,240 +212,413 @@ export default function WebsiteBuilderPage() {
     }, [])
 
     const handleUpdateSettings = useCallback((fullConfig) => {
-        if (fullConfig.settings) {
-            setSettings(fullConfig.settings)
-        }
+        if (fullConfig.settings) setSettings(fullConfig.settings)
     }, [])
 
+    const handleDuplicateSection = useCallback((id) => {
+        setSections(prev => {
+            const idx = prev.findIndex(s => s.id === id)
+            if (idx === -1) return prev
+            const original = prev[idx]
+            const copy = { ...original, id: `${original.type}-${Date.now()}` }
+            const next = [...prev]
+            next.splice(idx + 1, 0, copy)
+            return next
+        })
+        toast.success('Section duplicated')
+    }, [])
+
+    const toggleSectionVisibility = (id) => {
+        setHiddenSections(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id); else next.add(id)
+            return next
+        })
+    }
+
+    const addSection = (type) => {
+        const newSec = {
+            id: `${type}-${Date.now()}`,
+            type,
+            content: type === 'hero' ? { title: orgDetails?.company_name || 'Your Company', subtitle: 'Subtitle here' } : {}
+        }
+        setSections(prev => [...prev, newSec])
+        setLeftTab('layers')
+        toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} section added`)
+    }
+
+    const canvasWidth = viewMode === 'mobile' ? 390 : viewMode === 'tablet' ? 768 : '100%'
+
     if (loading) {
-        return <div className="flex items-center justify-center h-screen"><Loader2 className="w-8 h-8 animate-spin" /></div>
+        return (
+            <div className="flex items-center justify-center h-screen bg-slate-50">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm text-slate-400">Loading workspace…</p>
+                </div>
+            </div>
+        )
     }
 
     const editingSection = editingSectionId ? sections.find(s => s.id === editingSectionId) : null
 
     return (
-        <div className="flex flex-col h-screen bg-slate-100 overflow-hidden">
-            {/* Top Bar */}
-            <div className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-6 shrink-0 z-20 sticky top-0">
-                <div className="flex items-center gap-6">
-                    <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="text-slate-500 hover:text-slate-900 hover:bg-slate-100/50 rounded-full">
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
+        <div className="flex flex-col h-screen overflow-hidden bg-slate-50" style={{ fontFamily: '"Inter", system-ui, sans-serif' }}>
 
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                            <LayoutTemplate className="w-5 h-5" />
+            {/* ── TOP TOOLBAR ─────────────────────────────────────────── */}
+            <header className="h-12 shrink-0 flex items-center justify-between px-3 border-b bg-white border-slate-200 shadow-sm">
+
+                {/* Left: Back + Branding */}
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => window.history.back()}
+                        className="flex items-center justify-center w-7 h-7 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </button>
+                    <div className="h-4 w-px bg-slate-200" />
+                    <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center">
+                            <Globe className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <h1 className="font-bold text-lg text-slate-900 tracking-tight">
-                            Website Builder
-                        </h1>
+                        <span className="text-sm font-semibold text-slate-800">Website Builder</span>
+                        {settings?.siteName && (
+                            <span className="text-xs text-slate-400 hidden md:block">/ {settings.siteName}</span>
+                        )}
                     </div>
 
-                    <div className="h-6 w-px bg-slate-200 mx-2" />
+                    <div className="h-4 w-px bg-slate-200 mx-1" />
 
-                    {/* Device Toggles */}
-                    <div className="bg-slate-100/80 p-1 rounded-full flex gap-1 border border-slate-200/50">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`h-8 px-3 rounded-full transition-all duration-300 ${viewMode === 'desktop' ? 'bg-white shadow-sm text-primary font-medium' : 'text-slate-500 hover:text-slate-700'}`}
-                            onClick={() => setViewMode('desktop')}
-                        >
-                            <Monitor className="w-4 h-4 mr-2" />
-                            <span className="text-xs">Desktop</span>
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`h-8 px-3 rounded-full transition-all duration-300 ${viewMode === 'mobile' ? 'bg-white shadow-sm text-primary font-medium' : 'text-slate-500 hover:text-slate-700'}`}
-                            onClick={() => setViewMode('mobile')}
-                        >
-                            <Smartphone className="w-4 h-4 mr-2" />
-                            <span className="text-xs">Mobile</span>
-                        </Button>
+                    {/* Undo / Redo placeholder */}
+                    <div className="flex items-center gap-0.5">
+                        <button disabled className="flex items-center justify-center w-7 h-7 rounded-md text-slate-300 cursor-not-allowed">
+                            <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button disabled className="flex items-center justify-center w-7 h-7 rounded-md text-slate-300 cursor-not-allowed">
+                            <Redo2 className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200/50 mr-2">
-                        <Button
-                            variant={showSiteSettings ? "secondary" : "ghost"}
-                            size="sm"
-                            className={`h-8 text-xs font-medium ${showSiteSettings ? 'bg-white shadow-sm' : 'text-slate-600'}`}
-                            onClick={() => {
-                                setShowSiteSettings(true)
-                                setEditingSectionId(null)
-                            }}
+                {/* Center: Device Toggle */}
+                <div className="flex items-center gap-1 px-1 py-0.5 rounded-lg bg-slate-100 border border-slate-200">
+                    {[
+                        { mode: 'desktop', Icon: Monitor, label: 'Desktop' },
+                        { mode: 'tablet', Icon: Tablet, label: 'Tablet' },
+                        { mode: 'mobile', Icon: Smartphone, label: 'Mobile' },
+                    ].map(({ mode, Icon, label }) => (
+                        <button
+                            key={mode}
+                            onClick={() => setViewMode(mode)}
+                            title={label}
+                            className={cn(
+                                'flex items-center justify-center w-8 h-7 rounded-md transition-all duration-150',
+                                viewMode === mode
+                                    ? 'bg-white text-blue-600 shadow-sm border border-slate-200'
+                                    : 'text-slate-400 hover:text-slate-600'
+                            )}
                         >
-                            <Settings className="w-3.5 h-3.5 mr-2" />
-                            Settings
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-xs font-medium text-slate-600 hover:text-primary hover:bg-white/50"
-                            onClick={() => setShowTemplateSelector(true)}
-                        >
-                            <LayoutTemplate className="w-3.5 h-3.5 mr-2" />
-                            Templates
-                        </Button>
+                            <Icon className="w-4 h-4" />
+                        </button>
+                    ))}
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex items-center gap-2">
+                    {/* Zoom */}
+                    <div className="hidden md:flex items-center gap-1 text-xs text-slate-500">
+                        <button onClick={() => setZoom(z => Math.max(50, z - 25))} className="w-6 h-6 flex items-center justify-center rounded hover:text-slate-800 hover:bg-slate-100">
+                            <ZoomOut className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center tabular-nums">{zoom}%</span>
+                        <button onClick={() => setZoom(z => Math.min(150, z + 25))} className="w-6 h-6 flex items-center justify-center rounded hover:text-slate-800 hover:bg-slate-100">
+                            <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
                     </div>
 
+                    <div className="h-4 w-px bg-slate-200" />
+
+                    {/* Settings */}
+                    <button
+                        onClick={() => { setShowSiteSettings(true); setEditingSectionId(null) }}
+                        className={cn('flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors', showSiteSettings ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100')}
+                    >
+                        <Settings className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Settings</span>
+                    </button>
+
+                    {/* Templates */}
+                    <button
+                        onClick={() => setShowTemplateSelector(true)}
+                        className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                    >
+                        <LayoutTemplate className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Templates</span>
+                    </button>
+
+                    {/* Save as Template (super admin only) */}
                     {['super_admin', 'platform_admin'].includes(profile?.role) && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                        <button
                             onClick={() => setShowSaveTemplateModal(true)}
-                            className="text-slate-500 hover:text-primary"
+                            className="flex items-center justify-center w-7 h-7 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+                            title="Save as Template"
                         >
-                            <CopyPlus className="w-4 h-4" />
-                        </Button>
+                            <CopyPlus className="w-3.5 h-3.5" />
+                        </button>
                     )}
 
-                    <div className="h-6 w-px bg-slate-200" />
+                    <div className="h-4 w-px bg-slate-200" />
 
-                    <Button variant="outline" size="sm" onClick={() => {
-                        const baseUrl = profile?.slug ? `/p/${profile.slug}` : `/p/preview?id=${profile?.organization_id}`;
-                        const freshUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
-                        window.open(freshUrl, '_blank');
-                    }} className="rounded-full px-4 border-slate-200 hover:bg-slate-50 text-slate-600">
-                        <Eye className="w-4 h-4 mr-2" />
+                    {/* Preview */}
+                    <button
+                        onClick={() => {
+                            const slug = orgDetails?.slug || null
+                            const orgId = profile?.organization_id
+                            const bust = `t=${Date.now()}`
+                            const url = slug
+                                ? `/p/${slug}?${bust}`
+                                : `/p/preview?id=${orgId}&${bust}`
+                            window.open(url, '_blank')
+                        }}
+                        className="flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-medium border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                    >
+                        <Eye className="w-3.5 h-3.5" />
                         Preview
-                    </Button>
+                    </button>
 
-                    <Button onClick={handleSave} disabled={saving} size="sm" className="rounded-full px-5 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-95">
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                        {saving ? 'Saving...' : 'Publish'}
-                    </Button>
+                    {/* Publish */}
+                    <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="flex items-center gap-2 h-7 px-4 rounded-md text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 shadow-sm"
+                    >
+                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {saving ? 'Saving…' : 'Publish'}
+                    </button>
                 </div>
-            </div>
+            </header>
 
-            {/* Main Workspace */}
-            <div className="flex-1 flex overflow-hidden relative">
-                {/* Sidebar (Tools) - Left */}
-                <div className="w-72 bg-white/80 backdrop-blur-sm border-r border-slate-200 flex flex-col shrink-0 z-10 hidden md:flex transition-all duration-300">
-                    <div className="p-5 border-b border-slate-100">
-                        <h2 className="font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                            <Plus className="w-4 h-4 text-primary" />
-                            Add Section
-                        </h2>
-                    </div>
-                    <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar">
-                        {['Hero', 'About', 'Projects', 'Contact'].map((type) => (
-                            <div key={type} className="group relative">
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start h-14 border-slate-200 hover:border-primary/30 hover:bg-slate-50/80 transition-all rounded-xl relative overflow-hidden"
-                                    onClick={() => {
-                                        setSections([...sections, {
-                                            id: `${type.toLowerCase()}-${Date.now()}`,
-                                            type: type.toLowerCase(),
-                                            content: type === 'Hero' ? { title: 'New Hero', subtitle: 'Subtitle' } : {}
-                                        }])
-                                        toast.success(`Added ${type} section`)
-                                    }}
-                                >
-                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center mr-3 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        {type === 'Hero' && <LayoutTemplate className="w-4 h-4" />}
-                                        {type === 'About' && <div className="text-xs font-bold">Ab</div>}
-                                        {type === 'Projects' && <Building2 className="w-4 h-4" />}
-                                        {type === 'Contact' && <Smartphone className="w-4 h-4" />}
-                                    </div>
-                                    <div className="flex flex-col items-start">
-                                        <span className="font-semibold text-slate-700 group-hover:text-slate-900">{type}</span>
-                                        <span className="text-[10px] text-slate-400 font-normal">Drag to reorder</span>
-                                    </div>
-                                    <Plus className="w-4 h-4 absolute right-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
-                                </Button>
-                            </div>
+            {/* ── MAIN WORKSPACE ──────────────────────────────────────── */}
+            <div className="flex-1 flex overflow-hidden">
+
+                {/* ── LEFT PANEL ── */}
+                <aside className="w-60 shrink-0 flex flex-col border-r bg-white border-slate-200">
+
+                    {/* Tabs */}
+                    <div className="flex border-b border-slate-200">
+                        {[
+                            { id: 'sections', label: 'Add', Icon: Plus },
+                            { id: 'layers', label: 'Layers', Icon: Layers },
+                        ].map(({ id, label, Icon }) => (
+                            <button
+                                key={id}
+                                onClick={() => setLeftTab(id)}
+                                className={cn(
+                                    'flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors border-b-2',
+                                    leftTab === id
+                                        ? 'text-blue-600 border-blue-500 bg-blue-50/50'
+                                        : 'text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-50'
+                                )}
+                            >
+                                <Icon className="w-3.5 h-3.5" />
+                                {label}
+                            </button>
                         ))}
                     </div>
 
-                    <div className="mt-auto p-4 border-t border-slate-100">
-                        <div className="bg-slate-50 rounded-xl p-4 text-xs text-slate-500 border border-slate-100">
-                            <p className="font-medium text-slate-700 mb-1">Pro Tip</p>
-                            You can reorder sections by dragging them in the canvas.
-                        </div>
-                    </div>
-                </div>
-
-                {/* Canvas Area */}
-                <div className="flex-1 bg-slate-100 overflow-y-auto p-4 md:p-8 flex justify-center relative">
-                    <div
-                        className={`bg-white shadow-xl transition-all duration-300 ease-in-out min-h-[500px] ${viewMode === 'mobile' ? 'w-[375px]' : 'w-full max-w-5xl'
-                            }`}
-                        style={{ border: viewMode === 'mobile' ? '8px solid #333' : 'none', borderRadius: viewMode === 'mobile' ? '24px' : '0' }}
-                    >
-                        {viewMode === 'mobile' && <div className="h-6 w-32 bg-black mx-auto rounded-b-xl mb-4" />} {/* Notch Simulation */}
-
-                        <div className="p-4 min-h-full">
-                            {/* Render Nav using Settings */}
-                            {settings.logoUrl || settings.siteName ? (
-                                <div className="mb-4 p-4 border-b border-gray-100 flex justify-between items-center bg-white" style={{ borderColor: settings.primaryColor ? `${settings.primaryColor}20` : '' }}>
-                                    <div className="flex items-center gap-3">
-                                        {settings.logoUrl && <img src={settings.logoUrl} alt="Logo" className="h-8" />}
-                                        {settings.siteName && <span className="font-bold text-lg" style={{ color: settings.primaryColor }}>{settings.siteName}</span>}
+                    {/* Sections Tab */}
+                    {leftTab === 'sections' && (
+                        <div className="flex-1 overflow-y-auto p-3 space-y-4 custom-scrollbar">
+                            {SECTION_TYPES.map(group => (
+                                <div key={group.group}>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 px-1">
+                                        {group.group}
+                                    </p>
+                                    <div className="space-y-1.5">
+                                        {group.items.map(({ type, label, description, icon: Icon, color }) => (
+                                            <button
+                                                key={type}
+                                                onClick={() => addSection(type)}
+                                                className="w-full flex items-center gap-3 p-2.5 rounded-lg text-left transition-all hover:bg-slate-50 group border border-transparent hover:border-slate-200"
+                                            >
+                                                <div className={cn('w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center shrink-0', color)}>
+                                                    <Icon className="w-4 h-4 text-white" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{label}</p>
+                                                    <p className="text-[10px] text-slate-400 truncate">{description}</p>
+                                                </div>
+                                                <Plus className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 shrink-0 ml-auto transition-colors" />
+                                            </button>
+                                        ))}
                                     </div>
-                                    <nav className="hidden md:flex gap-4 text-sm font-medium text-gray-600">
-                                        <a href="#">Home</a>
-                                        <a href="#">Projects</a>
-                                        <a href="#">About</a>
-                                        <a href="#">Contact</a>
+                                </div>
+                            ))}
+
+                            <div className="mt-4 p-3 rounded-xl text-xs bg-blue-50 border border-blue-100">
+                                <p className="font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
+                                    <Grid3X3 className="w-3.5 h-3.5" /> Tip
+                                </p>
+                                <p className="text-blue-500 leading-relaxed">Drag sections to reorder them in the Layers panel.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Layers Tab */}
+                    {leftTab === 'layers' && (
+                        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                            {sections.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-40 text-center">
+                                    <Layers className="w-8 h-8 text-slate-300 mb-2" />
+                                    <p className="text-xs text-slate-400">No sections yet.<br />Add sections from the Add tab.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {sections.map((section, idx) => {
+                                        const isHidden = hiddenSections.has(section.id)
+                                        const isEditing = editingSectionId === section.id
+                                        const Icon = SECTION_TYPES.flatMap(g => g.items).find(i => i.type === section.type)?.icon || FileText
+                                        return (
+                                            <div
+                                                key={section.id}
+                                                onClick={() => handleEditSection(section.id)}
+                                                className={cn(
+                                                    'flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer transition-all group',
+                                                    isEditing
+                                                        ? 'bg-blue-50 border border-blue-200'
+                                                        : 'hover:bg-slate-50 border border-transparent'
+                                                )}
+                                            >
+                                                <GripVertical className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                                                <Icon className={cn('w-3.5 h-3.5 shrink-0', isEditing ? 'text-blue-500' : 'text-slate-400')} />
+                                                <span className={cn('flex-1 text-xs font-medium capitalize truncate', isEditing ? 'text-blue-600' : 'text-slate-700')}>
+                                                    {section.type}
+                                                </span>
+                                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); toggleSectionVisibility(section.id) }}
+                                                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-200"
+                                                        title={isHidden ? 'Show' : 'Hide'}
+                                                    >
+                                                        {isHidden
+                                                            ? <EyeOff className="w-3 h-3 text-slate-400" />
+                                                            : <Eye className="w-3 h-3 text-slate-400" />
+                                                        }
+                                                    </button>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); handleDeleteSection(section.id) }}
+                                                        className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-50"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-3 h-3 text-slate-400 hover:text-red-500" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </aside>
+
+                {/* ── CANVAS AREA ── */}
+                <div
+                    className="flex-1 overflow-auto relative flex flex-col items-center"
+                    style={{
+                        background: '#f1f5f9',
+                        backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
+                        backgroundSize: '24px 24px',
+                    }}
+                >
+                    {/* Canvas wrapper */}
+                    <div
+                        className="my-8 origin-top transition-all duration-300"
+                        style={{
+                            transform: `scale(${zoom / 100})`,
+                            transformOrigin: 'top center',
+                            width: viewMode === 'mobile' ? '390px' : viewMode === 'tablet' ? '768px' : 'min(calc(100vw - 520px), 1200px)',
+                        }}
+                    >
+                        {/* Device frame */}
+                        <div
+                            className="relative bg-white min-h-[600px] overflow-hidden"
+                            style={{
+                                borderRadius: viewMode !== 'desktop' ? '24px' : '8px',
+                                border: viewMode !== 'desktop' ? '10px solid #334155' : '1px solid #e2e8f0',
+                                boxShadow: '0 8px 40px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)',
+                            }}
+                        >
+                            {/* Mobile notch */}
+                            {viewMode === 'mobile' && (
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-5 bg-slate-800 rounded-b-2xl z-50" />
+                            )}
+
+                            {/* Site nav preview */}
+                            {(settings?.siteName || settings?.logoUrl) && (
+                                <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100"
+                                    style={{ backgroundColor: settings?.navBg || '#fff' }}>
+                                    <div className="flex items-center gap-3">
+                                        {settings.logoUrl && <img src={settings.logoUrl} alt="Logo" className="h-7" />}
+                                        {settings.siteName && (
+                                            <span className="font-bold text-base" style={{ color: settings.primaryColor || '#111' }}>
+                                                {settings.siteName}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <nav className="hidden md:flex gap-5 text-sm font-medium text-gray-600">
+                                        <a href="#">Home</a><a href="#">Projects</a><a href="#">About</a><a href="#">Contact</a>
                                     </nav>
                                 </div>
-                            ) : null}
+                            )}
 
-                            <DndContext
-                                sensors={sensors}
-                                collisionDetection={closestCenter}
-                                onDragStart={handleDragStart}
-                                onDragEnd={handleDragEnd}
-                            >
-                                <SortableContext
-                                    items={sections.map(s => s.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    <div className="space-y-4">
-                                        {sections.map((section) => (
-                                            <SortableSection
-                                                key={section.id}
-                                                id={section.id}
-                                                section={section}
-                                                onEdit={handleEditSection}
-                                                onDelete={handleDeleteSection}
-                                            >
-                                                <SectionRenderer type={section.type} content={section.content} />
-                                            </SortableSection>
+                            {/* Sections */}
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={e => setActiveId(e.active.id)} onDragEnd={handleDragEnd}>
+                                <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                                    <div className="divide-y divide-gray-100">
+                                        {sections.map(section => (
+                                            !hiddenSections.has(section.id) && (
+                                                <SortableSection
+                                                    key={section.id}
+                                                    id={section.id}
+                                                    section={section}
+                                                    isEditing={editingSectionId === section.id}
+                                                    onEdit={handleEditSection}
+                                                    onDelete={handleDeleteSection}
+                                                    onDuplicate={handleDuplicateSection}
+                                                >
+                                                    <SectionRenderer type={section.type} content={section.content} />
+                                                </SortableSection>
+                                            )
                                         ))}
                                     </div>
                                 </SortableContext>
                                 <DragOverlay>
-                                    {activeId ? (
-                                        <div className="opacity-80">
-                                            {(() => {
-                                                const s = sections.find(x => x.id === activeId)
-                                                return s ? (
-                                                    <SortableSection id={s.id} section={s} onEdit={() => { }} onDelete={() => { }}>
-                                                        <SectionRenderer type={s.type} content={s.content} />
-                                                    </SortableSection>
-                                                ) : null
-                                            })()}
-                                        </div>
-                                    ) : null}
+                                    {activeId && (() => {
+                                        const s = sections.find(x => x.id === activeId)
+                                        return s ? (
+                                            <div className="opacity-90 bg-white ring-2 ring-blue-500 shadow-2xl rounded-lg">
+                                                <SectionRenderer type={s.type} content={s.content} />
+                                            </div>
+                                        ) : null
+                                    })()}
                                 </DragOverlay>
                             </DndContext>
 
-                            {sections.length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-20 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
-                                    <Plus className="w-10 h-10 mb-2 opacity-50" />
-                                    <p>Drag or click sections to add them here</p>
+                            {sections.filter(s => !hiddenSections.has(s.id)).length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-32 text-center px-8">
+                                    <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center mb-4">
+                                        <Plus className="w-7 h-7 text-zinc-400" />
+                                    </div>
+                                    <p className="font-semibold text-zinc-800 mb-1">Start building your site</p>
+                                    <p className="text-sm text-zinc-400">Add sections from the panel on the left</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
 
-                {/* Properties Panel (Right) - Section Editor */}
+                {/* ── RIGHT PANEL: Section Editor or Site Settings ── */}
                 {editingSection && (
                     <SectionEditor
                         section={editingSection}
@@ -521,14 +635,30 @@ export default function WebsiteBuilderPage() {
                 )}
             </div>
 
-            {/* Modals */}
+            {/* ── STATUS BAR ─────────────────────────────────────────── */}
+            <footer className="h-7 shrink-0 flex items-center justify-between px-4 border-t text-[11px] bg-white border-slate-200 text-slate-400">
+                <div className="flex items-center gap-3">
+                    <span>{sections.length} section{sections.length !== 1 ? 's' : ''}</span>
+                    <span>·</span>
+                    <span>{viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} view</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    {lastSaved && (
+                        <span className="text-emerald-600">
+                            Saved {lastSaved.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
+                    <span>Zoom {zoom}%</span>
+                </div>
+            </footer>
+
+            {/* ── MODALS ─────────────────────────────────────────────── */}
             <TemplateSelector
                 isOpen={showTemplateSelector}
                 onClose={() => setShowTemplateSelector(false)}
                 onSelect={handleApplyTemplate}
             />
 
-            {/* Save Template Modal */}
             <Dialog open={showSaveTemplateModal} onOpenChange={setShowSaveTemplateModal}>
                 <DialogContent>
                     <DialogHeader>
@@ -537,26 +667,18 @@ export default function WebsiteBuilderPage() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Template Name</label>
-                            <Input
-                                placeholder="e.g. Modern Dark Theme"
-                                value={newTemplateName}
-                                onChange={e => setNewTemplateName(e.target.value)}
-                            />
+                            <label className="text-sm font-medium text-slate-700">Template Name</label>
+                            <Input placeholder="e.g. Modern Light Theme" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Description</label>
-                            <Textarea
-                                placeholder="Brief description of this style..."
-                                value={newTemplateDesc}
-                                onChange={e => setNewTemplateDesc(e.target.value)}
-                            />
+                            <label className="text-sm font-medium text-slate-700">Description</label>
+                            <Textarea placeholder="Brief description…" value={newTemplateDesc} onChange={e => setNewTemplateDesc(e.target.value)} />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowSaveTemplateModal(false)}>Cancel</Button>
-                        <Button onClick={handleSaveTemplate} disabled={savingTemplate || !newTemplateName}>
-                            {savingTemplate ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        <Button onClick={handleSaveTemplate} disabled={savingTemplate || !newTemplateName} className="bg-blue-600 hover:bg-blue-700">
+                            {savingTemplate ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                             Create Template
                         </Button>
                     </DialogFooter>

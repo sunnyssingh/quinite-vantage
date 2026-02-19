@@ -1,104 +1,55 @@
 'use client'
+
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient as createClientSupabaseClient } from '@/lib/supabase/client'
-import {
-    LayoutDashboard,
-    Users,
-    FolderKanban,
-    UserPlus,
-    Megaphone,
-    BarChart3,
-    FileText,
-    Settings,
-    LogOut,
-    Building2,
-    KanbanSquare,
-    Building
-} from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { usePathname } from 'next/navigation'
-import MobileNav from '@/components/dashboard/MobileNav'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import { toast } from 'react-hot-toast'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import AdminHeader from '@/components/admin/AdminHeader'
-import CustomBreadcrumbs from '@/components/ui/CustomBreadcrumbs'
-
 
 export default function AdminLayout({ children }) {
+    const { user, profile, loading: authLoading } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
-    const [loading, setLoading] = useState(true)
     const [authorized, setAuthorized] = useState(false)
-    const [user, setUser] = useState(null)
-    const [profile, setProfile] = useState(null)
 
     useEffect(() => {
-        checkRole()
-    }, [])
+        if (!authLoading) checkAccess()
+    }, [authLoading, user, profile])
 
-    async function checkRole() {
-        try {
-            console.log('🔍 [Admin] Checking role...')
-            const supabase = createClientSupabaseClient()
-            const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-            if (userError) {
-                console.error('❌ [Admin] User error:', userError)
-            }
-
-            if (!user) {
-                console.log('❌ [Admin] No user found, redirecting to login')
-                router.push('/')
-                return
-            }
-
-            setUser(user)
-
-            // Fetch profile via API (bypasses RLS)
-            const profileResponse = await fetch('/api/auth/user')
-            const profileData = await profileResponse.json()
-
-            if (!profileResponse.ok || !profileData.user?.profile) {
-                console.error('❌ [Admin] Profile fetch failed:', profileData.error)
-                router.push('/')
-                return
-            }
-
-            const userProfile = profileData.user.profile
-            setProfile(userProfile)
-
-            // Allow all organization roles (employee, manager, super_admin)
-            // Platform admins should use /dashboard/platform
-            const allowedRoles = ['employee', 'manager', 'super_admin']
-            if (!allowedRoles.includes(userProfile?.role)) {
-                console.log(`⛔ [Admin] Access denied - role: ${userProfile?.role}`)
-                router.push('/')
-                return
-            }
-
-            setAuthorized(true)
-            setLoading(false)
-
-        } catch (error) {
-            console.error('❌ [Admin] Error:', error)
+    function checkAccess() {
+        // 1. No user -> Redirect
+        if (!user) {
             router.push('/')
+            return
         }
+
+        // 2. No profile -> Redirect
+        if (!profile) {
+            // If auth is done loading but no profile, something is wrong
+            console.error('❌ [Admin] User logged in but no profile found')
+            router.push('/')
+            return
+        }
+
+        // 3. Check Role
+        const allowedRoles = ['employee', 'manager', 'super_admin']
+        if (!allowedRoles.includes(profile.role)) {
+            console.log(`⛔ [Admin] Access denied - role: ${profile.role}`)
+            toast.error('Access denied')
+            router.push('/')
+            return
+        }
+
+        setAuthorized(true)
     }
 
-    const navItems = [
-        { icon: LayoutDashboard, label: 'Overview', href: '/dashboard/admin' },
-        { icon: KanbanSquare, label: 'CRM', href: '/dashboard/admin/crm' },
-        { icon: Building, label: 'Inventory', href: '/dashboard/admin/inventory' },
-        { icon: BarChart3, label: 'Analytics', href: '/dashboard/admin/analytics' },
-        { icon: FileText, label: 'Audit Logs', href: '/dashboard/admin/audit' },
-        { icon: Users, label: 'Users', href: '/dashboard/admin/users' },
-        { icon: Users, label: 'Profile', href: '/dashboard/admin/profile' },
-        { icon: Settings, label: 'Settings', href: '/dashboard/admin/settings' },
-    ]
-
-    if (!loading && !authorized) {
-        return null
+    if (authLoading || !authorized) {
+        return (
+            <div className="h-screen flex items-center justify-center bg-slate-50">
+                <LoadingSpinner className="w-8 h-8 text-primary" />
+            </div>
+        )
     }
 
     const isFullScreenModule = pathname?.startsWith('/dashboard/admin/crm') ||

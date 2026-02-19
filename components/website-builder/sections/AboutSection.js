@@ -1,48 +1,103 @@
-export default function AboutSection({ content }) {
+import React from 'react'
+
+const DEFAULT_HIGHLIGHTS = [
+    { label: '10+ Years', desc: 'of Excellence' },
+    { label: '500+', desc: 'Projects Completed' },
+    { label: '98%', desc: 'Client Satisfaction' },
+]
+
+export default function AboutSection({ content = {} }) {
+    const {
+        heading = 'About Us',
+        text = 'We are a leading real estate company dedicated to helping you find the perfect property. With decades of experience, we bring unparalleled expertise and a commitment to excellence to every transaction.',
+        highlight1 = '10+ Years',
+        highlight2 = '500+ Projects',
+        highlight3 = '98% Satisfaction',
+        imageUrl,
+        bgColor = '#ffffff',
+        textColor = '#111827',
+        paddingTop = 80,
+        paddingBottom = 80,
+    } = content
+
+    const highlights = [
+        { label: highlight1, desc: 'of Excellence' },
+        { label: highlight2, desc: 'Completed' },
+        { label: highlight3, desc: 'Client Rating' },
+    ]
+
     return (
-        <div className="w-full py-24 px-8 bg-white overflow-hidden">
-            <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                <div className="space-y-6 order-2 md:order-1 animate-in slide-in-from-left-8 duration-700 delay-100">
-                    <div className="inline-block px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-semibold tracking-wide uppercase">
-                        About Us
-                    </div>
-                    <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight leading-tight">
-                        {content.heading || 'About Our Company'}
-                    </h2>
-                    <p className="text-lg text-slate-600 leading-relaxed font-light">
-                        {content.text || 'We are a leading real estate developer committed to excellence and sustainability. With over 20 years of experience, we create spaces that inspire.'}
-                    </p>
+        <section
+            style={{
+                backgroundColor: bgColor,
+                paddingTop: `${paddingTop}px`,
+                paddingBottom: `${paddingBottom}px`,
+            }}
+        >
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-                    {/* Visual flourish */}
-                    <div className="h-1 w-20 bg-primary rounded-full mt-8" />
-                </div>
+                    {/* Text column */}
+                    <div className="space-y-6">
+                        {/* Eyebrow */}
+                        <span className="inline-block text-xs font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                            Who We Are
+                        </span>
 
-                <div className="relative order-1 md:order-2 h-[400px] w-full animate-in slide-in-from-right-8 duration-700">
-                    {content.image ? (
-                        <div className="relative w-full h-full">
-                            <div className="absolute inset-0 bg-primary/5 rounded-2xl transform rotate-3 translate-x-4 translate-y-4" />
-                            <img
-                                src={content.image}
-                                alt="About Us"
-                                className="relative w-full h-full object-cover rounded-2xl shadow-2xl"
-                            />
-                        </div>
-                    ) : (
-                        <div className="w-full h-full bg-slate-100 rounded-2xl flex items-center justify-center relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-slate-200 to-slate-100 opacity-50" />
-                            {/* Placeholder Pattern */}
-                            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                        {/* Heading */}
+                        <h2
+                            style={{ color: textColor }}
+                            className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight"
+                        >
+                            {heading}
+                        </h2>
 
-                            <div className="text-center z-10 p-6">
-                                <div className="w-16 h-16 bg-white rounded-full mx-auto mb-4 flex items-center justify-center shadow-sm">
-                                    <span className="text-2xl">🏢</span>
+                        {/* Body */}
+                        <p
+                            style={{ color: textColor, opacity: 0.7 }}
+                            className="text-sm sm:text-base leading-relaxed"
+                        >
+                            {text}
+                        </p>
+
+                        {/* Stats row */}
+                        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+                            {highlights.map((h, i) => (
+                                <div key={i} className="text-center sm:text-left">
+                                    <p className="text-xl sm:text-2xl font-extrabold text-blue-600">{h.label}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{h.desc}</p>
                                 </div>
-                                <p className="text-slate-400 font-medium">Add an image to see it here</p>
-                            </div>
+                            ))}
                         </div>
-                    )}
+                    </div>
+
+                    {/* Image column */}
+                    <div className="relative">
+                        <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-xl">
+                            {imageUrl ? (
+                                <img
+                                    src={imageUrl}
+                                    alt="About us"
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-blue-100 via-blue-50 to-indigo-100 flex items-center justify-center">
+                                    <div className="text-center space-y-2">
+                                        <div className="w-16 h-16 mx-auto bg-blue-200 rounded-2xl flex items-center justify-center">
+                                            <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                            </svg>
+                                        </div>
+                                        <p className="text-xs text-blue-400 font-medium">Add an image URL in the editor</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        {/* Decorative accent */}
+                        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-blue-100 rounded-2xl -z-10 hidden sm:block" />
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
     )
 }

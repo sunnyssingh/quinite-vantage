@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
     KanbanSquare,
     Users,
@@ -15,7 +15,8 @@ import {
     Phone,
     TrendingUp,
     Clock,
-    Lock
+    Lock,
+    LogOut
 } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -27,11 +28,24 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { usePermissions } from '@/contexts/PermissionContext'
+import { createClient as createClientSupabaseClient } from '@/lib/supabase/client'
 
 export default function CrmSidebar() {
     const pathname = usePathname()
+    const router = useRouter()
     const [isCollapsed, setIsCollapsed] = useState(false)
     const { hasPermission, hasAnyPermission, loading } = usePermissions()
+
+    const handleSignOut = async () => {
+        try {
+            const supabase = createClientSupabaseClient()
+            await supabase.auth.signOut()
+            router.push('/')
+        } catch (error) {
+            toast.error('Failed to sign out. Please try again.')
+            console.error('Sign out error:', error)
+        }
+    }
 
     if (loading) return null
 
@@ -171,16 +185,46 @@ export default function CrmSidebar() {
                     </nav>
                 </div>
 
-                {/* Footer Toggle */}
-                <div className="p-4 border-t border-border mt-auto">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="w-full h-9 hover:bg-slate-100 text-slate-500 hover:text-slate-900"
-                    >
-                        {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                    </Button>
+                {/* Footer: Logout + Collapse */}
+                <div className="border-t border-border mt-auto">
+                    {/* Logout Button */}
+                    {isCollapsed ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleSignOut}
+                                    className="w-full h-10 hover:bg-red-50 hover:text-red-600 text-muted-foreground rounded-none"
+                                >
+                                    <LogOut className="w-4 h-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="font-medium bg-slate-900 text-white border-slate-800">
+                                Log Out
+                            </TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <button
+                            onClick={handleSignOut}
+                            className="flex items-center gap-3 w-full px-5 py-3 text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-red-600 transition-colors group"
+                        >
+                            <LogOut className="w-4 h-4 shrink-0 group-hover:text-red-600 transition-colors" />
+                            <span>Log Out</span>
+                        </button>
+                    )}
+
+                    {/* Collapse Toggle */}
+                    <div className="p-2 border-t border-border">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setIsCollapsed(!isCollapsed)}
+                            className="w-full h-8 hover:bg-slate-100 text-slate-400 hover:text-slate-900"
+                        >
+                            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                        </Button>
+                    </div>
                 </div>
             </aside>
         </TooltipProvider >

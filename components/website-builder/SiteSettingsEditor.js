@@ -1,170 +1,204 @@
+'use client'
+
+import { useState } from 'react'
+import { Settings, X, Globe, Palette, Phone } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { X, Upload, Globe, Palette, Phone, Mail, Building } from 'lucide-react'
-import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
+
+const TABS = [
+    { id: 'brand', label: 'Brand', Icon: Globe },
+    { id: 'theme', label: 'Theme', Icon: Palette },
+    { id: 'contact', label: 'Contact', Icon: Phone },
+]
+
+const inputCls = "h-9 text-sm bg-white border-slate-200 text-slate-800 placeholder:text-slate-300 focus:border-blue-400 focus:ring-0 focus:ring-offset-0"
+
+function Field({ label, hint, children }) {
+    return (
+        <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-600">{label}</Label>
+            {children}
+            {hint && <p className="text-[10px] text-slate-400">{hint}</p>}
+        </div>
+    )
+}
 
 export default function SiteSettingsEditor({ config, onChange, onClose }) {
-    const settings = config.settings || {}
+    const [activeTab, setActiveTab] = useState('brand')
+    const settings = config?.settings || {}
 
-    const handleChange = (field, value) => {
-        onChange({
-            ...config,
-            settings: {
-                ...settings,
-                [field]: value
-            }
-        })
+    const update = (key, value) => {
+        onChange({ settings: { ...settings, [key]: value } })
     }
 
     return (
-        <div className="w-80 bg-white/95 backdrop-blur-sm border-l border-slate-200 flex flex-col h-full shrink-0 shadow-2xl z-20 animate-in slide-in-from-right duration-300">
+        <aside className="w-72 shrink-0 flex flex-col border-l bg-white border-slate-200">
+
             {/* Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
-                        <Globe className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h2 className="font-bold text-sm text-slate-900 leading-tight">
-                            Site Settings
-                        </h2>
-                        <p className="text-[10px] text-slate-500 font-medium tracking-wide uppercase">Global Config</p>
-                    </div>
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center shrink-0">
+                    <Settings className="w-4 h-4 text-white" />
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900 rounded-full" onClick={onClose}>
-                    <X className="w-4 h-4" />
-                </Button>
+                <div className="flex-1">
+                    <p className="text-xs font-bold text-slate-800">Site Settings</p>
+                    <p className="text-[10px] text-slate-400">Global configuration</p>
+                </div>
+                <button
+                    onClick={onClose}
+                    className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                    <X className="w-3.5 h-3.5" />
+                </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+            {/* Tabs */}
+            <div className="flex border-b border-slate-100 shrink-0">
+                {TABS.map(({ id, label, Icon }) => (
+                    <button
+                        key={id}
+                        onClick={() => setActiveTab(id)}
+                        className={cn(
+                            'flex-1 flex flex-col items-center gap-1 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors border-b-2',
+                            activeTab === id
+                                ? 'text-blue-600 border-blue-500 bg-blue-50/50'
+                                : 'text-slate-400 border-transparent hover:text-slate-600'
+                        )}
+                    >
+                        <Icon className="w-3.5 h-3.5" />
+                        {label}
+                    </button>
+                ))}
+            </div>
 
-                {/* Brand Section */}
-                <div className="space-y-4 animate-in fade-in duration-500 delay-75">
-                    <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-                        <Building className="w-4 h-4 text-slate-500" />
-                        Brand Identity
-                    </div>
+            {/* Tab content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar bg-slate-50/50">
 
-                    <div className="space-y-4 pl-1">
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600">Site Name</Label>
+                {activeTab === 'brand' && (
+                    <>
+                        <Field label="Site Name" hint="Displayed in the top navigation">
                             <Input
                                 value={settings.siteName || ''}
-                                onChange={(e) => handleChange('siteName', e.target.value)}
-                                placeholder="My Real Estate Co."
-                                className="bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                                onChange={e => update('siteName', e.target.value)}
+                                placeholder="e.g. Acme Properties"
+                                className={inputCls}
                             />
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600">Logo URL</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    value={settings.logoUrl || ''}
-                                    onChange={(e) => handleChange('logoUrl', e.target.value)}
-                                    placeholder="https://..."
-                                    className="bg-slate-50 border-slate-200 text-xs"
-                                />
-                                <Button variant="outline" size="icon" className="shrink-0 border-slate-200 bg-slate-50" title="Upload (Mock)">
-                                    <Upload className="w-4 h-4 text-slate-500" />
-                                </Button>
-                            </div>
-                            {settings.logoUrl && (
-                                <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100 flex justify-center items-center h-16">
-                                    <img src={settings.logoUrl} alt="Logo Preview" className="h-full object-contain" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <Separator className="bg-slate-100" />
-
-                {/* Theme Section */}
-                <div className="space-y-4 animate-in fade-in duration-500 delay-150">
-                    <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-                        <Palette className="w-4 h-4 text-slate-500" />
-                        Theme & Colors
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 pl-1">
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600">Primary</Label>
-                            <div className="flex items-center gap-2 p-1 rounded-lg border border-slate-200 bg-white shadow-sm hover:border-slate-300 transition-colors">
-                                <div className="relative shrink-0 w-8 h-8 rounded-md overflow-hidden ring-1 ring-black/5">
-                                    <input
-                                        type="color"
-                                        value={settings.primaryColor || '#0f172a'}
-                                        onChange={(e) => handleChange('primaryColor', e.target.value)}
-                                        className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] cursor-pointer p-0 border-0"
-                                    />
-                                </div>
-                                <Input
-                                    value={settings.primaryColor || '#0f172a'}
-                                    onChange={(e) => handleChange('primaryColor', e.target.value)}
-                                    className="h-8 border-0 bg-transparent p-0 text-xs font-mono uppercase focus-visible:ring-0 w-full min-w-0"
+                        </Field>
+                        <Field label="Logo URL" hint="Direct image URL (PNG, SVG, etc.)">
+                            <Input
+                                value={settings.logoUrl || ''}
+                                onChange={e => update('logoUrl', e.target.value)}
+                                placeholder="https://…/logo.png"
+                                className={inputCls}
+                            />
+                        </Field>
+                        {settings.logoUrl && (
+                            <div className="p-3 bg-white rounded-xl border border-slate-200">
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Preview</p>
+                                <img
+                                    src={settings.logoUrl}
+                                    alt="Logo preview"
+                                    className="h-10 max-w-full object-contain"
+                                    onError={e => { e.target.style.display = 'none' }}
                                 />
                             </div>
-                        </div>
+                        )}
+                        <Field label="Site Description" hint="Used for SEO meta description">
+                            <Input
+                                value={settings.description || ''}
+                                onChange={e => update('description', e.target.value)}
+                                placeholder="A brief description…"
+                                className={inputCls}
+                            />
+                        </Field>
+                    </>
+                )}
 
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600">Secondary</Label>
-                            <div className="flex items-center gap-2 p-1 rounded-lg border border-slate-200 bg-white shadow-sm hover:border-slate-300 transition-colors">
-                                <div className="relative shrink-0 w-8 h-8 rounded-md overflow-hidden ring-1 ring-black/5">
-                                    <input
-                                        type="color"
-                                        value={settings.secondaryColor || '#64748b'}
-                                        onChange={(e) => handleChange('secondaryColor', e.target.value)}
-                                        className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] cursor-pointer p-0 border-0"
-                                    />
-                                </div>
+                {activeTab === 'theme' && (
+                    <>
+                        <Field label="Primary Color">
+                            <div className="flex items-center gap-2">
+                                <div
+                                    className="w-9 h-9 rounded-xl border border-slate-200 cursor-pointer shrink-0"
+                                    style={{ background: settings.primaryColor || '#3b82f6' }}
+                                />
                                 <Input
+                                    type="color"
+                                    value={settings.primaryColor || '#3b82f6'}
+                                    onChange={e => update('primaryColor', e.target.value)}
+                                    className="h-9 cursor-pointer bg-white border-slate-200"
+                                />
+                            </div>
+                        </Field>
+                        <Field label="Secondary Color">
+                            <div className="flex items-center gap-2">
+                                <div
+                                    className="w-9 h-9 rounded-xl border border-slate-200 cursor-pointer shrink-0"
+                                    style={{ background: settings.secondaryColor || '#64748b' }}
+                                />
+                                <Input
+                                    type="color"
                                     value={settings.secondaryColor || '#64748b'}
-                                    onChange={(e) => handleChange('secondaryColor', e.target.value)}
-                                    className="h-8 border-0 bg-transparent p-0 text-xs font-mono uppercase focus-visible:ring-0 w-full min-w-0"
+                                    onChange={e => update('secondaryColor', e.target.value)}
+                                    className="h-9 cursor-pointer bg-white border-slate-200"
                                 />
                             </div>
-                        </div>
-                    </div>
-                </div>
+                        </Field>
+                        <Field label="Nav Background">
+                            <div className="flex items-center gap-2">
+                                <div
+                                    className="w-9 h-9 rounded-xl border border-slate-200 cursor-pointer shrink-0"
+                                    style={{ background: settings.navBg || '#ffffff' }}
+                                />
+                                <Input
+                                    type="color"
+                                    value={settings.navBg || '#ffffff'}
+                                    onChange={e => update('navBg', e.target.value)}
+                                    className="h-9 cursor-pointer bg-white border-slate-200"
+                                />
+                            </div>
+                        </Field>
+                    </>
+                )}
 
-                <Separator className="bg-slate-100" />
-
-                {/* Contact Info */}
-                <div className="space-y-4 animate-in fade-in duration-500 delay-200">
-                    <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-                        <Phone className="w-4 h-4 text-slate-500" />
-                        Contact Info
-                    </div>
-
-                    <div className="space-y-4 pl-1">
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600 flex items-center gap-1">
-                                <Mail className="w-3 h-3" /> Email
-                            </Label>
+                {activeTab === 'contact' && (
+                    <>
+                        <Field label="Contact Email">
                             <Input
-                                value={settings.email || ''}
-                                onChange={(e) => handleChange('email', e.target.value)}
-                                placeholder="info@example.com"
-                                className="bg-slate-50 border-slate-200"
+                                type="email"
+                                value={settings.contactEmail || ''}
+                                onChange={e => update('contactEmail', e.target.value)}
+                                placeholder="hello@company.com"
+                                className={inputCls}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-slate-600 flex items-center gap-1">
-                                <Phone className="w-3 h-3" /> Phone
-                            </Label>
+                        </Field>
+                        <Field label="Phone Number">
                             <Input
-                                value={settings.phone || ''}
-                                onChange={(e) => handleChange('phone', e.target.value)}
-                                placeholder="+1 234 567 890"
-                                className="bg-slate-50 border-slate-200"
+                                value={settings.contactPhone || ''}
+                                onChange={e => update('contactPhone', e.target.value)}
+                                placeholder="+91 99999 00000"
+                                className={inputCls}
                             />
-                        </div>
-                    </div>
-                </div>
-
+                        </Field>
+                        <Field label="Office Address">
+                            <Input
+                                value={settings.address || ''}
+                                onChange={e => update('address', e.target.value)}
+                                placeholder="123 Main St, City"
+                                className={inputCls}
+                            />
+                        </Field>
+                        <Field label="WhatsApp Number" hint="e.g. 919999900000 (no '+' or spaces)">
+                            <Input
+                                value={settings.whatsapp || ''}
+                                onChange={e => update('whatsapp', e.target.value)}
+                                placeholder="919999900000"
+                                className={inputCls}
+                            />
+                        </Field>
+                    </>
+                )}
             </div>
-        </div>
+        </aside>
     )
 }
