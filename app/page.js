@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { Input } from '@/components/ui/input'
@@ -16,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function AuthPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { user, profile, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showSigninPassword, setShowSigninPassword] = useState(false)
@@ -25,38 +27,27 @@ export default function AuthPage() {
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('signin')
 
-  // Check if user is already logged in
+  // Use AuthContext to detect existing session (no duplicate getSession calls)
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        setLoading(false) // Stop loading immediately to show UI/toast if needed briefly
+    if (authLoading) return // Wait for AuthContext to resolve
 
-        // Fetch user profile to get role
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-
-        const role = profile?.role || 'employee'
-        const dashboardRoutes = {
-          platform_admin: '/dashboard/platform',
-          super_admin: '/dashboard/admin/crm/dashboard',
-          manager: '/dashboard/admin/crm/dashboard',
-          employee: '/dashboard/admin/crm/dashboard'
-        }
-
-        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin/crm/dashboard'
-
-        toast.success(`Welcome back! Redirecting to dashboard...`)
-        router.push(dashboardRoute)
-      } else {
-        setLoading(false)
+    if (user && profile) {
+      // Already logged in — redirect to dashboard
+      const role = profile.role || 'employee'
+      const dashboardRoutes = {
+        platform_admin: '/dashboard/platform',
+        super_admin: '/dashboard/admin/crm/dashboard',
+        manager: '/dashboard/admin/crm/dashboard',
+        employee: '/dashboard/admin/crm/dashboard'
       }
+      const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin/crm/dashboard'
+      toast.success('Welcome back! Redirecting to dashboard...')
+      router.push(dashboardRoute)
+    } else {
+      // No session — show login form
+      setLoading(false)
     }
-    checkAuth()
-  }, [])
+  }, [authLoading, user, profile])
 
   const handleSignOut = async () => {
     setSubmitting(true)

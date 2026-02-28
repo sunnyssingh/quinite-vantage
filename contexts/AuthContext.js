@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -19,7 +19,7 @@ export function AuthProvider({ children }) {
     const router = useRouter()
     const supabase = createClient()
 
-    const fetchProfile = async (userId) => {
+    const fetchProfile = useCallback(async (userId) => {
         try {
             const { data, error } = await supabase
                 .from('profiles')
@@ -28,49 +28,56 @@ export function AuthProvider({ children }) {
                 .single()
 
             if (!error && data) setProfile(data)
+            else console.error('fetchProfile error:', error)
         } catch (err) {
             console.error('Error in fetchProfile:', err)
         }
-    }
+    }, [supabase])
 
     useEffect(() => {
         let mounted = true
 
-        // 1. Get the existing session immediately
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
-            if (!mounted) return
-            if (session?.user) {
-                setUser(session.user)
-                await fetchProfile(session.user.id)
+        // Safety timeout: if auth never resolves within 3s, force loading=false
+        // This prevents infinite loading if onAuthStateChange fails to fire
+        const safetyTimeout = setTimeout(() => {
+            if (mounted && loading) {
+                console.warn('[AuthContext] Safety timeout — forcing loading=false')
+                setLoading(false)
             }
-            // Always clear the loading flag after the first resolution
-            if (mounted) setLoading(false)
-        }).catch((err) => {
-            console.error('Error getting session:', err)
-            if (mounted) setLoading(false)
-        })
+        }, 3000)
 
-        // 2. Subscribe to future auth changes (sign-in, sign-out, token refresh)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (!mounted) return
+        // Use onAuthStateChange as the SOLE mechanism.
+        // It fires INITIAL_SESSION synchronously on subscribe,
+        // then SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED later.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                if (!mounted) return
 
-            if (session?.user) {
-                setUser(session.user)
-                // Fetch profile on sign-in or if we somehow missed it
-                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                    await fetchProfile(session.user.id)
+                console.log('[AuthContext] Auth event:', event, session ? 'has session' : 'no session')
+
+                if (session?.user) {
+                    setUser(session.user)
+
+                    // Fetch profile on initial load or sign-in
+                    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                        await fetchProfile(session.user.id)
+                    }
+                } else {
+                    setUser(null)
+                    setProfile(null)
                 }
-            } else {
-                setUser(null)
-                setProfile(null)
-            }
 
-            // Ensure loading is false once auth state settles
-            if (mounted) setLoading(false)
-        })
+                // Loading is done once any auth event fires
+                if (mounted) {
+                    clearTimeout(safetyTimeout)
+                    setLoading(false)
+                }
+            }
+        )
 
         return () => {
             mounted = false
+            clearTimeout(safetyTimeout)
             subscription.unsubscribe()
         }
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -82,9 +89,9 @@ export function AuthProvider({ children }) {
         router.push('/')
     }
 
-    const refreshProfile = async () => {
+    const refreshProfile = useCallback(async () => {
         if (user) await fetchProfile(user.id)
-    }
+    }, [user, fetchProfile])
 
     return (
         <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
