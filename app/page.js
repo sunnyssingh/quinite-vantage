@@ -181,21 +181,21 @@ export default function AuthPage() {
         }
 
         toast.success('Complete your onboarding to get started.')
-        setTimeout(() => router.push('/onboarding'), 1000)
+        setTimeout(() => { window.location.href = '/onboarding' }, 1000)
       } else {
-        // Role-based redirect - ALL use unified CRM dashboard
+        // Role-based redirect
         const role = data.user?.role || 'employee'
         const dashboardRoutes = {
           platform_admin: '/dashboard/platform',
-          super_admin: '/dashboard/admin/crm/dashboard',
-          manager: '/dashboard/admin/crm/dashboard',
-          employee: '/dashboard/admin/crm/dashboard'
+          super_admin: '/dashboard/admin',
+          manager: '/dashboard/admin',
+          employee: '/dashboard/admin'
         }
 
-        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin/crm/dashboard'
+        const dashboardRoute = dashboardRoutes[role] || '/dashboard/admin'
 
         toast.success('Welcome back! Redirecting to dashboard...')
-        setTimeout(() => router.push(dashboardRoute), 1000)
+        setTimeout(() => { window.location.href = dashboardRoute }, 1000)
       }
     } catch (err) {
       toast.error(err.message)

@@ -47,7 +47,7 @@ export async function POST(request) {
         await supabase.auth.signOut()
         return corsJSON({
           error: 'Profile not found. Please contact support to set up your account.'
-        }, { status: 404 })
+        }, { status: 403 })
       }
 
       // For other profile errors, still try to continue but log the issue

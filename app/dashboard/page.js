@@ -31,13 +31,13 @@ export default function DashboardPage() {
         if (profileData.user?.profile) {
           const role = profileData.user.profile.role
 
-          // Redirect based on role - ALL use unified CRM dashboard
+          // Redirect based on role
           if (role === 'platform_admin') {
             router.push('/dashboard/platform')
             return
           } else {
-            // All other roles (employee, manager, super_admin) use unified CRM dashboard
-            router.push('/dashboard/admin/crm/dashboard')
+            // All other roles (employee, manager, super_admin) use the main admin dashboard
+            router.push('/dashboard/admin')
             return
           }
         }
