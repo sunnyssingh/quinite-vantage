@@ -53,6 +53,9 @@ export function AuthProvider({ children }) {
             async (event, session) => {
                 if (!mounted) return
 
+                // Clear safety timeout immediately - we received an event, so auth mechanism is working.
+                clearTimeout(safetyTimeout)
+
                 console.log('[AuthContext] Auth event:', event, session ? 'has session' : 'no session')
 
                 if (session?.user) {
@@ -69,7 +72,6 @@ export function AuthProvider({ children }) {
 
                 // Loading is done once any auth event fires
                 if (mounted) {
-                    clearTimeout(safetyTimeout)
                     setLoading(false)
                 }
             }
