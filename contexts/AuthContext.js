@@ -77,7 +77,6 @@ export function AuthProvider({ children }) {
                 setProfile(null)
                 setProfileLoading(false)
             }
-
             // Always resolve initial loading once we've processed the first event or session check
             if (loading) {
                 setLoading(false)
