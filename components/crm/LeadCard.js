@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Phone, Mail } from 'lucide-react'
 import { getDefaultAvatar } from '@/lib/avatar-utils'
 
+import { useQueryClient } from '@tanstack/react-query'
+
 export function LeadCard({ lead }) {
     const {
         attributes,
@@ -24,6 +26,26 @@ export function LeadCard({ lead }) {
         opacity: isDragging ? 0.5 : 1,
     }
 
+    const queryClient = useQueryClient()
+
+
+
+    const prefetchLeadData = () => {
+        if (!lead.id) return
+        
+        // Prefetch both lead details and profile in parallel
+        queryClient.prefetchQuery({
+            queryKey: ['lead', lead.id],
+            queryFn: () => fetch(`/api/leads/${lead.id}`).then(res => res.json()).then(d => d.lead),
+            staleTime: 5 * 60 * 1000
+        })
+        
+        queryClient.prefetchQuery({
+            queryKey: ['lead-profile', lead.id],
+            queryFn: () => fetch(`/api/leads/${lead.id}/profile`).then(res => res.json()).then(d => d.profile),
+            staleTime: 5 * 60 * 1000
+        })
+    }
 
     const handleClick = (e) => {
         // Only trigger click if we're not dragging
@@ -32,13 +54,16 @@ export function LeadCard({ lead }) {
         }
     }
 
+
     return (
         <Card
             ref={setNodeRef}
             style={style}
             {...attributes}
             {...listeners}
+            onMouseEnter={prefetchLeadData}
             onClickCapture={handleClick}
+
             className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-all shadow-sm border-border bg-card group 
                 ${isDragging ? 'shadow-xl border-primary/50 ring-2 ring-primary z-50 rotate-2 cursor-grabbing' : ''}`}
         >

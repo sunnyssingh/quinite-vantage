@@ -17,11 +17,17 @@ import LeadProfileOverview from '@/components/crm/LeadProfileOverview'
 import LeadProfileNotes from '@/components/crm/LeadProfileNotes'
 import LeadProfileEmails from '@/components/crm/LeadProfileEmails'
 
+// Parallel Hooks
+import { useLead, useLeadProfile } from '@/hooks/useLeads'
+import { useOrgSettings } from '@/hooks/usePipelines'
+
 export default function LeadProfileView({ leadId, onClose, isModal = false }) {
-    const [lead, setLead] = useState(null)
-    const [profile, setProfile] = useState(null)
-    const [organization, setOrganization] = useState(null)
-    const [loading, setLoading] = useState(true)
+    // 1. Parallel Data Fetching (Hydrates instantly if hovered earlier)
+    const { data: lead, isLoading: leadLoading, refetch: refetchLead } = useLead(leadId)
+    const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useLeadProfile(leadId)
+    const { data: organization } = useOrgSettings()
+
+    const loading = leadLoading || profileLoading
     const [activeTab, setActiveTab] = useState('overview')
     const [notes, setNotes] = useState('')
     const [savingNotes, setSavingNotes] = useState(false)
@@ -29,47 +35,14 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     const [linkDialogOpen, setLinkDialogOpen] = useState(false)
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
 
-    useEffect(() => {
-        if (leadId) {
-            fetchLeadData()
-        }
-    }, [leadId])
-
+    // Sync notes when data arrives
     useEffect(() => {
         if (lead?.notes) setNotes(lead.notes)
-    }, [lead])
+    }, [lead?.notes])
 
-    const fetchLeadData = async () => {
-        try {
-            setLoading(true)
-
-            // Fetch lead basic info (with cache-busting to ensure fresh data)
-            const leadRes = await fetch(`/api/leads/${leadId}?t=${Date.now()}`, {
-                cache: 'no-store'
-            })
-            if (!leadRes.ok) throw new Error('Failed to fetch lead')
-            const leadData = await leadRes.json()
-            setLead(leadData.lead)
-
-            // Fetch lead profile
-            const profileRes = await fetch(`/api/leads/${leadId}/profile`)
-            if (!profileRes.ok) throw new Error('Failed to fetch profile')
-            const profileData = await profileRes.json()
-            setProfile(profileData.profile)
-
-            // Fetch organization settings for currency
-            const orgRes = await fetch('/api/organization/settings')
-            if (orgRes.ok) {
-                const orgData = await orgRes.json()
-                setOrganization(orgData.organization)
-            }
-
-        } catch (error) {
-            console.error('Error fetching lead data:', error)
-            toast.error('Failed to load lead profile')
-        } finally {
-            setLoading(false)
-        }
+    const refreshAll = () => {
+        refetchLead()
+        refetchProfile()
     }
 
     const handleUnlink = async () => {
@@ -78,17 +51,14 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
             const res = await fetch(`/api/leads/${leadId}/unlink-property`, { method: 'POST' })
             if (!res.ok) throw new Error('Failed to unlink property')
             toast.success('Property unlinked')
-            fetchLeadData()
+            refreshAll()
         } catch (error) {
             toast.error('Failed to unlink property')
         }
     }
 
     const handleSaveNotes = async () => {
-        if (!leadId) {
-            toast.error("Cannot save notes: Invalid lead ID")
-            return
-        }
+        if (!leadId) return
         try {
             setSavingNotes(true)
             const res = await fetch(`/api/leads/${leadId}`, {
@@ -96,9 +66,9 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ notes })
             })
-            if (!res.ok) throw new Error('Failed to update notes')
+            if (!res.ok) throw new Error('Failed')
             toast.success('Notes updated')
-            setLead(prev => ({ ...prev, notes }))
+            refetchLead()
         } catch (error) {
             toast.error('Failed to save notes')
         } finally {
@@ -106,10 +76,9 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         }
     }
 
-    if (loading) {
+    if (loading && !lead) {
         return (
             <div className="space-y-6 p-6">
-                {/* Header Skeleton */}
                 <div className="flex items-center gap-4">
                     <Skeleton className="h-24 w-24 rounded-full" />
                     <div className="space-y-2 flex-1">
@@ -117,12 +86,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                         <Skeleton className="h-4 w-32" />
                     </div>
                 </div>
-                {/* Tabs Skeleton */}
                 <Skeleton className="h-10 w-full" />
-                {/* Content Skeleton */}
                 <div className="grid grid-cols-2 gap-4">
-                    <Skeleton className="h-32 w-full" />
-                    <Skeleton className="h-32 w-full" />
                     <Skeleton className="h-32 w-full" />
                     <Skeleton className="h-32 w-full" />
                 </div>
@@ -135,11 +100,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
             <div className="flex items-center justify-center h-full min-h-[400px]">
                 <div className="text-center">
                     <p className="text-lg font-medium text-foreground mb-2">Lead not found</p>
-                    {onClose && (
-                        <Button onClick={onClose}>
-                            Close
-                        </Button>
-                    )}
+                    {onClose && <Button onClick={onClose}>Close</Button>}
                 </div>
             </div>
         )
@@ -147,7 +108,6 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
 
     return (
         <div className={`flex flex-col md:flex-row gap-6 ${isModal ? 'h-[80vh]' : ''}`}>
-            {/* Sidebar - Sticky if not modal */}
             <div className={`w-full md:w-80 flex flex-col shrink-0 space-y-4 ${!isModal ? '' : 'overflow-y-auto'}`}>
                 <LeadProfileSidebar
                     lead={lead}
@@ -157,7 +117,6 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 />
             </div>
 
-            {/* Main Content */}
             <div className={`flex-1 min-w-0 ${isModal ? 'overflow-y-auto' : ''}`}>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <div className="border-b bg-transparent mb-6">
@@ -166,7 +125,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                                 <TabsTrigger
                                     key={tab}
                                     value={tab}
-                                    className="rounded-none border-b-2 border-transparent px-4 py-2.5 data-[state=active]:border-primary data-[state=active]:text-primary !bg-transparent !shadow-none font-medium capitalize text-muted-foreground hover:text-foreground transition-colors"
+                                    className="rounded-none border-b-2 border-transparent px-4 py-2.5 data-[state=active]:border-primary data-[state=active]:text-primary !bg-transparent !shadow-none font-medium capitalize text-muted-foreground transition-colors"
                                 >
                                     {tab}
                                 </TabsTrigger>
@@ -179,7 +138,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                             lead={lead}
                             profile={profile}
                             organization={organization}
-                            onUpdate={fetchLeadData}
+                            onUpdate={refreshAll}
                             onLinkProperty={() => setLinkDialogOpen(true)}
                             onUnlinkProperty={handleUnlink}
                         />
@@ -194,9 +153,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                         />
                     )}
 
-                    {activeTab === 'emails' && (
-                        <LeadProfileEmails />
-                    )}
+                    {activeTab === 'emails' && <LeadProfileEmails />}
 
                     {activeTab === 'timeline' && (
                         <div className="max-w-3xl">
@@ -211,14 +168,14 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 onOpenChange={setEditDialogOpen}
                 lead={lead}
                 profile={profile}
-                onSave={fetchLeadData}
+                onSave={refreshAll}
             />
 
             <AvatarPickerDialog
                 open={avatarPickerOpen}
                 onOpenChange={setAvatarPickerOpen}
                 lead={lead}
-                onSave={fetchLeadData}
+                onSave={refreshAll}
             />
 
             <LinkPropertyDialog
@@ -226,7 +183,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 isOpen={linkDialogOpen}
                 onClose={() => setLinkDialogOpen(false)}
                 onLinkSuccess={() => {
-                    fetchLeadData()
+                    refreshAll()
                     toast.success('Property linked successfully')
                 }}
             />

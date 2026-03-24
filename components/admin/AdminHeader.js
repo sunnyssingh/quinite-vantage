@@ -50,6 +50,8 @@ import { SystemStatus } from './SystemStatus'
 import { HelpMenu } from './HelpMenu'
 
 import { usePermissions } from '@/contexts/PermissionContext' // [NEW]
+import { useQueryClient } from '@tanstack/react-query'
+
 
 export default function AdminHeader({ user, profile }) {
     const router = useRouter()
@@ -61,14 +63,19 @@ export default function AdminHeader({ user, profile }) {
     const { hasPermission, hasAnyPermission, loading: permissionsLoading } = usePermissions()
 
     // [NEW] Query Client for prefetching
-    const queryClient = React.useMemo(() => {
-        try { return new (require('@tanstack/react-query').QueryClient)() } catch { return null }
-    }, [])
+    const queryClient = useQueryClient()
+
     
-    // Use the existing one from provider if possible but simple prefetch is fine
+    // Efficiently prefetch dashboard stats on hover
     const prefetchDashboard = () => {
-        fetch('/api/crm/dashboard?range=this_month')
+        if (!queryClient) return
+        queryClient.prefetchQuery({
+            queryKey: ['crm-dashboard', 'this_month'],
+            queryFn: () => fetch('/api/crm/dashboard?range=this_month').then(res => res.json()),
+            staleTime: 5 * 60 * 1000
+        })
     }
+
 
 
     React.useEffect(() => {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { useRouter } from 'next/navigation'
 import {
     DndContext,
@@ -27,20 +27,37 @@ import {
 import LeadForm from './LeadForm'
 import { usePermission } from '@/contexts/PermissionContext'
 
-const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
-    const [pipelines, setPipelines] = useState([])
-    const [activePipeline, setActivePipeline] = useState(null)
-    const [leads, setLeads] = useState([])
-    const [activeDragItem, setActiveDragItem] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [projects, setProjects] = useState([]) // To pass to LeadForm
+// React Query Hooks
+import { useLeads } from '@/hooks/useLeads'
+import { usePipelines, useUsers } from '@/hooks/usePipelines'
+import { useProjects } from '@/hooks/useProjects'
 
-    // Add Deal State
+/**
+ * Optimized PipelineBoard with React Query
+ * Parallelized fetching and cross-tab caching
+ */
+const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
+    // 1. Parallel Fetching (Hydrates instantly if cached)
+    const { data: pipelines = [], isLoading: pipesLoading } = usePipelines()
+    const { data: leadsResponse, isLoading: leadsLoading, refetch: refetchLeads } = useLeads({
+        projectId: projectId,
+        campaign_id: campaignId
+    })
+    const { data: projectsData } = useProjects({ status: 'active' })
+    const { data: users = [] } = useUsers()
+    
+    // UI Helpers
+    const leads = leadsResponse?.leads || []
+    const projects = Array.isArray(projectsData) ? projectsData : (projectsData?.projects || [])
+    const loading = pipesLoading || leadsLoading
+    const activePipeline = pipelines.length > 0 ? pipelines[0] : null
+    
+    // Local UI interactions
+    const [activeDragItem, setActiveDragItem] = useState(null)
     const [addDialogOpen, setAddDialogOpen] = useState(false)
     const [targetStageId, setTargetStageId] = useState(null)
     const [submitting, setSubmitting] = useState(false)
     const canManageDeals = usePermission('manage_deals')
-    const [users, setUsers] = useState([])
 
     const supabase = createClient()
     const router = useRouter()
@@ -51,56 +68,9 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     )
 
-    // Define fetchData first so it can be used in hooks below
-    const fetchData = useCallback(async () => {
-        console.log('🔄 [PipelineBoard] fetchData called, projectId:', projectId, 'campaignId:', campaignId)
-        try {
-            setLoading(true)
-            // 1. Fetch Pipelines
-            const pipeRes = await fetch('/api/crm/pipelines')
-            const pipeData = await pipeRes.json()
-
-            if (pipeData.pipelines?.length > 0) {
-                setPipelines(pipeData.pipelines)
-                setActivePipeline(pipeData.pipelines[0])
-            }
-
-            // 2. Fetch Leads
-            const params = new URLSearchParams()
-            if (projectId) params.append('project_id', projectId)
-            if (campaignId) params.append('campaign_id', campaignId)
-
-            const leadsRes = await fetch(`/api/leads?${params.toString()}`)
-            const leadsData = await leadsRes.json()
-            console.log('📋 [PipelineBoard] Fetched leads:', leadsData.leads?.length, 'leads')
-            console.log('🔍 [PipelineBoard] Lead stages:', leadsData.leads?.map(l => ({ name: l.name, stage_id: l.stage_id, stage: l.stage?.name })))
-            setLeads(leadsData.leads || [])
-
-            // 3. Fetch Projects (for the form dropdown)
-            const projRes = await fetch('/api/projects')
-            const projData = await projRes.json()
-            setProjects(projData.projects || [])
-
-            // 4. Fetch Users (for assignment)
-            const userRes = await fetch('/api/admin/users')
-            const userData = await userRes.json()
-            setUsers(userData.users || [])
-
-        } catch (error) {
-            console.error('Failed to fetch CRM data:', error)
-            toast.error('Failed to load CRM data')
-        } finally {
-            setLoading(false)
-        }
-    }, [projectId, campaignId])
-
-    useEffect(() => {
-        fetchData()
-    }, [fetchData])
-
     // Expose refresh function to parent
     useImperativeHandle(ref, () => ({
-        refresh: fetchData
+        refresh: refetchLeads
     }))
 
     const handleAddLead = (stageId) => {
@@ -111,18 +81,8 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     const handleCreateLead = async (formData) => {
         setSubmitting(true)
         try {
-            // If projectId wasn't manually selected but we are in a project context, use that
-            if (!formData.projectId && projectId) {
-                formData.projectId = projectId
-            }
-
-            // If campaignId context exists, should we enforce it? 
-            // Currently LeadForm doesn't seem to have campaign selection, maybe we should auto-inject campaignId in API?
-            // For now let's assume API handles it or user selects it.
-            if (!formData.campaignId && campaignId) {
-                formData.campaignId = campaignId
-            }
-
+            if (!formData.projectId && projectId) formData.projectId = projectId
+            
             const res = await fetch('/api/leads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -133,9 +93,7 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
             if (!res.ok) throw new Error(result.error || 'Failed to create lead')
 
             toast.success('Lead created successfully')
-
-            // Optimistically add to UI
-            setLeads(prev => [result.lead, ...prev])
+            refetchLeads() // Sync with server cache
             setAddDialogOpen(false)
         } catch (error) {
             toast.error(error.message)
@@ -153,95 +111,51 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
     const handleDragEnd = async (event) => {
         const { active, over } = event
         setActiveDragItem(null)
-
         if (!over) return
 
         let leadId = active.id
-        const overId = over.id // Could be a stage ID or another lead ID
+        const overId = over.id
 
-        // No special handling needed anymore
-
-        // Find the stage we dropped onto
         let newStageId = null
-
-        // Case 1: Dropped directly on a column (Stage)
         if (activePipeline?.stages.find(s => s.id === overId)) {
             newStageId = overId
-        }
-        // Case 2: Dropped on another lead (find that lead's stage)
-        else {
+        } else {
             const overLead = leads.find(l => l.id === overId)
-            if (overLead) {
-                newStageId = overLead.stage_id
-            }
+            if (overLead) newStageId = overLead.stage_id
         }
 
-        // Attempt Move
-        if (newStageId) {
-            moveLead(leadId, newStageId)
-        }
+        if (newStageId) moveLead(leadId, newStageId)
     }
 
     const moveLead = useCallback(async (leadId, newStageId) => {
-        if (!leadId) {
-            console.error('Cannot move lead: Invalid lead ID')
-            return
-        }
-        // 1. Optimistic Update
-        const originalLeads = [...leads]
         const leadToUpdate = leads.find(l => l.id === leadId)
-
         if (!leadToUpdate || leadToUpdate.stage_id === newStageId) return
 
-        setLeads(prev => prev.map(l =>
-            l.id === leadId ? { ...l, stage_id: newStageId } : l
-        ))
-
-        // 2. API Call
         try {
             const res = await fetch(`/api/leads/${leadId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: leadToUpdate.name, // Required by PUT validation
+                    name: leadToUpdate.name,
                     stageId: newStageId
                 })
             })
 
-            if (!res.ok) {
-                const errorData = await res.json()
-                throw new Error(errorData.error || 'Update failed')
-            }
-
-            console.log(`✅ Lead ${leadId} moved to stage ${newStageId}`)
-
+            if (!res.ok) throw new Error('Update failed')
+            refetchLeads() // Let React Query sync the state
+            toast.success('Lead stage updated')
         } catch (error) {
-            // Revert on failure
             console.error('Failed to move lead:', error)
-            setLeads(originalLeads)
-            toast.error(`Failed to move lead: ${error.message}`)
+            toast.error(`Failed to move lead`)
         }
-    }, [leads])
-
-    const handleSeed = async () => {
-        try {
-            setLoading(true)
-            const res = await fetch('/api/crm/seed', { method: 'POST' })
-            if (!res.ok) throw new Error('Failed to create pipeline')
-            toast.success('Default pipeline created!')
-            fetchData() // Refresh
-        } catch (error) {
-            toast.error('Failed to setup pipeline')
-            setLoading(false)
-        }
-    }
+    }, [leads, refetchLeads])
 
     const handleLeadClick = (lead) => {
-        // Navigate to lead profile page
         router.push(`/dashboard/admin/crm/leads/${lead.id}`)
     }
 
-    if (loading) return (
+    // [LOADING STATE]
+    if (loading && !leads.length) return (
         <div className="flex min-h-[calc(100vh-300px)] gap-4 overflow-x-auto pb-2">
             {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="flex-shrink-0 w-full md:w-[300px] h-full rounded-xl bg-muted/30 border border-border/50 p-4 space-y-4">
@@ -252,34 +166,18 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
                     <div className="space-y-3">
                         <Skeleton className="h-40 w-full rounded-lg bg-card border border-border/50" />
                         <Skeleton className="h-40 w-full rounded-lg bg-card border border-border/50" />
-                        <Skeleton className="h-40 w-full rounded-lg bg-card border border-border/50" />
                     </div>
                 </div>
             ))}
         </div>
     )
 
-    if (!activePipeline) {
-        return (
-            <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border rounded-xl bg-muted/20">
-                <h3 className="text-lg font-medium text-foreground">No Pipelines Found</h3>
-                <p className="text-muted-foreground text-sm mb-6 max-w-md text-center">It looks like you haven't set up a sales pipeline yet. Create a default one to get started.</p>
-
-                <div className="flex gap-4">
-                    <button
-                        onClick={handleSeed}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm flex items-center gap-2"
-                    >
-                        Setup Default Pipeline
-                    </button>
-                </div>
-            </div>
-        )
-    }
-
-    // Filter leads to match current pipeline stages only
-    // If a lead has no stage_id, we might put it in the first stage or an 'Unassigned' bucket.
-    // For now, let's assume we put unassigned leads in the first stage if not set.
+    if (!activePipeline) return (
+        <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border rounded-xl bg-muted/20">
+            <h3 className="text-lg font-medium text-foreground">No Pipelines Found</h3>
+            <p className="text-muted-foreground text-sm mb-6 max-w-md text-center">It looks like you haven't set up a sales pipeline yet.</p>
+        </div>
+    )
 
     return (
         <>
@@ -290,63 +188,34 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
                 onDragEnd={handleDragEnd}
             >
                 <div className="flex min-h-[calc(100vh-300px)] gap-4 overflow-x-auto pb-2">
-                    {/* AI Watchlist removed - leads now only appear in their assigned stages */}
-
                     {activePipeline.stages.map(stage => {
-                        const stageLeads = leads.filter(l =>
-                            l.stage_id === stage.id ||
-                            (!l.stage_id && stage.order_index === 0) // Default to first stage
-                        )
-
-                        console.log(`📊 [PipelineBoard] Stage "${stage.name}" (${stage.id}):`, stageLeads.length, 'leads')
-
-
+                        const stageLeads = leads.filter(l => l.stage_id === stage.id || (!l.stage_id && stage.order_index === 0))
                         return (
                             <PipelineColumn
                                 key={stage.id}
                                 stage={stage}
                                 leads={stageLeads.map(l => ({ ...l, onClick: handleLeadClick }))}
-                                onAddLead={(stageId) => {
-                                    if (!canManageDeals) return
-                                    handleAddLead(stageId)
-                                }}
+                                onAddLead={handleAddLead}
                                 canDrop={canManageDeals}
                             />
                         )
                     })}
                 </div>
-
                 <DragOverlay>
                     {activeDragItem ? <LeadCard lead={activeDragItem} /> : null}
                 </DragOverlay>
 
-                {/* Quick Add Lead Dialog */}
                 <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Quick Add Deal</DialogTitle>
-                            <DialogDescription>
-                                Create a new lead directly in this stage.
-                            </DialogDescription>
                         </DialogHeader>
                         {targetStageId && (
                             <LeadForm
                                 projects={projects}
                                 users={users}
-                                stages={activePipeline?.stages || []} // Pass stages
+                                stages={activePipeline?.stages || []}
                                 initialStageId={targetStageId}
-                                // Initial status is fallback
-                                initialStatus={(() => {
-                                    const stage = activePipeline?.stages.find(s => s.id === targetStageId)
-                                    if (!stage) return 'new'
-                                    const name = stage.name.toLowerCase()
-                                    if (name.includes('contact')) return 'contacted'
-                                    if (name.includes('qualif')) return 'qualified'
-                                    if (name.includes('negotiat')) return 'contacted'
-                                    if (name.includes('won') || name.includes('convert')) return 'converted'
-                                    if (name.includes('lost')) return 'lost'
-                                    return 'new'
-                                })()}
                                 onSubmit={handleCreateLead}
                                 onCancel={() => setAddDialogOpen(false)}
                                 isSubmitting={submitting}
@@ -360,5 +229,4 @@ const PipelineBoard = forwardRef(({ projectId, campaignId }, ref) => {
 })
 
 PipelineBoard.displayName = 'PipelineBoard'
-
 export default PipelineBoard
