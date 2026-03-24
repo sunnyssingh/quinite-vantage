@@ -10,37 +10,25 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 
+import { useInventoryProjects, useInventoryProperties } from '@/hooks/useInventory'
+
 export default function InventoryOverviewPage() {
-    const [inventoryProjects, setInventoryProjects] = useState([])
-    const [properties, setProperties] = useState([])
-    const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    
+    // 1. Parallel Fetching with React Query
+    const { 
+        data: inventoryProjects = [], 
+        isLoading: projectsLoading,
+        error: projectsError
+    } = useInventoryProjects()
 
-    useEffect(() => {
-        fetchData()
-    }, [])
+    const { 
+        data: properties = [], 
+        isLoading: propertiesLoading 
+    } = useInventoryProperties()
 
-    const fetchData = async () => {
-        try {
-            setLoading(true)
-            // Fetch both projects and properties
-            const [projectsRes, propertiesRes] = await Promise.all([
-                fetch('/api/inventory/projects'),
-                fetch('/api/inventory/properties')
-            ])
+    const loading = projectsLoading || propertiesLoading
 
-            const projectsData = await projectsRes.json()
-            const propertiesData = await propertiesRes.json()
-
-            setInventoryProjects(projectsData.projects || [])
-            setProperties(propertiesData.properties || [])
-        } catch (error) {
-            console.error('Fetch error:', error)
-            toast.error('Failed to load projects')
-        } finally {
-            setLoading(false)
-        }
-    }
 
     const filteredProjects = inventoryProjects.filter(p =>
         p.name?.toLowerCase().includes(search.toLowerCase())

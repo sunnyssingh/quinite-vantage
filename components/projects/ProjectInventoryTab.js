@@ -19,9 +19,19 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 
+import { useInventoryProperties } from '@/hooks/useInventory'
+import { useQueryClient } from '@tanstack/react-query'
+
 export default function ProjectInventoryTab({ projectId, project, onMetricsUpdate }) {
-    const [properties, setProperties] = useState([])
-    const [loading, setLoading] = useState(true)
+    const queryClient = useQueryClient()
+    
+    // 1. Parallel Fetching (Hydrates instantly if hovered earlier)
+    const { 
+        data: properties = [], 
+        isLoading: loading,
+        refetch: fetchProperties 
+    } = useInventoryProperties(projectId)
+
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('all')
     const [selectedProperty, setSelectedProperty] = useState(null)
@@ -29,49 +39,23 @@ export default function ProjectInventoryTab({ projectId, project, onMetricsUpdat
     const [editingProperty, setEditingProperty] = useState(null)
     const [showEditModal, setShowEditModal] = useState(false)
 
-    useEffect(() => {
-        if (projectId) {
-            fetchProperties()
-        }
-    }, [projectId, project?.updated_at])
-
-    const fetchProperties = async () => {
-        try {
-            setLoading(true)
-            const response = await fetch(`/api/projects/${projectId}/properties`)
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to fetch properties')
-            }
-
-            setProperties(data.properties || [])
-        } catch (error) {
-            console.error('Fetch properties error:', error)
-            toast.error('Failed to load properties')
-        } finally {
-            setLoading(false)
-        }
-    }
 
     const handleStatusChanged = (updatedProperty, projectMetrics) => {
-        // Update local property list
-        setProperties(prev => prev.map(p =>
-            p.id === updatedProperty.id ? updatedProperty : p
-        ))
+        // Sync everything
+        queryClient.invalidateQueries({ queryKey: ['inventory-properties', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-project', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-projects'] })
 
-        // Notify parent to update project metrics
         if (onMetricsUpdate && projectMetrics) {
             onMetricsUpdate(projectMetrics)
         }
     }
 
     const handlePropertyUpdated = (updatedProperty) => {
-        // Update local property list
-        setProperties(prev => prev.map(p =>
-            p.id === updatedProperty.id ? updatedProperty : p
-        ))
+        queryClient.invalidateQueries({ queryKey: ['inventory-properties', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-projects'] })
     }
+
 
     const filteredProperties = properties.filter(p => {
         const matchesSearch = p.title?.toLowerCase().includes(search.toLowerCase()) ||

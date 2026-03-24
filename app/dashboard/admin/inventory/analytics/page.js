@@ -1,41 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { AnalyticsView } from '@/components/inventory/AnalyticsView'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { toast } from 'react-hot-toast'
+import { useInventoryProjects, useInventoryProperties } from '@/hooks/useInventory'
 
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { AnalyticsView } from '@/components/inventory/AnalyticsView'
 import { PermissionGate } from '@/components/permissions/PermissionGate'
 
+
 export default function AnalyticsPage() {
-    const [properties, setProperties] = useState([])
-    const [inventoryProjects, setInventoryProjects] = useState([])
-    const [loading, setLoading] = useState(true)
+    // 1. Parallel Fetching with React Query
+    const { 
+        data: properties = [], 
+        isLoading: propsLoading 
+    } = useInventoryProperties()
 
-    useEffect(() => {
-        fetchData()
-    }, [])
+    const { 
+        data: invProjects = [], 
+        isLoading: invLoading 
+    } = useInventoryProjects()
 
-    const fetchData = async () => {
-        try {
-            setLoading(true)
-            const [pRes, invProjRes] = await Promise.all([
-                fetch('/api/inventory/properties'),
-                fetch('/api/inventory/projects')
-            ])
 
-            const pData = await pRes.json()
-            const invProjData = await invProjRes.json()
-
-            setProperties(pData.properties || [])
-            setInventoryProjects(invProjData.projects || [])
-        } catch (error) {
-            console.error('Fetch error:', error)
-            toast.error('Failed to load analytics data')
-        } finally {
-            setLoading(false)
-        }
-    }
+    const loading = propsLoading || invLoading
 
     if (loading) {
         return (
@@ -66,7 +51,7 @@ export default function AnalyticsPage() {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    <AnalyticsView properties={properties} projects={inventoryProjects} />
+                    <AnalyticsView properties={properties} projects={invProjects} />
                 </div>
             </div>
         </PermissionGate>

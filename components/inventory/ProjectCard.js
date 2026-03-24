@@ -1,5 +1,8 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
+
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Building2, MapPin, TrendingUp, Home, CheckCircle2, Clock } from 'lucide-react'
@@ -25,15 +28,39 @@ export default function ProjectCard({ project }) {
 
     const status = statusConfig[project.project_status] || statusConfig.planning
 
+    const queryClient = useQueryClient()
+
+
+    const prefetchProjectData = () => {
+        if (!project.id) return
+        
+        // Prefetch project details
+        queryClient.prefetchQuery({
+            queryKey: ['inventory-project', project.id],
+            queryFn: () => fetch(`/api/projects/${project.id}`).then(res => res.json()).then(d => d.project),
+            staleTime: 5 * 60 * 1000
+        })
+
+        // Prefetch properties for this project
+        queryClient.prefetchQuery({
+            queryKey: ['inventory-properties', project.id],
+            queryFn: () => fetch(`/api/inventory/properties?project_id=${project.id}`).then(res => res.json()).then(d => d.properties),
+            staleTime: 2 * 60 * 1000
+        })
+    }
+
     const handleClick = () => {
         router.push(`/dashboard/admin/inventory/projects/${project.id}`)
     }
 
+
     return (
         <Card
             className="border-border shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group overflow-hidden"
+            onMouseEnter={prefetchProjectData}
             onClick={handleClick}
         >
+
             <CardHeader className="pb-3 bg-gradient-to-br from-white to-slate-50 group-hover:from-blue-50 group-hover:to-white transition-colors">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">

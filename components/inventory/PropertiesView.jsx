@@ -23,13 +23,30 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { usePermission } from '@/contexts/PermissionContext'
 
+import { useInventoryProjects, useInventoryProperties } from '@/hooks/useInventory'
+
 export function PropertiesView({ projectId = null }) {
     const canManage = usePermission('manage_inventory')
     const canEdit = usePermission('edit_inventory')
 
-    const [properties, setProperties] = useState([])
-    const [projects, setProjects] = useState([])
-    const [loading, setLoading] = useState(true)
+    // 1. Parallel Fetching with specialized hooks
+    const { 
+        data: properties = [], 
+        isLoading: propertiesLoading,
+        refetch: refetchProperties
+    } = useInventoryProperties(projectId)
+
+    const { 
+        data: projects = [], 
+        isLoading: projectsLoading 
+    } = useInventoryProjects()
+
+    const loading = propertiesLoading || projectsLoading
+
+    const fetchData = () => {
+        refetchProperties()
+    }
+
     const [search, setSearch] = useState('')
 
     // Filter states
@@ -46,9 +63,6 @@ export function PropertiesView({ projectId = null }) {
     // UI States
     const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false)
 
-    // configurations array kept for backward compatibility if needed, but we'll use numeric beds/baths now for better filtering
-    // const configurations = ['1BHK', '2BHK', '3BHK', '4BHK', '5BHK', '6BHK+'] 
-
     const propertyTypes = [
         { value: 'apartment', label: 'Apartment' },
         { value: 'villa', label: 'Villa' },
@@ -63,32 +77,7 @@ export function PropertiesView({ projectId = null }) {
         { value: 'reserved', label: 'Reserved', color: 'bg-amber-500' }
     ]
 
-    useEffect(() => {
-        fetchData()
-    }, [projectId])
 
-    const fetchData = async () => {
-        try {
-            setLoading(true)
-
-            // Fetch properties
-            const propsRes = await fetch('/api/inventory/properties')
-            const propsData = await propsRes.json()
-            setProperties(propsData.properties || [])
-
-            // Fetch projects for filter
-            if (!projectId) {
-                const projRes = await fetch('/api/inventory/projects')
-                const projData = await projRes.json()
-                setProjects(projData.projects || [])
-            }
-        } catch (error) {
-            console.error('Fetch error:', error)
-            toast.error('Failed to load properties')
-        } finally {
-            setLoading(false)
-        }
-    }
 
     // Filter logic
     const filteredProperties = properties.filter(property => {

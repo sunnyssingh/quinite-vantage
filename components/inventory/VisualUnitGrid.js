@@ -9,33 +9,30 @@ import {
 import EditPropertyModal from '@/components/inventory/EditPropertyModal'
 import StatusChangeModal from '@/components/inventory/StatusChangeModal'
 
+import { useInventoryProperties } from '@/hooks/useInventory'
+import { useQueryClient } from '@tanstack/react-query'
+
 export default function VisualUnitGrid({ projectId, onMetricsUpdate }) {
-    const [properties, setProperties] = useState([])
-    const [loading, setLoading] = useState(true)
+    const queryClient = useQueryClient()
+    
+    // 1. Parallel Fetching (Hydrates instantly if hovered earlier)
+    const { 
+        data: properties = [], 
+        isLoading: loading,
+        refetch: fetchProperties 
+    } = useInventoryProperties(projectId)
+
     const [selectedProperty, setSelectedProperty] = useState(null)
     const [statusModalOpen, setStatusModalOpen] = useState(false)
     const [hoveredId, setHoveredId] = useState(null)
 
-    useEffect(() => {
-        fetchProperties()
-    }, [projectId])
-
-    const fetchProperties = async () => {
-        try {
-            setLoading(true)
-            const res = await fetch(`/api/inventory/properties?project_id=${projectId}`)
-            const data = await res.json()
-            setProperties(data.properties || [])
-        } catch (error) {
-            console.error('Failed to load properties', error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
     const handleUpdate = (updatedProp) => {
-        setProperties(prev => prev.map(p => p.id === updatedProp.id ? updatedProp : p))
+        // Sync everything
+        queryClient.invalidateQueries({ queryKey: ['inventory-properties', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-project', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-projects'] })
     }
+
 
     const getStatusColor = (status) => {
         switch (status) {

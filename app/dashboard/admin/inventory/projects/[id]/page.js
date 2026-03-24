@@ -14,49 +14,34 @@ import ProjectInventoryTab from '@/components/projects/ProjectInventoryTab'
 import VisualUnitGrid from '@/components/inventory/VisualUnitGrid'
 import EditProjectModal from '@/components/inventory/EditProjectModal'
 
+import { useQueryClient } from '@tanstack/react-query'
+import { useInventoryProject } from '@/hooks/useInventory'
+
 export default function InventoryProjectDetailsPage() {
     const router = useRouter()
     const params = useParams()
     const projectId = params.id
+    const queryClient = useQueryClient()
 
-    const [project, setProject] = useState(null)
-    const [loading, setLoading] = useState(true)
+
+    // 1. Fetch project with React Query (Hydrates instantly if hovered)
+    const { data: project, isLoading: loading, refetch: fetchProject } = useInventoryProject(projectId)
+    
     const [showEditModal, setShowEditModal] = useState(false)
 
-    useEffect(() => {
-        fetchProject()
-    }, [projectId])
-
-    const fetchProject = async () => {
-        try {
-            setLoading(true)
-            const response = await fetch(`/api/projects/${projectId}`)
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to fetch project')
-            }
-
-            setProject(data.project)
-        } catch (error) {
-            console.error('Fetch project error:', error)
-            toast.error('Failed to load project details')
-        } finally {
-            setLoading(false)
-        }
-    }
 
     const handleMetricsUpdate = (updatedMetrics) => {
-        // Update project metrics when property status changes
-        setProject(prev => ({
-            ...prev,
-            ...updatedMetrics
-        }))
+        // Invalidate both project and properties to refresh everything in sync
+        queryClient.invalidateQueries({ queryKey: ['inventory-project', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-properties', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-projects'] }) // Refresh overview stats too
     }
 
     const handleProjectUpdated = (updatedProject) => {
-        setProject(updatedProject)
+        queryClient.invalidateQueries({ queryKey: ['inventory-project', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['inventory-projects'] })
     }
+
 
     if (loading) {
         return (
