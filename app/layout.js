@@ -1,9 +1,10 @@
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
-import localFont from 'next/font/local'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
 import { ReactQueryProvider } from '@/components/providers/ReactQueryProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // Google Sans substitute (Premium Body Font)
 const inter = Inter({
@@ -72,12 +73,43 @@ export const viewport = {
   userScalable: false, // Ensures app-like feel on mobile
 }
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  let initialUser = null
+  let initialProfile = null
+
+  try {
+    // 1. Check for session in a server-side way
+    const supabase = await createServerSupabaseClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (user) {
+      initialUser = user
+      
+      // 2. Proactively fetch profile with admin client to ensure it's available for hydration
+      const admin = createAdminClient()
+      const { data: profile } = await admin
+        .from('profiles')
+        .select('*, organization:organizations(*)')
+        .eq('id', user.id)
+        .single()
+      
+      if (profile) {
+        initialProfile = profile
+      }
+    }
+  } catch (error) {
+    console.warn('[RootLayout] Server-side auth check skipped or failed:', error.message)
+    // Fallback gracefully: the client-side AuthContext will try again if needed
+  }
+
   return (
     <html lang="en">
       <body className={`${inter.variable} ${jakarta.variable} font-sans`}>
         <ReactQueryProvider>
-          <AuthProvider>
+          <AuthProvider 
+            initialUser={initialUser} 
+            initialProfile={initialProfile}
+          >
             {children}
             <Toaster position="top-right" />
           </AuthProvider>
@@ -85,4 +117,4 @@ export default function RootLayout({ children }) {
       </body>
     </html>
   )
-}
+}

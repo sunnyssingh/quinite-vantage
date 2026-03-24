@@ -13,103 +13,137 @@ const AuthContext = createContext({
     refreshProfile: async () => { }
 })
 
-export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null)
-    const [profile, setProfile] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [profileLoading, setProfileLoading] = useState(true)
+export function AuthProvider({ children, initialUser = null, initialProfile = null }) {
+    // Start with server-provided data if available to avoid skeletons on refresh
+    const [user, setUser] = useState(initialUser)
+    const [profile, setProfile] = useState(initialProfile)
+    
+    // If we have initial data, we aren't "loading" on the first mount
+    const [loading, setLoading] = useState(!initialUser)
+    const [profileLoading, setProfileLoading] = useState(initialUser && !initialProfile)
+    
     const router = useRouter()
     const initialized = useRef(false)
+    const mountRef = useRef(true)
     
     // Store supabase client in state to prevent recreating it on every render
     const [supabase] = useState(() => createClient())
 
     const fetchProfile = useCallback(async (userId) => {
-        if (!userId) return null
+        if (!userId || !mountRef.current) {
+            setProfileLoading(false)
+            return null
+        }
         
         try {
             setProfileLoading(true)
-            console.log(`[AuthContext] Fetching profile for ${userId}...`)
-            const { data, error } = await supabase
+            console.log(`[AuthContext] 🔄 Fetching profile for ${userId}...`)
+            
+            const fetchPromise = supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single()
+            
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+            )
+
+            const { data, error } = await Promise.race([fetchPromise, timeoutPromise])
 
             if (error) {
-                console.error('[AuthContext] fetchProfile error:', error)
-                setProfile(null)
+                console.error('[AuthContext] ❌ Profile fetch error:', error)
+                if (mountRef.current) setProfile(null)
                 return null
             }
             
-            if (data) {
-                console.log('[AuthContext] Profile fetched successfully')
+            if (data && mountRef.current) {
+                console.log('[AuthContext] ✅ Profile fetched successfully')
                 setProfile(data)
                 return data
             }
         } catch (err) {
-            console.error('[AuthContext] Error in fetchProfile:', err)
+            console.warn('[AuthContext] ⚠️ Error in fetchProfile:', err.message)
         } finally {
-            setProfileLoading(false)
+            if (mountRef.current) setProfileLoading(false)
         }
         return null
     }, [supabase])
 
     useEffect(() => {
+        mountRef.current = true
+        
+        // If we already have server data, we skip the initial client-side getSession
+        // but we STILL set up the listener for future changes.
         if (initialized.current) return
         initialized.current = true
 
-        let mounted = true
-
         const handleAuthChange = async (event, session) => {
-            if (!mounted) return
+            if (!mountRef.current) return
             
-            console.log(`[AuthContext] Auth event: ${event}`, session ? 'User present' : 'No session')
+            console.log(`[AuthContext] 🔑 Auth event: ${event}`, session ? 'User present' : 'No session')
             
             const currentUser = session?.user || null
-            setUser(currentUser)
+            
+            // Optimization: skip updates if user hasn't changed (prevents flickering)
+            if (user?.id !== currentUser?.id) {
+                setUser(currentUser)
 
-            if (currentUser) {
-                // Fetch profile but don't necessarily stay in loading state forever if it's slow
-                // However, for the initial load, we want to know the profile
+                if (currentUser) {
+                    await fetchProfile(currentUser.id)
+                } else {
+                    if (mountRef.current) {
+                        setProfile(null)
+                        setProfileLoading(false)
+                    }
+                }
+            } else if (currentUser && !profile && !profileLoading) {
+                // If user is same but profile is missing, try fetching
                 await fetchProfile(currentUser.id)
-            } else {
-                setProfile(null)
+            }
+
+            if (mountRef.current) {
+                setLoading(false)
                 setProfileLoading(false)
             }
-            // Always resolve initial loading once we've processed the first event or session check
-            if (loading) {
-                setLoading(false)
-            }
         }
 
-        // 1. Check initial session immediately
-        const init = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession()
-                await handleAuthChange('INITIAL_CHECK', session)
-            } catch (err) {
-                console.error('[AuthContext] Initial check failed:', err)
-                if (mounted) setLoading(false)
-            }
-        }
+        // 1. Initial Check (Only if server didn't provide data)
+        if (!initialUser) {
+            const init = async () => {
+                try {
+                    const sessionPromise = supabase.auth.getSession()
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Session check timeout')), 3000)
+                    )
 
-        init()
+                    const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise])
+                    await handleAuthChange('INITIAL_CHECK', session)
+                } catch (err) {
+                    console.error('[AuthContext] ⚠️ Client init issue:', err.message)
+                    if (mountRef.current) setLoading(false)
+                }
+            }
+            init()
+        } else if (initialUser && !initialProfile) {
+            // Server provided user but no profile, fetch it now
+            fetchProfile(initialUser.id)
+        }
 
         // 2. Listen for subsequent changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                // Skip INITIAL_SESSION as we handled it with getSession or it will be redundant
                 if (event === 'INITIAL_SESSION') return
                 await handleAuthChange(event, session)
             }
         )
 
         return () => {
-            mounted = false
+            mountRef.current = false
             subscription.unsubscribe()
         }
-    }, [supabase, fetchProfile, loading])
+    }, [supabase, fetchProfile, initialUser, initialProfile, user, profile, profileLoading])
+
 
     const signOut = async () => {
         try {
@@ -119,7 +153,6 @@ export function AuthProvider({ children }) {
             router.push('/')
         } catch (err) {
             console.error('[AuthContext] Sign out error:', err)
-            // Force local cleanup anyway
             setUser(null)
             setProfile(null)
             router.push('/')
@@ -149,4 +182,5 @@ export const useAuth = () => {
     if (context === undefined) throw new Error('useAuth must be used within an AuthProvider')
     return context
 }
+
 

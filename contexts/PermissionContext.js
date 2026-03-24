@@ -16,24 +16,35 @@ export function PermissionProvider({ children }) {
     const [loading, setLoading] = useState(true)
 
     const fetchPermissions = async () => {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
         try {
             setLoading(true)
-            const response = await fetch('/api/permissions/my-permissions')
+            const response = await fetch('/api/permissions/my-permissions', {
+                signal: controller.signal
+            })
 
             if (response.ok) {
                 const data = await response.json()
                 setPermissions(data.permissions || [])
             } else {
-                console.error('Failed to fetch permissions')
+                console.error('Failed to fetch permissions (Status:', response.status, ')')
                 setPermissions([])
             }
         } catch (error) {
-            console.error('Error fetching permissions:', error)
+            if (error.name === 'AbortError') {
+                console.warn('[PermissionContext] Fetch timed out')
+            } else {
+                console.error('Error fetching permissions:', error)
+            }
             setPermissions([])
         } finally {
+            clearTimeout(timeoutId)
             setLoading(false)
         }
     }
+
 
     useEffect(() => {
         fetchPermissions()

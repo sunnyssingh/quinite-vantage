@@ -119,16 +119,13 @@ export async function middleware(request) {
 
                     response = NextResponse.redirect(redirectUrl)
 
-                    // Clear all auth cookies
-                    const cookiesToClear = [
-                        'sb-access-token',
-                        'sb-refresh-token',
-                        'sb-auth-token'
-                    ]
-
-                    cookiesToClear.forEach(cookieName => {
-                        response.cookies.delete(cookieName)
+                    // Clear all Supabase auth cookies by identifying them dynamically
+                    request.cookies.getAll().forEach(cookie => {
+                        if (cookie.name.startsWith('sb-')) {
+                            response.cookies.delete(cookie.name)
+                        }
                     })
+
 
                     return response
                 }
