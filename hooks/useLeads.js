@@ -18,6 +18,8 @@ export function useLeads(filters = {}) {
             if (filters.status) params.append('status', filters.status)
             if (filters.page) params.append('page', filters.page)
             if (filters.limit) params.append('limit', filters.limit)
+            if (filters.sortBy) params.append('sortBy', filters.sortBy)
+            if (filters.sortOrder) params.append('sortOrder', filters.sortOrder)
 
             const response = await fetch(`/api/leads?${params.toString()}`)
             if (!response.ok) throw new Error('Failed to fetch leads')

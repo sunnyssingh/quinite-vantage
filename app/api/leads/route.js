@@ -47,7 +47,9 @@ export const GET = withAuth(async (request, context) => {
             search: searchParams.get('search'),
             status: searchParams.get('status'),
             page: searchParams.get('page') || 1,
-            limit: searchParams.get('limit') || 20
+            limit: searchParams.get('limit') || 20,
+            sortBy: searchParams.get('sortBy'),
+            sortOrder: searchParams.get('sortOrder')
         }
 
         // Fetch leads using service layer

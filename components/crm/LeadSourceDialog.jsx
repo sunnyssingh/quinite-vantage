@@ -24,7 +24,7 @@ const FormBuilder = dynamic(() => import('./FormBuilder'), {
     ssr: false
 })
 
-export default function LeadSourceDialog({ open, onOpenChange, projectId, projects, users = [] }) {
+export default function LeadSourceDialog({ open, onOpenChange, projectId, projects, users = [], onSuccess }) {
     const [activeTab, setActiveTab] = useState('manual')
     const [importProjectId, setImportProjectId] = useState(projectId || 'none')
     const [previewData, setPreviewData] = useState(null) // [NEW] Preview State
@@ -129,6 +129,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                 toast.success(`Imported ${result.summary.processed} leads!`)
                 onOpenChange(false)
                 setPreviewData(null)
+                if (onSuccess) onSuccess()
             } else {
                 toast.error(`Import failed: ${typeof result.message === 'object' ? JSON.stringify(result.message) : result.message}`)
             }
@@ -222,6 +223,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                                                 if (res.ok) {
                                                     toast.success("Lead added!")
                                                     onOpenChange(false)
+                                                    if (onSuccess) onSuccess()
                                                 } else {
                                                     console.error('[LeadSourceDialog] API Error:', result)
                                                     const errorMsg = result.error && typeof result.error === 'object' ? (result.error.message || JSON.stringify(result.error)) : (result.error || result.message || "Failed to create lead")

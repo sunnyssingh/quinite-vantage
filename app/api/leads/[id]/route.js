@@ -72,7 +72,7 @@ export async function PUT(request, { params }) {
             .from('leads')
             .select('assigned_to, organization_id')
             .eq('id', id)
-            .single()
+            .maybeSingle()
 
         if (fetchError || !existingLead) {
             return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
@@ -106,22 +106,6 @@ export async function PUT(request, { params }) {
         if (body.dealValue !== undefined) {
             const canManageDeals = await hasDashboardPermission(user.id, 'manage_deals')
             if (!canManageDeals) {
-                // We won't block the whole lead update, but we won't update the deal
-                // Alternatively, strictly block:
-                /*
-                return NextResponse.json({
-                   success: false,
-                   message: 'You don\'t have permission to manage deals'
-               }, { status: 200 })
-               */
-                // For better UX during "Edit Lead" which might include deal value, let's just ignore the deal update if no permission,
-                // OR strictly block it. 
-                // Let's strictly block if they explicitly tried to change it.
-                // But `dealValue` might be sent even if unchanged? The frontend sends everything.
-                // Let's check logic: Frontend `handleSubmit` sends everything. 
-                // We should probably only block if it actually CHANGED, or just enforce it generally.
-                // Safest to enforce generally if it's in the body.
-
                 return NextResponse.json({
                     success: false,
                     message: 'You don\'t have permission to manage deals'
@@ -145,34 +129,36 @@ export async function PUT(request, { params }) {
         // Update lead
         const { data, error } = await supabase
             .from('leads')
-            .update(updateData)
+            .update({
+                ...updateData,
+                updated_at: new Date().toISOString()
+            })
             .eq('id', id)
             .select()
-            .single()
+            .maybeSingle()
 
         if (error) {
             console.error('Error updating lead:', error)
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
 
+        if (!data) {
+            return NextResponse.json({ error: 'Lead row not found after update' }, { status: 404 })
+        }
+
         // [Inventory Automation] If Lead is WON, mark linked property as SOLD
-        if (body.status === 'won' || body.stage === 'won' || (body.stageId && ['won', 'closed-won'].includes(body.stageId))) { // heuristic check
-            // Need to fetch lead's property_id first
-            const { data: leadData } = await supabase
-                .from('leads')
-                .select('property_id')
-                .eq('id', id)
-                .single()
+        const isWon = body.status === 'won' || 
+                      body.stage === 'won' || 
+                      (body.stageId && ['won', 'closed-won'].includes(body.stageId))
 
-            if (leadData?.property_id) {
-                const adminClient = createAdminClient()
-                await adminClient
-                    .from('properties')
-                    .update({ status: 'sold' })
-                    .eq('id', leadData.property_id)
+        if (isWon && data.property_id) {
+            const adminClient = createAdminClient()
+            await adminClient
+                .from('properties')
+                .update({ status: 'sold' })
+                .eq('id', data.property_id)
 
-                console.log(`[Inventory] Auto-sold property ${leadData.property_id} for lead ${id}`)
-            }
+            console.log(`[Inventory] Auto-sold property ${data.property_id} for lead ${id}`)
         }
 
         // [Schema Alignment] Update Deal if value is provided
@@ -185,7 +171,7 @@ export async function PUT(request, { params }) {
                     .from('deals')
                     .select('id')
                     .eq('lead_id', id)
-                    .single()
+                    .maybeSingle()
 
                 if (existingDeal) {
                     await supabase
@@ -198,7 +184,7 @@ export async function PUT(request, { params }) {
                         .from('profiles')
                         .select('organization_id')
                         .eq('id', user.id)
-                        .single()
+                        .maybeSingle()
 
                     if (profile?.organization_id) {
                         await supabase

@@ -51,7 +51,11 @@ export class LeadRepository extends BaseRepository<Lead> {
         assigned_to_user:profiles!leads_assigned_to_fkey(id, full_name, avatar_url)
       `)
             .eq('organization_id', organizationId)
-            .order('created_at', { ascending: false })
+ 
+        // Order Results
+        const sortBy = filters.sortBy || 'created_at'
+        const sortOrder = filters.sortOrder || 'desc'
+        query = query.order(sortBy, { ascending: sortOrder === 'asc' })
 
         // Apply filters
         if (filters.projectId) {

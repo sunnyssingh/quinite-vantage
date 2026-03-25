@@ -33,6 +33,9 @@ export default function LeadsPage() {
   const [projectId, setProjectId] = useState(null)
   const [selectedLeads, setSelectedLeads] = useState(new Set())
   const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(20)
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('desc')
 
   // Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -58,10 +61,12 @@ export default function LeadsPage() {
   // Data Fetching
   const { data: leadsResponse, isLoading: leadsLoading, isPlaceholderData, refetch: refetchLeads } = useLeads({
     search: searchQuery,
-    status: stageFilter !== 'all' ? stageFilter : undefined,
+    stageId: stageFilter !== 'all' ? stageFilter : undefined,
     projectId: projectId,
     page: page,
-    limit: 20
+    limit: limit,
+    sortBy: sortBy,
+    sortOrder: sortOrder
   })
 
   const leads = leadsResponse?.leads || []
@@ -100,7 +105,8 @@ export default function LeadsPage() {
       }
       setIsDialogOpen(false)
       setEditingLead(null)
-      refetchLeads() // Ensure list is fresh
+      await refetchLeads()
+      toast.success(editingLead ? 'Lead updated' : 'Lead added')
     } catch (error) {
       console.error(error)
       toast.error('Failed to save lead')
@@ -128,6 +134,7 @@ export default function LeadsPage() {
         next.delete(leadToDelete.id)
         return next
       })
+      await refetchLeads()
       toast.success('Lead deleted')
     } catch (error) {
       console.error(error)
@@ -142,6 +149,7 @@ export default function LeadsPage() {
     try {
       await bulkDeleteMutation.mutateAsync(Array.from(selectedLeads))
       setSelectedLeads(new Set())
+      await refetchLeads()
       toast.success('Leads deleted successfully')
     } catch (error) {
       console.error(error)
@@ -158,6 +166,7 @@ export default function LeadsPage() {
         updates: { assigned_to: userId }
       })
       setSelectedLeads(new Set())
+      await refetchLeads()
       toast.success('Leads assigned successfully')
     } catch (error) {
       console.error(error)
@@ -171,6 +180,7 @@ export default function LeadsPage() {
         leadId: id,
         updates: { stage_id: stageId }
       })
+      await refetchLeads()
       toast.success('Lead stage updated')
     } catch (error) {
       console.error(error)
@@ -232,10 +242,26 @@ export default function LeadsPage() {
         users={users}
 
         // Pagination Props
-
         page={page}
         onPageChange={setPage}
+        limit={limit}
+        onLimitChange={(val) => {
+          setLimit(val)
+          setPage(1)
+        }}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={(field) => {
+          if (sortBy === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+          } else {
+            setSortBy(field)
+            setSortOrder('desc')
+          }
+          setPage(1)
+        }}
         hasMore={metadata?.hasMore}
+        totalLeads={metadata?.total || 0}
         isLoadingMore={isPlaceholderData}
       />
 
@@ -258,6 +284,7 @@ export default function LeadsPage() {
         projectId={projectId}
         projects={projects || []}
         users={users}
+        onSuccess={refetchLeads}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

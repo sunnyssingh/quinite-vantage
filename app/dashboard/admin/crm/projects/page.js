@@ -12,7 +12,17 @@ import {
   DialogHeader,
   DialogDescription
 } from '@/components/ui/dialog'
-import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Lock, RefreshCw } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Lock, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -51,7 +61,7 @@ export default function ProjectsPage() {
 
 
   const [submitting, setSubmitting] = useState(false)
-  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'list'
 
   // Edit State
@@ -80,6 +90,18 @@ export default function ProjectsPage() {
 
   // Delete State
   const [deletingId, setDeletingId] = useState(null)
+
+  // Confirm State
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: '',
+    description: '',
+    onConfirm: () => { },
+    variant: 'default' // 'default' | 'destructive'
+  })
+
+  // Full Description State
+  const [showFullDesc, setShowFullDesc] = useState(false)
 
   // Removed manual fetch
   // useEffect(() => { fetchProjects() }, [])
@@ -157,6 +179,7 @@ export default function ProjectsPage() {
       if (!res.ok) throw new Error(data.error)
 
       await refetch() // Refresh list instead of manual state update
+      setCreateOpen(false)
       toast.success("Project created successfully!")
       setShowCreateForm(false)
     } catch (err) {
@@ -247,43 +270,57 @@ export default function ProjectsPage() {
     }
   }
 
-  const handleDelete = async (project) => {
-    if (!confirm('Delete this project? This cannot be undone.')) return
-    setDeletingId(project.id)
+  const handleDelete = (project) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Project?',
+      description: `Are you sure you want to delete "${project.name}"? This will also remove all associated inventory and configurations. This action cannot be undone.`,
+      variant: 'destructive',
+      onConfirm: async () => {
+        setDeletingId(project.id)
+        try {
+          const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error || 'Delete failed')
 
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Delete failed')
-
-      await refetch() // Refresh list
-      toast.success("Project deleted successfully!")
-    } catch (err) {
-      toast.error(err.message || "Delete failed")
-    } finally {
-      setDeletingId(null)
-    }
+          await refetch()
+          toast.success("Project deleted successfully!")
+        } catch (err) {
+          toast.error(err.message || "Delete failed")
+        } finally {
+          setDeletingId(null)
+        }
+      }
+    })
   }
 
-  const handleToggleVisibility = async (project) => {
-    try {
-      const newVisibility = !project.public_visibility
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ public_visibility: newVisibility })
-      })
+  const handleToggleVisibility = (project) => {
+    const newVisibility = !project.public_visibility
+    setConfirmDialog({
+      open: true,
+      title: `${newVisibility ? 'Show' : 'Hide'} Project?`,
+      description: `Would you like to make "${project.name}" ${newVisibility ? 'publicly visible' : 'hidden from public leads'}?`,
+      variant: 'default',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/projects/${project.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ public_visibility: newVisibility })
+          })
 
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Failed to update visibility')
+          if (!res.ok) {
+            const data = await res.json()
+            throw new Error(data.error || 'Failed to update visibility')
+          }
+
+          await refetch()
+          toast.success(`Project is now ${newVisibility ? 'Public' : 'Hidden'}`)
+        } catch (err) {
+          toast.error(err.message)
+        }
       }
-
-      await refetch()
-      toast.success(`Project is now ${newVisibility ? 'Public' : 'Hidden'}`)
-    } catch (err) {
-      toast.error(err.message)
-    }
+    })
   }
 
   const handleCreateCampaign = async (e) => {
@@ -307,9 +344,9 @@ export default function ProjectsPage() {
       if (!res.ok) throw new Error(data.error)
 
       toast.success("Campaign created successfully!")
-      setAddOpen(false)
       setCampName('')
       setCampProjectId(null)
+      setAddOpen(false)
       router.push('/dashboard/admin/campaigns')
     } catch (err) {
       toast.error(err.message)
@@ -332,15 +369,14 @@ export default function ProjectsPage() {
             message="You need 'Create Projects' permission to add new projects. Contact your administrator."
           >
             <Button
-              onClick={() => setShowCreateForm(!showCreateForm)}
-              variant={showCreateForm ? 'outline' : 'default'}
+              onClick={() => setCreateOpen(true)}
               disabled={!canCreate}
               className="w-auto"
             >
               {!canCreate && <Lock className="w-3.5 h-3.5 mr-2" />}
               <Plus className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">{showCreateForm ? 'Cancel' : 'New Project'}</span>
-              <span className="sm:hidden">{showCreateForm ? 'Cancel' : 'New'}</span>
+              <span className="hidden sm:inline">New Project</span>
+              <span className="sm:hidden">New</span>
             </Button>
           </PermissionTooltip>
         </div>
@@ -381,7 +417,7 @@ export default function ProjectsPage() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => window.location.reload()}
+                onClick={() => refetch()}
                 className="shrink-0"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -392,26 +428,6 @@ export default function ProjectsPage() {
       </div>
 
       <div className="p-6 space-y-6">
-        {/* Create Form */}
-        {showCreateForm && (
-          <Card className="shadow-sm border border-border bg-card mb-6">
-            <CardHeader className="border-b border-border bg-muted/20">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-                <Sparkles className="w-4 h-4 text-primary" />
-                Create New Project
-              </CardTitle>
-              <CardDescription>Fill in the details to create a new real estate project</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6">
-              <ProjectForm
-                onSubmit={handleCreate}
-                onCancel={() => setShowCreateForm(false)}
-                isSubmitting={submitting}
-              />
-            </CardContent>
-          </Card>
-        )}
-
         {/* Projects Display */}
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -519,6 +535,24 @@ export default function ProjectsPage() {
           </div>
         )}
       </div>
+ 
+      {/* Create Modal */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              Create New Project
+            </DialogTitle>
+            <DialogDescription>Fill in the details to create a new real estate project</DialogDescription>
+          </DialogHeader>
+          <ProjectForm
+            onSubmit={handleCreate}
+            onCancel={() => setCreateOpen(false)}
+            isSubmitting={submitting}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -538,7 +572,7 @@ export default function ProjectsPage() {
       </Dialog>
 
       {/* View Project Details Modal */}
-      <Dialog open={!!viewingProject} onOpenChange={() => setViewingProject(null)}>
+      <Dialog open={!!viewingProject} onOpenChange={() => { setViewingProject(null); setShowFullDesc(false); }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Project Details</DialogTitle>
@@ -593,7 +627,31 @@ export default function ProjectsPage() {
                 {viewingProject.description && (
                   <div className="bg-white p-4 rounded-lg border border-slate-200">
                     <h3 className="font-semibold text-slate-900 mb-2">About This Project</h3>
-                    <p className="text-slate-600 text-sm leading-relaxed">{viewingProject.description}</p>
+                    <div className="text-slate-600 text-sm leading-relaxed">
+                      {viewingProject.description.length > 300 && !showFullDesc ? (
+                        <>
+                          {viewingProject.description.substring(0, 300)}...
+                          <button
+                            onClick={() => setShowFullDesc(true)}
+                            className="text-primary font-medium hover:underline ml-1 inline-flex items-center gap-0.5"
+                          >
+                            Read more <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {viewingProject.description}
+                          {viewingProject.description.length > 300 && (
+                            <button
+                              onClick={() => setShowFullDesc(false)}
+                              className="text-primary font-medium hover:underline ml-2 inline-flex items-center gap-0.5"
+                            >
+                              Show less <ChevronUp className="w-3 h-3" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -861,6 +919,33 @@ export default function ProjectsPage() {
           </form>
         </DialogContent>
       </Dialog>
+ 
+      {/* Universal Confirmation Dialog */}
+      <AlertDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                confirmDialog.onConfirm();
+                setConfirmDialog(prev => ({ ...prev, open: false }));
+              }}
+              className={confirmDialog.variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''}
+            >
+              {confirmDialog.variant === 'destructive' ? 'Delete' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

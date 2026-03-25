@@ -8,6 +8,8 @@ export interface FilterOptions {
     page?: number | string
     limit?: number | string
     assignedTo?: string
+    sortBy?: string
+    sortOrder?: 'asc' | 'desc'
 }
 
 export interface PermissionOptions {
@@ -27,14 +29,14 @@ export class LeadService {
     static async getLeads(organizationId: string, filters: FilterOptions = {}) {
         const repo = new LeadRepository()
 
-        const query = repo.findLeadsWithRelations(organizationId, filters)
-
         const page = filters.page ? parseInt(String(filters.page)) : 1
         const limit = filters.limit ? parseInt(String(filters.limit)) : 50
         const from = (page - 1) * limit
         const to = from + limit - 1
 
-        // Get total count (using repo's client for now)
+        const query = repo.findLeadsWithRelations(organizationId, filters)
+
+        // Get total count
         const { count, error: countError } = await repo.client
             .from('leads')
             .select('*', { count: 'exact', head: true })
@@ -64,7 +66,7 @@ export class LeadService {
         const { canViewAll, canViewTeam, canViewOwn } = permissions
 
         if (!canViewAll && !canViewTeam && !canViewOwn) {
-            return []
+            return { leads: [], metadata: { total: 0, page: 1, limit: 50, hasMore: false } }
         }
 
         const repo = new LeadRepository()
@@ -81,6 +83,11 @@ export class LeadService {
         const from = (page - 1) * limit
         const to = from + limit - 1
 
+        const { count, error: countError } = await repo.client
+            .from('leads')
+            .select('*', { count: 'exact', head: true })
+            .eq('organization_id', organizationId)
+
         const { data: scopedLeads, error: scopedError } = await query.range(from, to)
 
         if (scopedError) throw scopedError
@@ -88,9 +95,10 @@ export class LeadService {
         return {
             leads: scopedLeads || [],
             metadata: {
+                total: count || 0,
                 page,
                 limit,
-                hasMore: scopedLeads?.length === limit
+                hasMore: (from + limit) < (count || 0)
             }
         }
     }

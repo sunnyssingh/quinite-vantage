@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { toast } from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -98,6 +99,18 @@ export function LeadDialog({
 
     const handleSubmit = (e) => {
         e.preventDefault()
+ 
+        // Basic Validations
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            toast.error('Please enter a valid email address')
+            return
+        }
+ 
+        if (formData.phone && !/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
+            toast.error('Please enter a valid 10-digit phone number')
+            return
+        }
+ 
         // Convert 'none'/'unassigned' back to null
         const payload = {
             ...formData,
@@ -267,7 +280,7 @@ export function LeadDialog({
                             Cancel
                         </Button>
                         <Button type="submit" disabled={submitting}>
-                            {submitting ? 'Saving...' : (lead ? 'Update Lead' : 'Create Lead')}
+                            {submitting ? 'Saving...' : (lead ? 'Save Changes' : 'Add Lead')}
                         </Button>
                     </DialogFooter>
                 </form>

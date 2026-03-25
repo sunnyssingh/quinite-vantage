@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Building2, Megaphone, Package } from 'lucide-react'
+import { ArrowLeft, Building2, Megaphone, Package, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { formatCurrency } from '@/lib/utils/currency'
 import ProjectMetrics from '@/components/projects/ProjectMetrics'
@@ -20,6 +20,7 @@ export default function ProjectDetailsPage() {
 
     const [project, setProject] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [showFullDesc, setShowFullDesc] = useState(false)
 
     useEffect(() => {
         fetchProject()
@@ -118,8 +119,32 @@ export default function ProjectDetailsPage() {
                             <h3 className="text-lg font-semibold text-foreground mb-4">Project Details</h3>
                             {project.description && (
                                 <div className="mb-4">
-                                    <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
-                                    <p className="text-sm text-foreground">{project.description}</p>
+                                    <p className="text-sm font-medium text-muted-foreground mb-1.5">About This Project</p>
+                                    <div className="text-sm text-foreground leading-relaxed">
+                                        {project.description.length > 300 && !showFullDesc ? (
+                                            <>
+                                                {project.description.substring(0, 300)}...
+                                                <button
+                                                    onClick={() => setShowFullDesc(true)}
+                                                    className="text-primary font-medium hover:underline ml-1 inline-flex items-center gap-0.5"
+                                                >
+                                                    Read more <ChevronDown className="w-3 h-3" />
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {project.description}
+                                                {project.description.length > 300 && (
+                                                    <button
+                                                        onClick={() => setShowFullDesc(false)}
+                                                        className="text-primary font-medium hover:underline ml-2 inline-flex items-center gap-0.5"
+                                                    >
+                                                        Show less <ChevronUp className="w-3 h-3" />
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                             {project.project_status && (

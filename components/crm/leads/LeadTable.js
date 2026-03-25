@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Edit, Trash2, Phone, Mail, User } from 'lucide-react'
+import { Edit, Trash2, Phone, Mail, User, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDefaultAvatar } from '@/lib/avatar-utils'
 import Link from 'next/link'
@@ -43,7 +43,13 @@ export function LeadTable({
     isLoadingMore = false,
     onBulkAssign,
     onBulkDelete,
-    users = []
+    users = [],
+    sortBy = 'created_at',
+    sortOrder = 'desc',
+    onSort,
+    limit = 20,
+    onLimitChange,
+    totalLeads = 0
 }) {
 
     const toggleSelectAll = () => {
@@ -197,10 +203,39 @@ export function LeadTable({
                                     onCheckedChange={toggleSelectAll}
                                 />
                             </TableHead>
-                            <TableHead>Lead</TableHead>
+                            <TableHead>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onSort('name')}
+                                    className="-ml-3 h-8 data-[state=open]:bg-accent"
+                                >
+                                    <span>Lead</span>
+                                    {sortBy === 'name' ? (
+                                        sortOrder === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                                    ) : (
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                    )}
+                                </Button>
+                            </TableHead>
                             <TableHead>Project</TableHead>
                             <TableHead>Pipeline Stage</TableHead>
                             <TableHead>Assigned To</TableHead>
+                            <TableHead>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => onSort('created_at')}
+                                    className="-ml-3 h-8 data-[state=open]:bg-accent"
+                                >
+                                    <span>Created At</span>
+                                    {sortBy === 'created_at' ? (
+                                        sortOrder === 'asc' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />
+                                    ) : (
+                                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                                    )}
+                                </Button>
+                            </TableHead>
                             <TableHead>Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -347,6 +382,11 @@ export function LeadTable({
                                         )}
                                     </TableCell>
                                     <TableCell>
+                                        <span className="text-xs text-muted-foreground">
+                                            {new Date(lead.created_at).toLocaleDateString()}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
                                         <div className="flex items-center gap-2">
                                             {canEditLead(lead) && (
                                                 <Button variant="ghost" size="icon" onClick={() => onEdit(lead)}>
@@ -368,26 +408,51 @@ export function LeadTable({
             </div>
 
             {/* Pagination Footer */}
-            <div className="flex items-center justify-end space-x-2 p-4 border-t">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onPageChange(page - 1)}
-                    disabled={page === 1 || loading || isLoadingMore}
-                >
-                    Previous
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                    Page {page}
+            <div className="flex items-center justify-between p-4 border-t">
+                <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                        {totalLeads} leads found
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page</span>
+                        <Select
+                            value={String(limit)}
+                            onValueChange={(val) => onLimitChange?.(parseInt(val))}
+                        >
+                            <SelectTrigger className="h-8 w-[70px]">
+                                <SelectValue placeholder={limit} />
+                            </SelectTrigger>
+                            <SelectContent side="top">
+                                {[10, 20, 50, 100].map((pageSize) => (
+                                    <SelectItem key={pageSize} value={String(pageSize)}>
+                                        {pageSize}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onPageChange(page + 1)}
-                    disabled={!hasMore || loading || isLoadingMore}
-                >
-                    Next
-                </Button>
+                <div className="flex items-center space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onPageChange(page - 1)}
+                        disabled={page === 1 || loading || isLoadingMore}
+                    >
+                        Previous
+                    </Button>
+                    <div className="text-sm text-muted-foreground min-w-[60px] text-center">
+                        Page {page}
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onPageChange(page + 1)}
+                        disabled={!hasMore || loading || isLoadingMore}
+                    >
+                        Next
+                    </Button>
+                </div>
             </div>
             {/* Bulk Action Bar */}
             {selectedLeads.size > 0 && (
