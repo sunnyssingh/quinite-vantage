@@ -9,6 +9,7 @@ import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 import * as fs from 'fs'
 import * as path from 'path'
 import Ajv from 'ajv'
+import { PropertyService } from '@/services/property.service'
 
 /**
  * GET /api/projects
@@ -129,9 +130,11 @@ export async function POST(request) {
       image_path
     } = body
 
-    // Validate optional real estate payload if present
+    // Validate optional real estate payload if present (Skip if draft)
     const realEstate = body.real_estate || (metadata && metadata.real_estate)
-    if (realEstate) {
+    const isDraft = body.project_status === 'draft'
+    
+    if (realEstate && !isDraft) {
       try {
         const schemaPath = path.join(process.cwd(), 'lib', 'schemas', 'realEstateProperty.schema.json')
         const schemaRaw = fs.readFileSync(schemaPath, 'utf8')
@@ -169,6 +172,8 @@ export async function POST(request) {
       price_range: body.price_range || null,
       project_status: body.project_status || 'planning',
       show_in_inventory: body.show_in_inventory !== false,
+      possession_date: body.possession_date || null,
+      completion_date: body.completion_date || null,
       organization_id: profile.organization_id,
       created_by: user.id,
       public_visibility: body.public_visibility !== undefined ? body.public_visibility : false
@@ -219,7 +224,13 @@ export async function POST(request) {
 
     } catch (campError) {
       console.error('Failed to auto-create campaign:', campError)
-      // We don't block the project creation response if this fails, just log it.
+    }
+
+    // Automatic Inventory Sync
+    try {
+      await PropertyService.syncProjectInventory(project, user.id)
+    } catch (syncError) {
+      console.error('Failed to sync project inventory:', syncError)
     }
 
     return corsJSON({ project })

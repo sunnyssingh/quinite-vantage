@@ -18,6 +18,7 @@ function handleCORS(response) {
 /* ===================== UPDATE PROJECT ===================== */
 import { withAuth } from '@/lib/middleware/withAuth'
 import { ProjectService } from '@/services/project.service'
+import { PropertyService } from '@/services/property.service'
 
 export const PUT = withAuth(async (request, { params, user, profile }) => {
     try {
@@ -82,9 +83,13 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
         if (body.project_status !== undefined) updates.project_status = body.project_status
         if (body.show_in_inventory !== undefined) updates.show_in_inventory = body.show_in_inventory
         if (body.public_visibility !== undefined) updates.public_visibility = body.public_visibility
-        // Validate optional real_estate payload
+        if (body.possession_date !== undefined) updates.possession_date = body.possession_date || null
+        if (body.completion_date !== undefined) updates.completion_date = body.completion_date || null
+        // Validate optional real_estate payload (Skip if draft)
         const realEstate = body.real_estate || (body.metadata && body.metadata.real_estate)
-        if (realEstate) {
+        const isDraft = body.project_status === 'draft' || existing.project_status === 'draft'
+        
+        if (realEstate && !isDraft) {
             try {
                 const schemaPath = path.join(process.cwd(), 'lib', 'schemas', 'realEstateProperty.schema.json')
                 const schemaRaw = fs.readFileSync(schemaPath, 'utf8')
@@ -100,6 +105,9 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
                 console.error('Schema validation error:', err)
                 return handleCORS(NextResponse.json({ error: 'Schema validation failed' }, { status: 500 }))
             }
+        } else if (realEstate && isDraft) {
+            // Still update the metadata if it's a draft, just skip validation
+            updates.metadata = { ...(body.metadata || {}), real_estate: realEstate }
         }
 
         // 6️⃣ Update project
@@ -136,6 +144,13 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
                 { name: project.name }
             )
         } catch { }
+
+        // Automatic Inventory Sync
+        try {
+            await PropertyService.syncProjectInventory(project, user.id)
+        } catch (syncError) {
+            console.error('Failed to sync project inventory:', syncError)
+        }
 
         return handleCORS(NextResponse.json({ project }))
     } catch (e) {

@@ -22,6 +22,7 @@ import ProjectList from '@/components/projects/ProjectList'
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 import { useProjects } from '@/hooks/useProjects'
+import { formatCurrency } from '@/lib/utils/currency'
 
 const ProjectForm = dynamic(() => import('@/components/projects/ProjectForm'), {
   loading: () => <Skeleton className="h-96 w-full" />
@@ -130,11 +131,20 @@ export default function ProjectsPage() {
               }
             } : {})
           },
-          location: { city: formData.locCity, locality: formData.locLocality, landmark: formData.locLandmark },
+          location: {
+            city: formData.locCity,
+            locality: formData.locLocality,
+            landmark: formData.locLandmark,
+            state: formData.locState,
+            country: formData.locCountry,
+            pincode: formData.locPincode
+          },
           pricing: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
           media: { thumbnail: formData.imageUrl || null },
           description: formData.description || ''
-        }
+        },
+        possession_date: formData.possessionDate || null,
+        completion_date: formData.completionDate || null
       }
 
       const res = await fetch('/api/projects', {
@@ -202,11 +212,20 @@ export default function ProjectsPage() {
               }
             } : {})
           },
-          location: { city: formData.locCity, locality: formData.locLocality, landmark: formData.locLandmark },
+          location: {
+            city: formData.locCity,
+            locality: formData.locLocality,
+            landmark: formData.locLandmark,
+            state: formData.locState,
+            country: formData.locCountry,
+            pincode: formData.locPincode
+          },
           pricing: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
           media: { thumbnail: formData.imageUrl || null },
           description: formData.description || ''
-        }
+        },
+        possession_date: formData.possessionDate || null,
+        completion_date: formData.completionDate || null
       }
 
       const res = await fetch(`/api/projects/${editingProject.id}`, {
@@ -669,10 +688,38 @@ export default function ProjectsPage() {
                             <div className="col-span-2">
                               <p className="text-slate-500">Price Range</p>
                               <p className="font-medium text-green-700 text-lg">
-                                {`₹${priceRange.min.toLocaleString()} - ₹${priceRange.max.toLocaleString()}`}
+                                {`${formatCurrency(priceRange.min)} - ${formatCurrency(priceRange.max)}`}
                               </p>
                             </div>
                           ) : null}
+
+                          {/* Dates */}
+                          {(['planning', 'under_construction'].includes(viewingProject.project_status) || viewingProject.project_status === 'draft') && (viewingProject.possession_date || re.possession_date) && (
+                            <div className="col-span-2">
+                              <p className="text-slate-500">Expected Possession</p>
+                              <p className="font-medium text-slate-900">{new Date(viewingProject.possession_date || re.possession_date).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          {['ready_to_move', 'completed'].includes(viewingProject.project_status) && (viewingProject.completion_date || re.completion_date) && (
+                            <div className="col-span-2">
+                              <p className="text-slate-500">Completion Date</p>
+                              <p className="font-medium text-slate-900">{new Date(viewingProject.completion_date || re.completion_date).toLocaleDateString()}</p>
+                            </div>
+                          )}
+
+                          {/* Unit Highlights */}
+                          {res.bhk && (
+                            <div>
+                              <p className="text-slate-500">BHK</p>
+                              <p className="font-medium text-slate-900">{res.bhk}</p>
+                            </div>
+                          )}
+                          {res.carpet_area > 0 && (
+                            <div>
+                              <p className="text-slate-500">Main Area</p>
+                              <p className="font-medium text-slate-900">{res.carpet_area} sq.ft</p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -711,7 +758,7 @@ export default function ProjectsPage() {
                                 <div className="text-right">
                                   <p className="font-semibold text-slate-900">{unit.count} units</p>
                                   {unit.price && (
-                                    <p className="text-xs text-green-600">₹{unit.price.toLocaleString()}</p>
+                                    <p className="text-xs text-green-600 font-medium">{formatCurrency(unit.price)}</p>
                                   )}
                                 </div>
                               </div>
@@ -720,39 +767,7 @@ export default function ProjectsPage() {
                         </div>
                       )}
 
-                      {/* Specifications */}
-                      <div className="md:col-span-2 bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-3">
-                        <h3 className="font-semibold text-slate-900 border-b pb-2 mb-2">Specifications</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          {res.bhk && (
-                            <div>
-                              <p className="text-slate-500">Configuration</p>
-                              <p className="font-medium text-slate-900">{res.bhk}</p>
-                            </div>
-                          )}
-                          {res.carpet_area > 0 && (
-                            <div>
-                              <p className="text-slate-500">Carpet Area</p>
-                              <p className="font-medium text-slate-900">{res.carpet_area} sq.ft</p>
-                            </div>
-                          )}
-                          {res.built_up_area > 0 && (
-                            <div>
-                              <p className="text-slate-500">Built-up Area</p>
-                              <p className="font-medium text-slate-900">{res.built_up_area} sq.ft</p>
-                            </div>
-                          )}
-                          {res.super_built_up_area > 0 && (
-                            <div>
-                              <p className="text-slate-500">Super Built-up</p>
-                              <p className="font-medium text-slate-900">{res.super_built_up_area} sq.ft</p>
-                            </div>
-                          )}
-                          {/* Commercial/Land Fallbacks */}
-                          {comm.area > 0 && <div><p className="text-slate-500">Area</p><p className="font-medium">{comm.area} sq.ft</p></div>}
-                          {(prop.plot_area > 0 || land.plot_area > 0) && <div><p className="text-slate-500">Plot Area</p><p className="font-medium">{prop.plot_area || land.plot_area} sq.ft</p></div>}
-                        </div>
-                      </div>
+                      {/* Specifications section removed */}
 
                       {/* Amenities */}
                       {amenities && amenities.length > 0 && (

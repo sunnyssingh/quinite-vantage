@@ -151,4 +151,69 @@ export class PropertyService {
 
         return properties || []
     }
+    /**
+     * Sync project inventory based on unit types
+     * Creates properties for each unit configuration
+     */
+    static async syncProjectInventory(project, createdBy) {
+        const adminClient = createAdminClient()
+        const unitTypes = project.unit_types || []
+        const organizationId = project.organization_id
+        const projectId = project.id
+
+        // 1. Get existing properties for this project to avoid duplicates
+        const { data: existingProperties, error: fetchError } = await adminClient
+            .from('properties')
+            .select('title, configuration, unit_number')
+            .eq('project_id', projectId)
+
+        if (fetchError) throw fetchError
+
+        const existingMap = new Set(existingProperties?.map(p => p.title) || [])
+        const inserts = []
+
+        // 2. Prepare inserts for each unit type
+        for (const type of unitTypes) {
+            const count = parseInt(type.count) || 0
+            const config = type.configuration || type.property_type
+            
+            for (let i = 1; i <= count; i++) {
+                const title = `${project.name} - ${config} - Unit ${i}`
+                
+                // Only insert if not already exists
+                if (!existingMap.has(title)) {
+                    inserts.push({
+                        organization_id: organizationId,
+                        project_id: projectId,
+                        title,
+                        description: `Automatically created unit for ${project.name}`,
+                        address: project.address,
+                        price: parseFloat(type.price) || 0,
+                        type: type.property_type || 'Apartment',
+                        configuration: config,
+                        size_sqft: parseFloat(type.carpet_area) || 0,
+                        status: 'available',
+                        created_by: createdBy,
+                        unit_number: `${i}`,
+                        show_in_crm: true,
+                        metadata: {
+                            auto_created: true,
+                            sync_date: new Date().toISOString()
+                        }
+                    })
+                }
+            }
+        }
+
+        // 3. Batch insert
+        if (inserts.length > 0) {
+            const { error: insertError } = await adminClient
+                .from('properties')
+                .insert(inserts)
+            
+            if (insertError) throw insertError
+        }
+
+        return inserts.length
+    }
 }

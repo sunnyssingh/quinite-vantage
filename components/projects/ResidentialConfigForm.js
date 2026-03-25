@@ -15,6 +15,7 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
         property_type: '',
         configuration: category === 'residential' ? '3BHK' : '',
         carpet_area: '',
+        area_unit: 'sqft',
         price: '',
         count: ''
     })
@@ -58,6 +59,17 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
     const propertyTypes = getPropertyTypes(config.category)
     const isResidential = (config.category || 'residential').toLowerCase() === 'residential'
 
+    const formatPriceDisplay = (price) => {
+        if (!price) return ''
+        const num = Number(price)
+        if (num >= 10000000) {
+            return `${(num / 10000000).toFixed(2)} Crores`
+        } else if (num >= 100000) {
+            return `${(num / 100000).toFixed(2)} Lacs`
+        }
+        return num.toLocaleString('en-IN')
+    }
+
     const handleSubmit = (e) => {
         e.preventDefault()
         if (!config.count || !config.carpet_area) return
@@ -70,9 +82,9 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
         }
 
         if (config.price) {
-            displayTitle += ` @ ₹${Number(config.price).toLocaleString()}`
+            displayTitle += ` @ ₹${formatPriceDisplay(config.price)}`
         }
-        displayTitle += ')'
+        displayTitle += ` ${config.area_unit})`
 
 
         onAdd({
@@ -168,7 +180,25 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                 )}
 
                 <div className="space-y-2">
-                    <Label>{isResidential ? 'Carpet Area (sqft)' : 'Area (sqft)'} *</Label>
+                    <div className="flex justify-between items-center">
+                        <Label>{isResidential ? `Carpet Area (${config.area_unit})` : `Area (${config.area_unit})`} *</Label>
+                        <div className="flex bg-muted rounded-md p-0.5 text-[10px] font-bold">
+                            <button
+                                type="button"
+                                onClick={() => setConfig(prev => ({ ...prev, area_unit: 'sqft' }))}
+                                className={cn("px-1.5 py-0.5 rounded", config.area_unit === 'sqft' ? "bg-white shadow-sm" : "text-muted-foreground")}
+                            >
+                                SQFT
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setConfig(prev => ({ ...prev, area_unit: 'sqmt' }))}
+                                className={cn("px-1.5 py-0.5 rounded", config.area_unit === 'sqmt' ? "bg-white shadow-sm" : "text-muted-foreground")}
+                            >
+                                SQMT
+                            </button>
+                        </div>
+                    </div>
                     <Input
                         type="number"
                         placeholder="e.g. 1200"
@@ -180,7 +210,12 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                 </div>
 
                 <div className="space-y-2">
-                    <Label>Price (per unit) *</Label>
+                    <div className="flex justify-between items-center">
+                        <Label>Price (per unit) *</Label>
+                        <span className="text-[10px] font-bold text-blue-600">
+                            {formatPriceDisplay(config.price)}
+                        </span>
+                    </div>
                     <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
                         <Input

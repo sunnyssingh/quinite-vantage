@@ -127,10 +127,15 @@ export default function ProjectList({
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div>
+                                        <div className="flex items-center gap-2">
                                             <div className="font-medium text-foreground">{project.name}</div>
-                                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">{project.address}</div>
+                                            {project.project_status === 'draft' && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold uppercase tracking-wider border border-orange-200">
+                                                    Draft
+                                                </span>
+                                            )}
                                         </div>
+                                        <div className="text-xs text-muted-foreground truncate max-w-[200px]">{project.address}</div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="text-sm text-muted-foreground flex items-center gap-1">
@@ -151,7 +156,8 @@ export default function ProjectList({
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => onStartCampaign(project)}
-                                                className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10"
+                                                disabled={project.project_status === 'draft'}
+                                                className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10 disabled:opacity-30"
                                                 title="Start Campaign"
                                             >
                                                 <Megaphone className="w-3.5 h-3.5" />

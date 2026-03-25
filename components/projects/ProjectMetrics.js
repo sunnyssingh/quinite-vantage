@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, CheckCircle2, Clock, TrendingUp, Home } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 
+import { formatCurrency } from '@/lib/utils/currency'
+
 export default function ProjectMetrics({ project }) {
     if (!project) return null
 
@@ -124,7 +126,7 @@ export default function ProjectMetrics({ project }) {
                             <div className="pt-3 border-t border-border">
                                 <p className="text-xs font-medium text-muted-foreground mb-2">Price Range</p>
                                 <p className="text-lg font-bold text-foreground">
-                                    ₹{minPrice.toLocaleString('en-IN')} - ₹{maxPrice.toLocaleString('en-IN')}
+                                    {formatCurrency(minPrice)} - {formatCurrency(maxPrice)}
                                 </p>
                             </div>
                         )}
