@@ -268,7 +268,7 @@ export default function LeadForm({
                     disabled={isSubmitting}
                     className="h-11 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all"
                 >
-                    {isSubmitting ? 'Saving...' : (initialData ? 'Update Lead' : 'Create Lead')}
+                    {isSubmitting ? 'Saving...' : (initialData ? 'Create Lead' : 'Create Lead')}
                 </Button>
             </div>
         </form>

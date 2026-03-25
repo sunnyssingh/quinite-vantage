@@ -76,7 +76,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         }
     }
 
-    if (loading && !lead) {
+    // 2. Loading State (Show skeleton if either is loading and we don't have data yet)
+    if (loading && (!lead || !profile)) {
         return (
             <div className="space-y-6 p-6">
                 <div className="flex items-center gap-4">
@@ -95,7 +96,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         )
     }
 
-    if (!lead || !profile) {
+    // 3. Not Found State (Only if NOT loading and data is missing)
+    if (!loading && (!lead || !profile)) {
         return (
             <div className="flex items-center justify-center h-full min-h-[400px]">
                 <div className="text-center">
