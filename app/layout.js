@@ -5,6 +5,8 @@ import { ReactQueryProvider } from '@/components/providers/ReactQueryProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 // Google Sans substitute (Premium Body Font)
 const inter = Inter({
@@ -114,7 +116,9 @@ export default async function RootLayout({ children }) {
             <Toaster position="top-right" />
           </AuthProvider>
         </ReactQueryProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
-}
+}
