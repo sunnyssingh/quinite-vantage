@@ -63,28 +63,43 @@ const PhoneInput = React.forwardRef(
       [regionNames]
     )
 
+    const CountrySelectMemo = React.useCallback(
+      (selectProps) => (
+        <CountrySelect
+          {...selectProps}
+          options={countryOptions}
+          onChange={(code) => {
+            selectProps.onChange(code)
+            setCountry(code)
+          }}
+        />
+      ),
+      [countryOptions]
+    )
+
     return (
       <RPNInput.default
         ref={ref}
         className={cn("flex", className)}
         flagComponent={FlagComponent}
-        countrySelectComponent={(selectProps) => (
-          <CountrySelect
-            {...selectProps}
-            options={countryOptions}
-            onChange={(code) => {
-              selectProps.onChange(code)
-              setCountry(code)
-            }}
-          />
-        )}
+        countrySelectComponent={CountrySelectMemo}
         inputComponent={InputComponent}
         smartCaret={false}
         country={country}
+        defaultCountry={defaultCountry}
         international
         withCountryCallingCode
         value={value || undefined}
-        onChange={(next) => onChange?.(next || "")}
+        onChange={(next) => {
+          onChange?.(next || "")
+          // Allow the RPN component to infer country from value when typed
+          if (next && typeof next === 'string' && country !== RPNInput.parsePhoneNumber(next)?.country) {
+            const inferredCountry = RPNInput.parsePhoneNumber(next)?.country
+            if (inferredCountry) setCountry(inferredCountry)
+          } else if (!next) {
+            setCountry(defaultCountry)
+          }
+        }}
         disabled={disabled}
         {...props}
       />

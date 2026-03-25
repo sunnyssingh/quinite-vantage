@@ -160,6 +160,7 @@ export default function LeadForm({
                         value={phoneValue}
                         onChange={(value) => setPhoneValue(value)}
                         required
+                        defaultCountry="IN"
                         placeholder="98765 43210"
                         className="h-11 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                     />
