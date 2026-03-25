@@ -340,50 +340,85 @@ export default function OnboardingPage() {
   }
 
 
-  const validateStep = () => {
+  const isStepValid = () => {
     switch (currentStep) {
       case 1:
         return formData.sector !== ''
       case 2:
         return formData.businessType !== ''
       case 3:
+        return formData.companyName.trim() !== '' &&
+          formData.contactNumber.trim().length >= (formData.country === 'India' ? 10 : 5)
+      case 4:
+        return formData.addressLine1.trim().length >= 5 &&
+          formData.city.trim() !== '' &&
+          formData.state.trim() !== '' &&
+          formData.pincode.trim() !== ''
+
+      case 5:
+        return true
+      default:
+        return false
+    }
+  }
+
+  const validateStep = () => {
+    switch (currentStep) {
+      case 1:
+        if (!formData.sector) {
+          toast.error('Please select a sector')
+          return false
+        }
+        return true
+      case 2:
+        if (!formData.businessType) {
+          toast.error('Please select a business type')
+          return false
+        }
+        return true
+      case 3:
         if (!formData.companyName.trim()) {
-          setError('Company name is required')
+          toast.error('Company name is required')
           return false
         }
         if (!formData.contactNumber.trim()) {
-          setError('Contact number is required')
+          toast.error('Contact number is required')
           return false
         }
         // Validate phone number (10 digits for India, general check for others)
         if (formData.country === 'India') {
           const phoneRegex = /^[6-9]\d{9}$/
           if (!phoneRegex.test(formData.contactNumber.replace(/[^\d]/g, ''))) {
-            setError('Please enter a valid 10-digit Indian mobile number')
+            toast.error('Please enter a valid 10-digit Indian mobile number')
             return false
           }
         } else {
-          if (formData.contactNumber.length < 5) { // A more general minimum length for international numbers
-            setError('Please enter a valid contact number')
+          if (formData.contactNumber.length < 5) {
+            toast.error('Please enter a valid contact number')
             return false
           }
         }
         return true
       case 4:
         if (!formData.addressLine1.trim()) {
-          setError('Address line 1 is required')
+          toast.error('Address line 1 is required')
           return false
         }
-        if (!formData.city.trim()) {
-          setError('City is required')
-          return false
-        }
-        if (!formData.state.trim()) {
-          setError('State is required')
+        if (formData.addressLine1.trim().length < 5) {
+          toast.error('Address must be at least 5 characters')
           return false
         }
         if (!formData.pincode.trim()) {
-          setError('Pincode is required')
+
+          toast.error('Pincode is required')
+          return false
+        }
+        if (!formData.city.trim()) {
+          toast.error('City is required')
+          return false
+        }
+        if (!formData.state.trim()) {
+          toast.error('State is required')
           return false
         }
         return true
@@ -393,6 +428,7 @@ export default function OnboardingPage() {
         return false
     }
   }
+
 
   const nextStep = async () => {
     if (!validateStep()) return
@@ -562,7 +598,7 @@ export default function OnboardingPage() {
                     `}>
                     {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                   </div>
-                  <p className={`text-xs mt-2 text-center ${isCurrent ? 'font-bold' : ''}`}>
+                  <p className={`text-xs ml-2 text-center ${isCurrent ? 'font-bold' : ''}`}>
                     {step.title}
                   </p>
 
@@ -625,21 +661,21 @@ export default function OnboardingPage() {
               <div className="space-y-4">
                 <Label>What type of real estate business are you?</Label>
                 <RadioGroup value={formData.businessType} onValueChange={(value) => updateFormData('businessType', value)}>
-                  <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <div className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
                     <RadioGroupItem value="agent" id="agent" />
                     <Label htmlFor="agent" className="cursor-pointer flex-1">
                       <div>
                         <p className="font-medium">Real Estate Agent / Broker</p>
-                        <p className="text-sm text-gray-600">Individual agents or brokerage firms</p>
+                        <p className="text-sm text-gray-400">Individual agents or brokerage firms</p>
                       </div>
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <div className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50 cursor-pointer">
                     <RadioGroupItem value="builder" id="builder" />
                     <Label htmlFor="builder" className="cursor-pointer flex-1">
                       <div>
                         <p className="font-medium">Real Estate Developer / Builder</p>
-                        <p className="text-sm text-gray-600">Property development and construction companies</p>
+                        <p className="text-sm text-gray-400">Property development and construction companies</p>
                       </div>
                     </Label>
                   </div>
@@ -709,16 +745,14 @@ export default function OnboardingPage() {
                       const value = e.target.value.replace(/\D/g, '').slice(0, 10)
                       updateFormData('contactNumber', value)
                     }}
-                    placeholder={formData.country === 'India' ? "+91 XXXXXXXXXX" : "Enter contact number"}
+                    placeholder={formData.country === 'India' ? "91XXXXXXXXXX" : "Enter contact number"}
                     className="mt-1"
-                    maxLength={formData.country === 'India' ? 10 : undefined} // Max length for India
-                    pattern={formData.country === 'India' ? "[6-9][0-9]{9}" : undefined}
-                    title={formData.country === 'India' ? "Please enter a valid 10-digit Indian mobile number starting with 6-9" : "Please enter a valid contact number"}
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     {formData.country === 'India' ? 'Enter 10-digit mobile number (starting with 6, 7, 8, or 9)' : 'Enter your contact number'}
                   </p>
                 </div>
+
               </div>
             )}
 
@@ -732,8 +766,14 @@ export default function OnboardingPage() {
                     value={formData.addressLine1}
                     onChange={(e) => updateFormData('addressLine1', e.target.value)}
                     placeholder="Building name, street"
-                    className="mt-1"
+                    className={`mt-1 ${formData.addressLine1.trim() && formData.addressLine1.trim().length < 5 ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   />
+                  {formData.addressLine1.trim() && formData.addressLine1.trim().length < 5 && (
+                    <p className="text-xs text-red-500 mt-1 animate-in fade-in duration-300">
+                      Address must be at least 5 characters
+                    </p>
+                  )}
+
                 </div>
 
                 <div>
@@ -749,15 +789,22 @@ export default function OnboardingPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="state">State *</Label>
-                    <Input
-                      id="state"
-                      value={formData.state}
-                      onChange={(e) => updateFormData('state', e.target.value)}
-                      placeholder="State (Auto-filled for India)"
-                      className="mt-1 bg-gray-50"
-                      readOnly={formData.country === 'India' && fetchingPincode} // Read-only only if India and fetching
-                    />
+                    <Label htmlFor="pincode">Pincode *</Label>
+                    <div className="relative">
+                      <Input
+                        id="pincode"
+                        value={formData.pincode}
+                        onChange={(e) => handlePincodeChange(e.target.value)}
+                        placeholder="Enter 6-digit Pincode"
+                        className="mt-1"
+                        maxLength={6}
+                      />
+                      {fetchingPincode && (
+                        <div className="absolute right-3 top-3">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div>
@@ -768,12 +815,22 @@ export default function OnboardingPage() {
                       onChange={(e) => updateFormData('city', e.target.value)}
                       placeholder="City (Auto-filled for India)"
                       className="mt-1 bg-gray-50"
-                      readOnly={formData.country === 'India' && fetchingPincode} // Read-only only if India and fetching
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="state">State *</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => updateFormData('state', e.target.value)}
+                      placeholder="State (Auto-filled for India)"
+                      className="mt-1 bg-gray-50"
+                    />
+                  </div>
+
                   <div>
                     <Label htmlFor="country">Country</Label>
                     <Select
@@ -799,29 +856,9 @@ export default function OnboardingPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  <div>
-                    <Label htmlFor="pincode">Pincode *</Label>
-                    <div className="relative">
-                      <Input
-                        id="pincode"
-                        value={formData.pincode}
-                        onChange={(e) => handlePincodeChange(e.target.value)}
-                        placeholder="Enter 6-digit Pincode"
-                        className="mt-1"
-                        maxLength={6}
-                      />
-                      {fetchingPincode && (
-                        <div className="absolute right-3 top-3">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Enter pincode to auto-detect City and State
-                    </p>
-                  </div>
                 </div>
+
+
               </div>
             )}
 
@@ -830,7 +867,7 @@ export default function OnboardingPage() {
               <div className="space-y-6">
                 <Alert>
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <AlertDescription>
+                  <AlertDescription className="mt-1">
                     Please review your information before submitting. You can go back to edit any details.
                   </AlertDescription>
                 </Alert>
@@ -888,10 +925,11 @@ export default function OnboardingPage() {
                     >
                       {saving ? 'Saving...' : 'Save Draft'}
                     </Button>
-                    <Button onClick={nextStep} disabled={saving}>
+                    <Button onClick={nextStep} disabled={saving || !isStepValid()}>
                       Next
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
+
                   </>
                 ) : (
                   <Button
