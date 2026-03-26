@@ -132,7 +132,7 @@ export async function POST(request) {
 
     // Validate optional real estate payload if present (Skip if draft)
     const realEstate = body.real_estate || (metadata && metadata.real_estate)
-    const isDraft = body.project_status === 'draft'
+    const isDraft = body.is_draft === true
     
     if (realEstate && !isDraft) {
       try {
@@ -171,12 +171,19 @@ export async function POST(request) {
       unit_types: body.unit_types || null,
       price_range: body.price_range || null,
       project_status: body.project_status || 'planning',
+      is_draft: body.is_draft || false,
       show_in_inventory: body.show_in_inventory !== false,
       possession_date: body.possession_date || null,
       completion_date: body.completion_date || null,
       organization_id: profile.organization_id,
       created_by: user.id,
-      public_visibility: body.public_visibility !== undefined ? body.public_visibility : false
+      public_visibility: body.public_visibility !== undefined ? body.public_visibility : false,
+      city: realEstate?.location?.city || null,
+      state: realEstate?.location?.state || null,
+      country: realEstate?.location?.country || 'India',
+      pincode: realEstate?.location?.pincode || null,
+      locality: realEstate?.location?.locality || null,
+      landmark: realEstate?.location?.landmark || null
     }
 
     const { data: project, error } = await admin

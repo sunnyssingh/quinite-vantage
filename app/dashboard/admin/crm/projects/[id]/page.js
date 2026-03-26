@@ -151,7 +151,14 @@ export default function ProjectDetailsPage() {
                                     </div>
                                 </div>
                             )}
-                            {project.project_status && (
+                            {(project.is_draft || project.project_status === 'draft') ? (
+                                <div className="mb-4">
+                                    <p className="text-sm font-medium text-muted-foreground mb-1">Status</p>
+                                    <Badge variant="outline" className="capitalize bg-orange-50 text-orange-600 border-orange-200">
+                                        Draft
+                                    </Badge>
+                                </div>
+                            ) : project.project_status && (
                                 <div className="mb-4">
                                     <p className="text-sm font-medium text-muted-foreground mb-1">Status</p>
                                     <Badge variant="outline" className="capitalize">
@@ -171,7 +178,7 @@ export default function ProjectDetailsPage() {
                             )}
 
                             {/* Dates */}
-                            {(['planning', 'under_construction'].includes(project.project_status) || project.project_status === 'draft') && (project.possession_date || project.real_estate?.possession_date) && (
+                            {((['planning', 'under_construction'].includes(project.project_status)) || project.is_draft || project.project_status === 'draft') && (project.possession_date || project.real_estate?.possession_date) && (
                                 <div className="mt-4">
                                     <p className="text-sm font-medium text-muted-foreground mb-1">Expected Possession</p>
                                     <p className="text-sm font-semibold text-slate-900 border-l-2 border-blue-500 pl-2">

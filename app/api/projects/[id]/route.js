@@ -37,7 +37,7 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
         const adminClient = createAdminClient()
         const { data: existing } = await adminClient
             .from('projects')
-            .select('id, name, image_path, created_by')
+            .select('id, name, image_path, created_by, is_draft')
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
             .single()
@@ -81,13 +81,25 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
         if (body.unit_types !== undefined) updates.unit_types = body.unit_types
         if (body.price_range !== undefined) updates.price_range = body.price_range
         if (body.project_status !== undefined) updates.project_status = body.project_status
+        if (body.is_draft !== undefined) updates.is_draft = body.is_draft
         if (body.show_in_inventory !== undefined) updates.show_in_inventory = body.show_in_inventory
         if (body.public_visibility !== undefined) updates.public_visibility = body.public_visibility
         if (body.possession_date !== undefined) updates.possession_date = body.possession_date || null
         if (body.completion_date !== undefined) updates.completion_date = body.completion_date || null
+        
         // Validate optional real_estate payload (Skip if draft)
         const realEstate = body.real_estate || (body.metadata && body.metadata.real_estate)
-        const isDraft = body.project_status === 'draft' || existing.project_status === 'draft'
+        
+        if (realEstate?.location) {
+            if (realEstate.location.city !== undefined) updates.city = realEstate.location.city || null
+            if (realEstate.location.state !== undefined) updates.state = realEstate.location.state || null
+            if (realEstate.location.country !== undefined) updates.country = realEstate.location.country || 'India'
+            if (realEstate.location.pincode !== undefined) updates.pincode = realEstate.location.pincode || null
+            if (realEstate.location.locality !== undefined) updates.locality = realEstate.location.locality || null
+            if (realEstate.location.landmark !== undefined) updates.landmark = realEstate.location.landmark || null
+        }
+        
+        const isDraft = body.is_draft !== undefined ? body.is_draft : existing.is_draft === true
         
         if (realEstate && !isDraft) {
             try {

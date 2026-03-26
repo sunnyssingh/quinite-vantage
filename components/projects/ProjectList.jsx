@@ -129,7 +129,7 @@ export default function ProjectList({
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <div className="font-medium text-foreground">{project.name}</div>
-                                            {project.project_status === 'draft' && (
+                                            {(project.is_draft || project.project_status === 'draft') && (
                                                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold uppercase tracking-wider border border-orange-200">
                                                     Draft
                                                 </span>
@@ -156,7 +156,7 @@ export default function ProjectList({
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => onStartCampaign(project)}
-                                                disabled={project.project_status === 'draft'}
+                                                disabled={project.is_draft || project.project_status === 'draft'}
                                                 className="h-8 px-2 text-primary hover:text-primary hover:bg-primary/10 disabled:opacity-30"
                                                 title="Start Campaign"
                                             >

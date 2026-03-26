@@ -42,6 +42,21 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
 import ResidentialConfigForm from '@/components/projects/ResidentialConfigForm'
+import { Country, State, City } from 'country-state-city'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command'
+import { Check, ChevronsUpDown } from 'lucide-react'
 
 const STEPS = [
     { id: 'basic', title: 'Basic Info', icon: Building2, description: 'Project identity & Type' },
@@ -59,6 +74,9 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
     const [completedSteps, setCompletedSteps] = useState(new Set())
 
     const [showAddConfig, setShowAddConfig] = useState(false)
+    const [openCountry, setOpenCountry] = useState(false)
+    const [openState, setOpenState] = useState(false)
+    const [openCity, setOpenCity] = useState(false)
 
     // Initialize state
     const [formData, setFormData] = useState({
@@ -90,13 +108,20 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         // Inventory fields
         totalUnits: '',
         unitTypes: [], // Array of detailed config objects
-        projectStatus: 'planning',
+        projectStatus: initialData?.project_status && initialData.project_status !== 'draft' ? initialData.project_status : 'planning',
         possessionDate: '',
         completionDate: '',
-        isDraft: false,
-        showInInventory: true,
+        showInInventory: initialData?.show_in_inventory ?? true,
+        publicVisibility: initialData?.public_visibility ?? true,
+        isDraft: initialData ? (initialData.is_draft === true) : true,
         showFullDescription: false
     })
+
+    const countries = Country.getAllCountries()
+    const currentCountryIso = countries.find(c => c.name === formData.locCountry)?.isoCode || 'IN'
+    const states = State.getStatesOfCountry(currentCountryIso)
+    const currentStateIso = states.find(s => s.name === formData.locState)?.isoCode || ''
+    const cities = currentStateIso ? City.getCitiesOfState(currentCountryIso, currentStateIso) : []
 
     // Load initial data
     useEffect(() => {
@@ -131,20 +156,18 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 locState: loc.state || '',
                 locCountry: loc.country || 'India',
                 locPincode: loc.pincode || '',
-                isDraft: initialData.project_status === 'draft',
+                isDraft: !!(initialData.is_draft ?? (initialData.project_status === 'draft')),
                 // Inventory fields
                 totalUnits: initialData.total_units || '',
                 unitTypes: Array.isArray(initialData.unit_types) ? initialData.unit_types : [],
-                projectStatus: initialData.project_status || 'planning',
+                projectStatus: initialData.project_status === 'draft' ? 'planning' : (initialData.project_status || 'planning'),
                 possessionDate: initialData.metadata?.possession_date || initialData.possession_date || '',
                 completionDate: initialData.metadata?.completion_date || initialData.completion_date || '',
                 showInInventory: initialData.show_in_inventory !== false
             })
 
-            // Mark all steps as completed for edit mode
-            if (initialData.id) {
-                setCompletedSteps(new Set([0, 1, 2, 3]))
-            }
+            // Don't auto-mark all steps as completed, so users see their current progress
+            // as they navigate through the wizard like a normal flow.
         }
     }, [initialData])
 
@@ -156,29 +179,9 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         }
     }
 
-    const handlePincodeChange = async (value) => {
+    const handlePincodeChange = (value) => {
         const numericValue = value.replace(/\D/g, '').slice(0, 6)
         handleChange('locPincode', numericValue)
-
-        if (numericValue.length === 6) {
-            try {
-                const response = await fetch(`https://api.postalpincode.in/pincode/${numericValue}`)
-                const data = await response.json()
-
-                if (data && data[0].Status === 'Success') {
-                    const details = data[0].PostOffice[0]
-                    setFormData(prev => ({
-                        ...prev,
-                        locCity: details.District,
-                        locState: details.State,
-                        locCountry: 'India'
-                    }))
-                    toast.success(`Location found: ${details.District}, ${details.State}`)
-                }
-            } catch (err) {
-                console.error('Error fetching pincode:', err)
-            }
-        }
     }
 
     const validateStep = (stepIndex) => {
@@ -194,9 +197,10 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
         if (stepIndex === 1) { // Location
             if (!data.address.trim()) newErrors.address = 'Detailed address is required'
-            if (!data.locPincode.trim() || data.locPincode.length !== 6) newErrors.locPincode = 'Valid 6-digit Pincode is required'
-            if (!data.locCity.trim()) newErrors.locCity = 'City is required'
+            if (!data.locCountry?.trim()) newErrors.locCountry = 'Country is required'
             if (!data.locState.trim()) newErrors.locState = 'State is required'
+            if (!data.locCity.trim()) newErrors.locCity = 'City is required'
+            if (!data.locPincode.trim() || data.locPincode.length !== 6) newErrors.locPincode = 'Valid 6-digit Pincode is required'
             if (!data.locLocality.trim()) newErrors.locLocality = 'Locality is required'
         }
 
@@ -214,6 +218,13 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     }
                     // Price is optional
                 })
+            }
+            
+            // Date validation
+            if (['planning', 'under_construction'].includes(data.projectStatus)) {
+                if (!data.possessionDate) newErrors.possessionDate = 'Possession date is required'
+            } else if (['ready_to_move', 'completed'].includes(data.projectStatus)) {
+                if (!data.completionDate) newErrors.completionDate = 'Completion date is required'
             }
         }
 
@@ -254,9 +265,10 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
         if (currentStep === 1) { // Location
             if (!data.address.trim()) return false
-            if (!data.locPincode.trim() || data.locPincode.length !== 6) return false
-            if (!data.locCity.trim()) return false
+            if (!data.locCountry?.trim()) return false
             if (!data.locState.trim()) return false
+            if (!data.locCity.trim()) return false
+            if (!data.locPincode.trim() || data.locPincode.length !== 6) return false
             if (!data.locLocality.trim()) return false
         }
 
@@ -267,8 +279,16 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 // Must have either configuration or property_type
                 if (!ut.configuration && !ut.property_type) return false
                 if (!ut.count || ut.count <= 0) return false
-                // Price is optional for some configurations
             }
+
+            // Check date based on status
+            if (['planning', 'under_construction'].includes(data.projectStatus)) {
+                if (!data.possessionDate) return false
+            } else if (['ready_to_move', 'completed'].includes(data.projectStatus)) {
+                if (!data.completionDate) return false
+            }
+
+            return true
         }
 
         return true
@@ -288,7 +308,9 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
             formData.unitTypes.every(ut =>
                 (ut.configuration || ut.property_type) &&
                 ut.count > 0
-            )
+            ) &&
+            ((['planning', 'under_construction'].includes(formData.projectStatus) && formData.possessionDate) ||
+             (['ready_to_move', 'completed'].includes(formData.projectStatus) && formData.completionDate))
         )
     }
 
@@ -341,27 +363,24 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
 
 
-    const handleSubmit = (isDraft = false) => {
+    const handleSubmit = (isDraftSave = false) => {
         // If saving as draft, we only require the name
-        if (isDraft) {
+        if (isDraftSave) {
             if (!formData.name.trim()) {
                 toast.error("Please enter a project name to save as draft")
                 return
             }
-            onSubmit({ ...formData, projectStatus: 'draft' })
+            onSubmit({ ...formData, isDraft: true })
             return
         }
         if (validateStep(currentStep)) {
             // Calculate total units from configurations
             const calculatedTotalUnits = formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)
 
-            // If project was a draft, change it to planning upon final submission
-            const finalStatus = formData.projectStatus === 'draft' ? 'planning' : formData.projectStatus
-
             // Add calculated total to formData
             const submitData = {
                 ...formData,
-                projectStatus: finalStatus,
+                isDraft: false,
                 totalUnits: calculatedTotalUnits,
                 metadata: {
                     ...formData.metadata,
@@ -610,16 +629,28 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
 
                         {/* Action Buttons */}
-                        <div className="grid grid-cols-2 gap-2 pt-4 border-t mt-6 sm:flex sm:justify-end sm:gap-3">
-                            <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[100px]">
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-4 border-t mt-6">
+                            <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto">
                                 Cancel
                             </Button>
-                            <Button
-                                onClick={handleNext}
-                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
-                            >
-                                Next Step
-                            </Button>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                                {formData.isDraft && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleSubmit(true)}
+                                        disabled={isSubmitting}
+                                        className="text-xs sm:text-sm w-full sm:w-auto"
+                                    >
+                                        Save Draft
+                                    </Button>
+                                )}
+                                <Button
+                                    onClick={handleNext}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]"
+                                >
+                                    Next Step
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )
@@ -650,59 +681,171 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     {errors.address && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.address}</p>}
                                     {!errors.address && formData.address && <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Address saved!</p>}
                                 </div>
-                                <div>
-                                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Pincode *</label>
-                                    <div className="relative">
-                                        <Input
-                                            value={formData.locPincode}
-                                            onChange={e => handlePincodeChange(e.target.value)}
-                                            placeholder="6-digit Pincode"
-                                            maxLength={6}
-                                            className={`text-xs sm:text-sm ${errors.locPincode ? "border-red-300" : ""}`}
-                                        />
-                                    </div>
-                                    {errors.locPincode && <p className="text-xs text-red-500 mt-1">{errors.locPincode}</p>}
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
-                                        <Input
-                                            value={formData.locCity}
-                                            onChange={e => handleChange('locCity', e.target.value)}
-                                            placeholder="e.g. Mumbai"
-                                            className={`text-xs sm:text-sm ${errors.locCity ? "border-red-300" : ""}`}
-                                        />
-                                        {errors.locCity && <p className="text-xs text-red-500 mt-1">{errors.locCity}</p>}
+                                        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Country *</label>
+                                        <Popover open={openCountry} onOpenChange={setOpenCountry}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openCountry}
+                                                    className={cn("w-full justify-between text-xs sm:text-sm", errors.locCountry ? "border-red-300" : "")}
+                                                >
+                                                    {formData.locCountry || "Select Country"}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search country..." className="text-xs sm:text-sm" />
+                                                    <CommandList>
+                                                        <CommandEmpty>No country found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {countries.map((c) => (
+                                                                <CommandItem
+                                                                    key={c.isoCode}
+                                                                    value={c.name}
+                                                                    onSelect={() => {
+                                                                        setFormData(prev => ({ ...prev, locCountry: c.name, locState: '', locCity: '' }))
+                                                                        setOpenCountry(false)
+                                                                    }}
+                                                                >
+                                                                    <Check className={cn("mr-2 h-4 w-4", formData.locCountry === c.name ? "opacity-100" : "opacity-0")} />
+                                                                    {c.name}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        {errors.locCountry && <p className="text-xs text-red-500 mt-1">{errors.locCountry}</p>}
                                     </div>
                                     <div>
                                         <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">State *</label>
-                                        <Input
-                                            value={formData.locState}
-                                            onChange={e => handleChange('locState', e.target.value)}
-                                            placeholder="e.g. Maharashtra"
-                                            className={`text-xs sm:text-sm ${errors.locState ? "border-red-300" : ""}`}
-                                        />
+                                        <Popover open={openState} onOpenChange={setOpenState}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={openState}
+                                                    disabled={states.length === 0}
+                                                    className={cn("w-full justify-between text-xs sm:text-sm", errors.locState ? "border-red-300" : "")}
+                                                >
+                                                    {formData.locState || "Select State"}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search state..." className="text-xs sm:text-sm" />
+                                                    <CommandList>
+                                                        <CommandEmpty>No state found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {states.map((s) => (
+                                                                <CommandItem
+                                                                    key={s.isoCode}
+                                                                    value={s.name}
+                                                                    onSelect={() => {
+                                                                        setFormData(prev => ({ ...prev, locState: s.name, locCity: '' }))
+                                                                        setOpenState(false)
+                                                                    }}
+                                                                >
+                                                                    <Check className={cn("mr-2 h-4 w-4", formData.locState === s.name ? "opacity-100" : "opacity-0")} />
+                                                                    {s.name}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                         {errors.locState && <p className="text-xs text-red-500 mt-1">{errors.locState}</p>}
                                     </div>
+                                    <div>
+                                        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">City *</label>
+                                        {cities.length > 0 ? (
+                                            <Popover open={openCity} onOpenChange={setOpenCity}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openCity}
+                                                        className={cn("w-full justify-between text-xs sm:text-sm", errors.locCity ? "border-red-300" : "")}
+                                                    >
+                                                        {formData.locCity || "Select City"}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[300px] p-0" align="start">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search city..." className="text-xs sm:text-sm" />
+                                                        <CommandList>
+                                                            <CommandEmpty>No city found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {cities.map((c) => (
+                                                                    <CommandItem
+                                                                        key={c.name}
+                                                                        value={c.name}
+                                                                        onSelect={() => {
+                                                                            setFormData(prev => ({ ...prev, locCity: c.name }))
+                                                                            setOpenCity(false)
+                                                                        }}
+                                                                    >
+                                                                        <Check className={cn("mr-2 h-4 w-4", formData.locCity === c.name ? "opacity-100" : "opacity-0")} />
+                                                                        {c.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        ) : (
+                                            <Input
+                                                value={formData.locCity}
+                                                onChange={e => handleChange('locCity', e.target.value)}
+                                                placeholder="e.g. Mumbai"
+                                                className={`text-xs sm:text-sm ${errors.locCity ? "border-red-300" : ""}`}
+                                            />
+                                        )}
+                                        {errors.locCity && <p className="text-xs text-red-500 mt-1">{errors.locCity}</p>}
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Locality *</label>
-                                    <Input
-                                        value={formData.locLocality}
-                                        onChange={e => handleChange('locLocality', e.target.value)}
-                                        placeholder="e.g. Bandra West"
-                                        className={`text-xs sm:text-sm ${errors.locLocality ? "border-red-300" : ""}`}
-                                    />
-                                    {errors.locLocality && <p className="text-xs text-red-500 mt-1">{errors.locLocality}</p>}
-                                </div>
-                                <div>
-                                    <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Landmark</label>
-                                    <Input
-                                        value={formData.locLandmark}
-                                        onChange={e => handleChange('locLandmark', e.target.value)}
-                                        placeholder="e.g. Near St. Peter's Church"
-                                        className="text-xs sm:text-sm"
-                                    />
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Pincode *</label>
+                                        <div className="relative">
+                                            <Input
+                                                value={formData.locPincode}
+                                                onChange={e => handlePincodeChange(e.target.value)}
+                                                placeholder="6-digit Pincode"
+                                                maxLength={6}
+                                                className={`text-xs sm:text-sm ${errors.locPincode ? "border-red-300" : ""}`}
+                                            />
+                                        </div>
+                                        {errors.locPincode && <p className="text-xs text-red-500 mt-1">{errors.locPincode}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Locality *</label>
+                                        <Input
+                                            value={formData.locLocality}
+                                            onChange={e => handleChange('locLocality', e.target.value)}
+                                            placeholder="e.g. Bandra West"
+                                            className={`text-xs sm:text-sm ${errors.locLocality ? "border-red-300" : ""}`}
+                                        />
+                                        {errors.locLocality && <p className="text-xs text-red-500 mt-1">{errors.locLocality}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 block">Landmark</label>
+                                        <Input
+                                            value={formData.locLandmark}
+                                            onChange={e => handleChange('locLandmark', e.target.value)}
+                                            placeholder="e.g. Near St. Peter's Church"
+                                            className="text-xs sm:text-sm"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -717,15 +860,17 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                                     Back
                                 </Button>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => handleSubmit(true)}
-                                        disabled={isSubmitting}
-                                        className="text-xs sm:text-sm"
-                                    >
-                                        Save Draft
-                                    </Button>
+                                <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                    {formData.isDraft && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleSubmit(true)}
+                                            disabled={isSubmitting}
+                                            className="text-xs sm:text-sm w-full sm:w-auto"
+                                        >
+                                            Save Draft
+                                        </Button>
+                                    )}
                                     <Button
                                         onClick={handleNext}
                                         className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px]">
@@ -862,7 +1007,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         }}
                                         className="w-full rounded-lg border-2 border-slate-300 px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                     >
-                                        {formData.projectStatus === 'draft' && <option value="draft">Draft (Current)</option>}
                                         <option value="planning">Planning</option>
                                         <option value="under_construction">Under Construction</option>
                                         <option value="ready_to_move">Ready to Move</option>
@@ -875,14 +1019,15 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     <div className="animate-in fade-in duration-300">
                                         <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                             <Calendar className="w-4 h-4 text-blue-600" />
-                                            Expected Possession Date
+                                            Expected Possession Date *
                                         </label>
                                         <Input
                                             type="date"
                                             value={formData.possessionDate}
                                             onChange={e => handleChange('possessionDate', e.target.value)}
-                                            className="w-full rounded-lg border-2 border-slate-300 px-4 py-2 bg-white"
+                                            className={`w-full rounded-lg border-2 px-4 py-2 bg-white ${errors.possessionDate ? 'border-red-300' : 'border-slate-300'}`}
                                         />
+                                        {errors.possessionDate && <p className="text-xs text-red-500 mt-1">{errors.possessionDate}</p>}
                                     </div>
                                 )}
 
@@ -890,14 +1035,15 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     <div className="animate-in fade-in duration-300">
                                         <label className="text-sm font-semibold text-slate-800 mb-2 block flex items-center gap-2">
                                             <Calendar className="w-4 h-4 text-blue-600" />
-                                            Completion Date
+                                            Completion Date *
                                         </label>
                                         <Input
                                             type="date"
                                             value={formData.completionDate}
                                             onChange={e => handleChange('completionDate', e.target.value)}
-                                            className="w-full rounded-lg border-2 border-slate-300 px-4 py-2 bg-white"
+                                            className={`w-full rounded-lg border-2 px-4 py-2 bg-white ${errors.completionDate ? 'border-red-300' : 'border-slate-300'}`}
                                         />
+                                        {errors.completionDate && <p className="text-xs text-red-500 mt-1">{errors.completionDate}</p>}
                                     </div>
                                 )}
 
@@ -934,12 +1080,24 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                     <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-2" />
                                     Back
                                 </Button>
-                                <Button
-                                    onClick={handleNext}
-                                    disabled={!isCurrentStepValid() || isSubmitting}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ml-auto">
-                                    Next Step
-                                </Button>
+                                <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                                    {formData.isDraft && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleSubmit(true)}
+                                            disabled={isSubmitting}
+                                            className="text-xs sm:text-sm w-full sm:w-auto"
+                                        >
+                                            Save Draft
+                                        </Button>
+                                    )}
+                                    <Button
+                                        onClick={handleNext}
+                                        disabled={!isCurrentStepValid() || isSubmitting}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm py-1.5 px-2 sm:py-2 sm:px-4 w-full sm:w-auto sm:min-w-[120px] ml-auto">
+                                        Next Step
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )
@@ -974,16 +1132,17 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                                     }
                                                     className={cn(
                                                         "text-xs capitalize",
+                                                        formData.isDraft ? 'bg-orange-500 text-white' :
                                                         formData.projectStatus === 'ready_to_move' ? 'bg-green-600 text-white' :
                                                             formData.projectStatus === 'under_construction' ? 'bg-yellow-600 text-white' :
                                                                 formData.projectStatus === 'completed' ? 'bg-gray-600 text-white' :
-                                                                    formData.projectStatus === 'draft' ? 'bg-slate-500 text-white' : 'bg-blue-600 text-white'
+                                                                    'bg-blue-600 text-white'
                                                     )}
                                                 >
-                                                    {(formData.projectStatus || 'planning').replace(/_/g, ' ')}
+                                                    {formData.isDraft ? 'Draft' : (formData.projectStatus || 'planning').replace(/_/g, ' ')}
                                                 </Badge>
                                             </div>
-                                            {['planning', 'under_construction'].includes(formData.projectStatus) && formData.possessionDate && (
+                                            {((['planning', 'under_construction'].includes(formData.projectStatus)) || formData.isDraft) && formData.possessionDate && (
                                                 <div className="col-span-2 sm:col-span-1">
                                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                                                         <Calendar className="w-3 h-3 text-blue-500" />
@@ -1057,7 +1216,11 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         </Button>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Country / State</p>
+                                                <p className="text-sm font-semibold">{formData.locCountry || '-'} {formData.locState ? `/ ${formData.locState}` : ''}</p>
+                                            </div>
                                             <div>
                                                 <p className="text-xs text-muted-foreground">City</p>
                                                 <p className="text-sm font-semibold">{formData.locCity || '-'}</p>
@@ -1065,6 +1228,10 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                             <div>
                                                 <p className="text-xs text-muted-foreground">Locality</p>
                                                 <p className="text-sm font-semibold">{formData.locLocality || '-'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Pincode</p>
+                                                <p className="text-sm font-semibold">{formData.locPincode || '-'}</p>
                                             </div>
                                             {formData.locLandmark && (
                                                 <div className="col-span-2">

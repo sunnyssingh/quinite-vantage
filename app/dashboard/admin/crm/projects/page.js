@@ -114,6 +114,7 @@ export default function ProjectsPage() {
         unit_types: formData.unitTypes,
         price_range: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
         project_status: formData.projectStatus || 'planning',
+        is_draft: formData.isDraft || false,
         show_in_inventory: formData.showInInventory !== false,
         real_estate: {
           rera_number: formData.reraNumber,
@@ -196,6 +197,7 @@ export default function ProjectsPage() {
         unit_types: formData.unitTypes,
         price_range: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
         project_status: formData.projectStatus || 'planning',
+        is_draft: formData.isDraft || false,
         show_in_inventory: formData.showInInventory !== false,
         real_estate: {
           rera_number: formData.reraNumber,
@@ -552,7 +554,11 @@ export default function ProjectsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h2 className="text-white text-xl font-bold">{viewingProject.name}</h2>
-                        {viewingProject.project_status && (
+                        {(viewingProject.is_draft || viewingProject.project_status === 'draft') ? (
+                          <Badge variant="secondary" className="bg-orange-600 text-white border-0">
+                            Draft
+                          </Badge>
+                        ) : viewingProject.project_status && (
                           <Badge
                             variant={
                               viewingProject.project_status === 'ready_to_move' ? 'default' :
@@ -708,7 +714,7 @@ export default function ProjectsPage() {
                           ) : null}
 
                           {/* Dates */}
-                          {(['planning', 'under_construction'].includes(viewingProject.project_status) || viewingProject.project_status === 'draft') && (viewingProject.possession_date || re.possession_date) && (
+                          {(['planning', 'under_construction'].includes(viewingProject.project_status) || viewingProject.is_draft || viewingProject.project_status === 'draft') && (viewingProject.possession_date || re.possession_date) && (
                             <div className="col-span-2">
                               <p className="text-slate-500">Expected Possession</p>
                               <p className="font-medium text-slate-900">{new Date(viewingProject.possession_date || re.possession_date).toLocaleDateString()}</p>
