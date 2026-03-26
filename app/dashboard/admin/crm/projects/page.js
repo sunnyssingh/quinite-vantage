@@ -789,17 +789,7 @@ export default function ProjectsPage() {
                   return (
                     <div className="space-y-6">
                       {/* Top Summary Bar */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100/50 flex flex-col justify-center">
-                          <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mb-1">Transaction Type</p>
-                          <div className="flex items-center gap-2">
-                             <div className="p-1.5 bg-white rounded-lg shadow-sm border border-blue-200">
-                               <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-                             </div>
-                             <p className="text-base font-bold text-slate-900 capitalize">{re.transaction || 'N/A'}</p>
-                          </div>
-                        </div>
-
+                      <div className={`grid grid-cols-1 ${re.rera_number ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-4`}>
                         <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 flex flex-col justify-center">
                           <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest mb-1">Project Category</p>
                           <div className="flex items-center gap-2">
@@ -812,17 +802,19 @@ export default function ProjectsPage() {
                           </div>
                         </div>
 
-                        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100/50 flex flex-col justify-center">
-                          <p className="text-[10px] text-amber-600 font-bold uppercase tracking-widest mb-1">RERA Status</p>
-                          <div className="flex items-center gap-2">
-                             <div className="p-1.5 bg-white rounded-lg shadow-sm border border-amber-200">
-                               <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
-                             </div>
-                             <p className="text-base font-bold text-slate-900 uppercase">
-                               {re.rera_number || 'Applied'}
-                             </p>
+                        {re.rera_number && (
+                          <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100/50 flex flex-col justify-center">
+                            <p className="text-[10px] text-amber-600 font-bold uppercase tracking-widest mb-1">RERA Number</p>
+                            <div className="flex items-center gap-2">
+                               <div className="p-1.5 bg-white rounded-lg shadow-sm border border-amber-200">
+                                 <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                               </div>
+                               <p className="text-base font-bold text-slate-900 uppercase">
+                                 {re.rera_number}
+                               </p>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
