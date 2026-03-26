@@ -106,7 +106,7 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
                         </Badge>
                     )}
                     <TransactionBadge transaction={re.transaction || 'sell'} />
-                    {(project.is_draft || project.project_status === 'draft') && (
+                    {project.is_draft && (
                         <Badge variant="secondary" className="bg-orange-500/90 hover:bg-orange-600/90 backdrop-blur-sm border-0 text-[10px] uppercase tracking-wider text-white">
                             Draft
                         </Badge>

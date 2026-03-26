@@ -81,6 +81,7 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
         if (body.unit_types !== undefined) updates.unit_types = body.unit_types
         if (body.project_status !== undefined) updates.project_status = body.project_status
         if (body.is_draft !== undefined) updates.is_draft = body.is_draft
+        
         if (body.show_in_inventory !== undefined) updates.show_in_inventory = body.show_in_inventory
         if (body.public_visibility !== undefined) updates.public_visibility = body.public_visibility
         if (body.possession_date !== undefined) updates.possession_date = body.possession_date || null

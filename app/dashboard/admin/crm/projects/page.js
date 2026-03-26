@@ -204,7 +204,6 @@ export default function ProjectsPage() {
       await refetch() // Refresh list instead of manual state update
       setCreateOpen(false)
       toast.success("Project created successfully!")
-      setShowCreateForm(false)
     } catch (err) {
       toast.error(err.message || "Failed to create project")
     } finally {
@@ -227,7 +226,6 @@ export default function ProjectsPage() {
         // Inventory fields
         total_units: safeParseFloat(formData.totalUnits),
         unit_types: formData.unitTypes,
-        price_range: { min: safeParseFloat(formData.priceMin), max: safeParseFloat(formData.priceMax) },
         project_status: formData.projectStatus || 'planning',
         is_draft: formData.isDraft || false,
         show_in_inventory: formData.showInInventory !== false,
@@ -835,7 +833,7 @@ export default function ProjectsPage() {
                         <div className="grid grid-cols-2 gap-4 text-sm">
                           <div>
                             <p className="text-slate-500">Transaction</p>
-                            <p className="font-medium text-slate-900 capitalize">{re.transaction || 'N/A'}</p>
+                            <p className="font-medium text-slate-900 capitalize">{re.transaction_type || 'N/A'}</p>
                           </div>
                           <div>
                             <p className="text-slate-500">Category</p>
