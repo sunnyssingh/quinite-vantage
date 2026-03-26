@@ -22,7 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Lock, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Building2, Plus, Sparkles, Loader2, Briefcase, LayoutGrid, List, X, Lock, RefreshCw, ChevronDown, ChevronUp, Archive, History, Megaphone, Users, PhoneCall, AlertCircle, Store, IndianRupee } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -42,6 +43,14 @@ const ProjectForm = dynamic(() => import('@/components/projects/ProjectForm'), {
 const safeParseFloat = (val) => {
   const n = parseFloat(val)
   return isNaN(n) ? 0 : n
+}
+
+const formatPrice = (price) => {
+  if (!price) return '0'
+  const n = Number(price)
+  if (n >= 10000000) return (n / 10000000).toFixed(2) + ' Cr'
+  if (n >= 100000) return (n / 100000).toFixed(2) + ' Lac'
+  return n.toLocaleString('en-IN')
 }
 
 export default function ProjectsPage() {
@@ -285,25 +294,126 @@ export default function ProjectsPage() {
     }
   }
 
-  const handleDelete = (project) => {
+  const handleArchive = async (project) => {
+    const loadingToast = toast.loading("Calculating project impact...")
+    try {
+      const res = await fetch(`/api/projects/${project.id}/archive-preview`)
+      const data = await res.json()
+      toast.dismiss(loadingToast)
+
+      if (!res.ok) throw new Error(data.error || "Failed to fetch counts")
+
+      const { counts } = data
+      const isBlocked = counts.running_campaigns > 0
+
+      setConfirmDialog({
+        open: true,
+        title: 'Safe Project Archive?',
+        variant: 'destructive',
+        description: (
+          <div className="space-y-4 pt-2">
+            <p className="text-[13px] text-slate-600 leading-relaxed italic border-l-2 border-orange-400 pl-3">
+              Archiving <strong>{project.name}</strong> will deactivate all associated business data. This action is safe and recoverable.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <div className="flex items-center gap-2.5 text-[11px] font-semibold text-slate-500">
+                <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-200/60">
+                  <Megaphone className="w-3 h-3 text-orange-500" />
+                </div>
+                <span>{counts.campaigns} Campaigns</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-[11px] font-semibold text-slate-500">
+                <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-200/60">
+                  <Users className="w-3 h-3 text-orange-500" />
+                </div>
+                <span>{counts.leads} Total Leads</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-[11px] font-semibold text-slate-500">
+                <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-200/60">
+                  <Store className="w-3 h-3 text-orange-500" />
+                </div>
+                <span>{counts.inventory} Unit Items</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-[11px] font-semibold text-slate-500">
+                <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-200/60">
+                  <PhoneCall className="w-3 h-3 text-orange-500" />
+                </div>
+                <span>{counts.calls} Call Records</span>
+              </div>
+            </div>
+
+            {isBlocked && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-[11px] font-bold text-red-800 leading-none">Archiving Blocked</p>
+                  <p className="text-[10px] text-red-600 leading-tight">
+                    This project has {counts.running_campaigns} running campaign(s). Pause or end them manually to enable project archiving.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!isBlocked && (
+              <div className="bg-amber-50/50 border border-amber-100 p-3 rounded-xl flex gap-3 items-start">
+                <div className="p-1 bg-amber-100 rounded-full mt-0.5">
+                  <History className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <p className="text-[10px] text-amber-700 leading-tight italic">
+                  Associated campaigns, leads, and inventory will be archived automatically. Performance metrics are preserved for historical record.
+                </p>
+              </div>
+            )}
+          </div>
+        ),
+        onConfirm: async () => {
+          if (isBlocked) {
+            toast.error("Blocked: Running campaigns must be stopped first")
+            return
+          }
+
+          setDeletingId(project.id)
+          try {
+            const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Archive failed')
+
+            await refetch()
+            toast.success(data.message || "Project and its data archived safely")
+          } catch (err) {
+            toast.error(err.message || 'Error archiving project')
+          } finally {
+            setDeletingId(null)
+          }
+        }
+      })
+    } catch (e) {
+      toast.dismiss(loadingToast)
+      toast.error(e.message || "Error calculating archive impact")
+    }
+  }
+
+  const handleRestore = (project) => {
     setConfirmDialog({
       open: true,
-      title: 'Delete Project?',
-      description: `Are you sure you want to delete "${project.name}"? This will also remove all associated inventory and configurations. This action cannot be undone.`,
-      variant: 'destructive',
+      title: 'Restore Project?',
+      description: `Would you like to restore "${project.name}" back to the active list? It will be visible to your team and in the inventory again.`,
+      variant: 'default',
       onConfirm: async () => {
-        setDeletingId(project.id)
+        setDeletingId(project.id) // Reuse deletingId for loading state
         try {
-          const res = await fetch(`/api/projects/${project.id}`, { method: 'DELETE' })
+          const res = await fetch(`/api/projects/${project.id}/restore`, { method: 'POST' })
           const data = await res.json()
-          if (!res.ok) throw new Error(data.error || 'Delete failed')
+          if (!res.ok) throw new Error(data.error || 'Restore failed')
 
           await refetch()
-          toast.success("Project deleted successfully!")
+          toast.success(data.message || "Project restored successfully")
         } catch (err) {
-          toast.error(err.message || "Delete failed")
+          toast.error(err.message || 'Error restoring project')
         } finally {
           setDeletingId(null)
+          setConfirmDialog(p => ({ ...p, open: false }))
         }
       }
     })
@@ -418,6 +528,8 @@ export default function ProjectsPage() {
       </div>
 
       <div className="p-6 space-y-6">
+
+
         {/* Projects Display */}
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -457,7 +569,9 @@ export default function ProjectsPage() {
                     setEditingProject(p)
                     setEditOpen(true)
                   }}
-                  onDelete={handleDelete}
+                  onDelete={handleArchive}
+                  isArchived={!!project.archived_at}
+                  onRestore={handleRestore}
                   onView={(p) => {
                     setViewingProject(p)
                     setViewOpen(true)
@@ -503,7 +617,9 @@ export default function ProjectsPage() {
                   setEditingProject(p)
                   setEditOpen(true)
                 }}
-                onDelete={handleDelete}
+                onDelete={handleArchive}
+                isArchived={false} // List will handle mixing if we pass data, but we need to check if List handles it per row
+                onRestore={handleRestore}
                 onView={(p) => {
                   setViewingProject(p)
                   setViewOpen(true)
@@ -522,7 +638,7 @@ export default function ProjectsPage() {
           </div>
         )}
       </div>
- 
+
       {/* Create Modal */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto sm:rounded-xl">
@@ -733,12 +849,25 @@ export default function ProjectsPage() {
                               <p className="font-medium text-slate-900">{re.rera_number}</p>
                             </div>
                           )}
-                          {priceRange.min && priceRange.max ? (
-                            <div className="col-span-2">
-                              <p className="text-slate-500">Price Range</p>
-                              <p className="font-medium text-green-700 text-lg">
-                                {`${formatCurrency(priceRange.min)} - ${formatCurrency(priceRange.max)}`}
-                              </p>
+                          {(viewingProject.min_price || priceRange?.min) ? (
+                            <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between col-span-2">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg border border-emerald-200 shadow-sm">
+                                  <IndianRupee className="w-4 h-4 text-emerald-600" />
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest leading-none mb-1">Investment Range</p>
+                                  <p className="text-xl font-black text-slate-900 leading-tight">
+                                    {`₹ ${formatPrice(viewingProject.min_price || priceRange.min)}`}
+                                    {(viewingProject.max_price || priceRange.max) && (viewingProject.max_price || priceRange.max) !== (viewingProject.min_price || priceRange.min) ? (
+                                      <>
+                                        <span className="text-slate-400 mx-2 text-sm font-normal">to</span>
+                                        {`₹ ${formatPrice(viewingProject.max_price || priceRange.max)}`}
+                                      </>
+                                    ) : ''}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
                           ) : null}
 
@@ -757,12 +886,6 @@ export default function ProjectsPage() {
                           )}
 
                           {/* Unit Highlights */}
-                          {res.bhk && (
-                            <div>
-                              <p className="text-slate-500">BHK</p>
-                              <p className="font-medium text-slate-900">{res.bhk}</p>
-                            </div>
-                          )}
                           {res.carpet_area > 0 && (
                             <div>
                               <p className="text-slate-500">Main Area</p>
@@ -859,9 +982,9 @@ export default function ProjectsPage() {
                 confirmDialog.onConfirm();
                 setConfirmDialog(prev => ({ ...prev, open: false }));
               }}
-              className={confirmDialog.variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''}
+              className={confirmDialog.variant === 'destructive' ? 'bg-orange-600 hover:bg-orange-700 text-white border-0' : ''}
             >
-              {confirmDialog.variant === 'destructive' ? 'Delete' : 'Confirm'}
+              {confirmDialog.variant === 'destructive' ? 'Archive' : 'Confirm'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

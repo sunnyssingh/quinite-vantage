@@ -98,6 +98,14 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
             if (realEstate.location.locality !== undefined) updates.locality = realEstate.location.locality || null
             if (realEstate.location.landmark !== undefined) updates.landmark = realEstate.location.landmark || null
         }
+
+        // Add pricing calculations if unit_types changed
+        if (updates.unit_types) {
+            const min = Math.min(...updates.unit_types.map(u => Number(u.price)).filter(p => !isNaN(p) && p > 0))
+            const max = Math.max(...updates.unit_types.map(u => Number(u.price)).filter(p => !isNaN(p) && p > 0))
+            updates.min_price = min === Infinity ? null : min
+            updates.max_price = max === -Infinity ? null : max
+        }
         
         const isDraft = body.is_draft !== undefined ? body.is_draft : existing.is_draft === true
         
@@ -219,60 +227,81 @@ export async function DELETE(request, { params }) {
         const isOwner = project.created_by === user.id
         const canDelete = await hasDashboardPermission(user.id, 'delete_projects')
 
-        if (
-            !isOwner &&
-            !['super_admin', 'platform_admin'].includes(profile.role) &&
-            !canDelete
-        ) {
+        // 4️⃣ Check for running campaigns (Archive Safety Check)
+        const { data: runningCampaigns } = await adminClient
+            .from('campaigns')
+            .select('id, name')
+            .eq('project_id', id)
+            .eq('organization_id', profile.organization_id)
+            .eq('status', 'running')
+        
+        if (runningCampaigns?.length > 0) {
             return handleCORS(
-                NextResponse.json({
-                    success: false,
-                    message: 'You don\'t have permission to delete this project'
-                }, { status: 200 })
+                NextResponse.json({ 
+                    error: `Action Blocked: Campaigns are currently running for this project. Please pause or complete them before archiving.`,
+                    running_campaigns: runningCampaigns
+                }, { status: 400 })
             )
         }
 
-        // 5️⃣ Delete associated properties first (cascade delete)
-        const { error: propsDeleteError } = await adminClient
+        // 5️⃣ Perform cascading archival
+        const now = new Date().toISOString()
+        
+        // Use Promise.all for speed since we don't have built-in cross-table transactions easily accessible here
+        // (For production scale, a Postgres RPC or function would be better)
+        const [
+          projectUpdate,
+          campaignUpdate,
+          leadsUpdate,
+          propertyUpdate
+        ] = await Promise.all([
+          adminClient
+            .from('projects')
+            .update({ 
+                archived_at: now, 
+                archived_by: user.id,
+                public_visibility: false
+            })
+            .eq('id', id)
+            .eq('organization_id', profile.organization_id),
+          adminClient
+            .from('campaigns')
+            .update({ archived_at: now, archived_by: user.id })
+            .eq('project_id', id)
+            .eq('organization_id', profile.organization_id),
+          adminClient
+            .from('leads')
+            .update({ archived_at: now, archived_by: user.id })
+            .eq('project_id', id)
+            .eq('organization_id', profile.organization_id),
+          adminClient
             .from('properties')
-            .delete()
+            .update({ archived_at: now, archived_by: user.id })
             .eq('project_id', id)
             .eq('organization_id', profile.organization_id)
+        ])
 
-        if (propsDeleteError) {
-            console.error('Error deleting properties:', propsDeleteError)
-            // Continue anyway - we still want to delete the project
-        }
+        if (projectUpdate.error) throw projectUpdate.error
 
-        // 6️⃣ Delete DB row
-        await adminClient
-            .from('projects')
-            .delete()
-            .eq('id', id)
-            .eq('organization_id', profile.organization_id)
-
-        // 7️⃣ Delete image from storage
-        if (project.image_path) {
-            await supabase.storage
-                .from('project-images')
-                .remove([project.image_path])
-        }
-
-        // 8️⃣ Audit
+        // 8️⃣ Audit with enriched metadata
         try {
             await logAudit(
                 supabase,
                 user.id,
                 profile.full_name || user.email,
-                'project.delete',
+                'project.archive',
                 'project',
                 id,
-                { name: project.name }
+                { 
+                    name: project.name,
+                    cascade_archived: true,
+                    archived_at: now
+                }
             )
         } catch { }
 
         return handleCORS(
-            NextResponse.json({ message: 'Project deleted' })
+            NextResponse.json({ message: 'Project and all associated data archived successfully.' })
         )
     } catch (e) {
         console.error('projects/:id DELETE error:', e)
@@ -318,6 +347,7 @@ export async function GET(request, { params }) {
             .select('*')
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
+            .is('archived_at', null)
             .single()
 
         if (error) throw error
