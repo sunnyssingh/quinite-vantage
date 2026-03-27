@@ -1,338 +1,456 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Badge } from '@/components/ui/badge'
-import {
-    Edit, Home, Building2, Store, Factory, LandPlot, Layers,
-    User, IndianRupee, Maximize2, ChevronDown
-} from 'lucide-react'
-import EditPropertyModal from '@/components/inventory/EditPropertyModal'
-import StatusChangeModal from '@/components/inventory/StatusChangeModal'
+import { useState, useMemo } from 'react';
+import { 
+  Plus, 
+  Building2, 
+  Map as MapIcon, 
+  LayoutGrid, 
+  List, 
+  Search, 
+  Filter,
+  MoreVertical,
+  ChevronDown,
+  ArrowRight,
+  Info,
+  Layers,
+  MoreHorizontal
+} from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useInventory } from '@/hooks/useInventory';
+import { 
+  STATUS_STYLES, 
+  formatINR, 
+  getInventoryStats, 
+  getStatusConfig,
+  buildEmptyFloorSlots 
+} from '@/lib/inventory';
+import UnitDrawer from './UnitDrawer';
+import TowerDrawer from './TowerDrawer';
+import FloorPlanLand from './FloorPlanLand';
+import { cn } from '@/lib/utils';
 
-import { useInventoryProperties } from '@/hooks/useInventory'
-import { useQueryClient } from '@tanstack/react-query'
+export default function VisualUnitGrid({ projectId, project, organizationId, readOnly = false }) {
+  const projectType = project?.project_type || 'residential';
+  const { 
+    towers, 
+    units, 
+    isLoading, 
+    addTower, 
+    updateTower, 
+    deleteTower,
+    addUnit, 
+    updateUnit, 
+    deleteUnit,
+    updateUnitStatus
+  } = useInventory({ projectId, organizationId });
 
-export default function VisualUnitGrid({ projectId, onMetricsUpdate }) {
-    const queryClient = useQueryClient()
-    
-    // 1. Parallel Fetching (Hydrates instantly if hovered earlier)
-    const { 
-        data: properties = [], 
-        isLoading: loading,
-        refetch: fetchProperties 
-    } = useInventoryProperties(projectId)
+  const [activeTowerId, setActiveTowerId] = useState(null);
+  const [activeView, setActiveView] = useState('visual');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState(null); // 'add_unit', 'edit_unit', 'add_tower', 'edit_tower'
+  const [selectedUnit, setSelectedUnit] = useState(null);
+  const [targetFloor, setTargetFloor] = useState(null);
+  const [targetSlot, setTargetSlot] = useState(null);
 
-    const [selectedProperty, setSelectedProperty] = useState(null)
-    const [statusModalOpen, setStatusModalOpen] = useState(false)
-    const [hoveredId, setHoveredId] = useState(null)
-
-    const handleUpdate = (updatedProp) => {
-        // Sync everything
-        queryClient.invalidateQueries({ queryKey: ['inventory-properties', projectId] })
-        queryClient.invalidateQueries({ queryKey: ['inventory-project', projectId] })
-        queryClient.invalidateQueries({ queryKey: ['inventory-projects'] })
+  // Set first tower as active by default
+  useMemo(() => {
+    if (towers.length > 0 && !activeTowerId) {
+      setActiveTowerId(towers[0].id);
     }
+  }, [towers, activeTowerId]);
 
+  const activeTower = towers.find(t => t.id === activeTowerId);
+  const towerUnits = units[activeTowerId] || [];
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'available': return 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700'
-            case 'reserved': return 'bg-amber-400 hover:bg-amber-500 border-amber-600'
-            case 'sold': return 'bg-rose-500 hover:bg-rose-600 border-rose-700'
-            default: return 'bg-slate-400 hover:bg-slate-500 border-slate-600'
-        }
-    }
+  const stats = useMemo(() => getInventoryStats(towerUnits), [towerUnits]);
+  const overallStats = useMemo(() => {
+    const allUnits = Object.values(units).flat();
+    return getInventoryStats(allUnits);
+  }, [units]);
 
-    const getStatusBadgeColor = (status) => {
-        switch (status) {
-            case 'available': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-            case 'reserved': return 'bg-amber-100 text-amber-800 border-amber-200'
-            case 'sold': return 'bg-rose-100 text-rose-800 border-rose-200'
-            default: return 'bg-slate-100 text-slate-600 border-slate-200'
-        }
-    }
-
-    const getPropertyIcon = (type) => {
-        const t = (type || '').toLowerCase()
-        if (t.includes('villa') || t.includes('bungalow')) return Home
-        if (t.includes('commercial') || t.includes('office') || t.includes('shop')) return Store
-        if (t.includes('industrial')) return Factory
-        if (t.includes('plot') || t.includes('land')) return LandPlot
-        return Building2
-    }
-
-    const handleUnitClick = (property) => {
-        setHoveredId(null)
-        setSelectedProperty(property)
-        setStatusModalOpen(true)
-    }
-
-    /** Get the first lead associated with a property */
-    const getPrimaryLead = (property) => {
-        const leads = property.leads
-        if (!leads || leads.length === 0) return null
-        // For sold/reserved, show the most relevant lead
-        if (property.status === 'sold') {
-            return leads.find(l => l.status === 'won' || l.status === 'closed') || leads[0]
-        }
-        if (property.status === 'reserved') {
-            return leads.find(l => l.status === 'active' || l.status === 'new') || leads[0]
-        }
-        return leads[0]
-    }
-
-    // Group properties by Block
-    const groupedProperties = properties.reduce((acc, prop) => {
-        const block = prop.block_name || 'Unassigned'
-        if (!acc[block]) acc[block] = []
-        acc[block].push(prop)
-        return acc
-    }, {})
-
-    const sortedBlocks = Object.keys(groupedProperties).sort()
-
-    sortedBlocks.forEach(block => {
-        groupedProperties[block].sort((a, b) =>
-            a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' })
-        )
-    })
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-20 text-muted-foreground">
-                <div className="animate-pulse space-y-2 text-center">
-                    <Layers className="w-8 h-8 mx-auto opacity-30" />
-                    <p className="text-sm">Loading inventory...</p>
-                </div>
-            </div>
-        )
-    }
-
+  if (isLoading) {
     return (
-        <div className="space-y-8">
+      <div className="space-y-4 p-6">
+        <div className="flex gap-2">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-24" />)}
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
 
-            {/* Legend */}
-            <div className="flex flex-wrap items-center gap-4 bg-background p-3 rounded-lg border shadow-sm w-fit">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm bg-emerald-500" />
-                    <span className="text-sm">Available</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm bg-amber-400" />
-                    <span className="text-sm">Reserved</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm bg-rose-500" />
-                    <span className="text-sm">Sold</span>
-                </div>
+  const handleAddTower = () => {
+    setDrawerMode('add_tower');
+    setDrawerOpen(true);
+  };
+
+  const handleEditTower = (tower) => {
+    setDrawerMode('edit_tower');
+    setSelectedUnit(null); // reuse for tower in tower mode
+    setDrawerOpen(true);
+  };
+
+  const handleOpenAddUnit = (floorNum, slotIdx) => {
+    setTargetFloor(floorNum);
+    setTargetSlot(slotIdx);
+    setDrawerMode('add_unit');
+    setSelectedUnit(null);
+    setDrawerOpen(true);
+  };
+
+  const handleEditUnit = (unit) => {
+    setSelectedUnit(unit);
+    setTargetFloor(unit.floor_number);
+    setTargetSlot(unit.slot_index);
+    setDrawerMode('edit_unit');
+    setDrawerOpen(true);
+  };
+
+  if (projectType === 'land') {
+     return <FloorPlanLand projectId={projectId} project={project} units={Object.values(units).flat()} organizationId={organizationId} onAddTower={handleAddTower} />;
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      {/* Top Bar - Tower Navigation */}
+      <div className="px-4 pt-4 border-b border-slate-100 bg-slate-50/30">
+        <div className="flex items-center justify-between mb-2">
+           <div className="flex gap-1">
+              {towers.map(tower => (
+                <button
+                  key={tower.id}
+                  onClick={() => setActiveTowerId(tower.id)}
+                  className={cn(
+                    "px-4 py-2 rounded-t-lg text-sm font-medium transition-all relative border-x border-t",
+                    activeTowerId === tower.id
+                      ? "bg-white border-slate-200 text-slate-900 -mb-[1px] z-10 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]"
+                      : "bg-transparent border-transparent text-slate-500 hover:text-slate-800"
+                  )}
+                >
+                  {tower.name}
+                  <span className="ml-2 text-[10px] opacity-60">
+                    {towerUnits.filter(u => u.tower_id === tower.id && u.status === 'available').length}
+                  </span>
+                </button>
+              ))}
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleAddTower}
+                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 ml-2"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add Tower
+              </Button>
+           </div>
+
+           <div className="flex items-center gap-2 pb-2">
+              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <Button 
+                  variant={activeView === 'visual' ? 'white' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setActiveView('visual')}
+                  className={cn("h-7 px-3 text-xs gap-1.5", activeView === 'visual' && "bg-white shadow-sm")}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" /> Visual
+                </Button>
+                <Button 
+                  variant={activeView === 'list' ? 'white' : 'ghost'} 
+                  size="sm" 
+                  onClick={() => setActiveView('list')}
+                  className={cn("h-7 px-3 text-xs gap-1.5", activeView === 'list' && "bg-white shadow-sm")}
+                >
+                  <List className="w-3.5 h-3.5" /> List
+                </Button>
+              </div>
+           </div>
+        </div>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="flex items-center gap-6 px-6 py-3 border-b border-slate-100 bg-white sticky top-0 z-10">
+        <div className="flex gap-4 overflow-x-auto no-scrollbar">
+           <StatChip status="available" count={stats.available} />
+           <StatChip status="reserved" count={stats.reserved} />
+           <StatChip status="sold" count={stats.sold} />
+           <StatChip status="blocked" count={stats.blocked} />
+           <StatChip status="under_maintenance" count={stats.under_maintenance} />
+        </div>
+        
+        <div className="ml-auto hidden md:flex items-center gap-4 text-xs font-medium text-slate-500">
+          <div className="flex flex-col items-end">
+            <span className="text-slate-400">Inventory Value</span>
+            <span className="text-slate-900">{formatINR(stats.totalValue)}</span>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="flex flex-col items-end">
+            <span className="text-slate-400">Total Units</span>
+            <span className="text-slate-900">{stats.total} across {towers.length} towers</span>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleEditTower(activeTower)}>
+                 Edit Tower Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600" onClick={() => deleteTower(activeTowerId)}>
+                 Delete Tower
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Main Floor Grid Canvas */}
+      <TooltipProvider>
+        <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-50/50">
+          <div className="max-w-7xl mx-auto space-y-4">
+            {activeTower ? (
+              Array.from({ length: activeTower.total_floors + 1 }, (_, i) => activeTower.total_floors - i).map(floorNum => (
+                <FloorRow 
+                  key={floorNum}
+                  floorNum={floorNum}
+                  tower={activeTower}
+                  units={towerUnits}
+                  onUnitClick={handleEditUnit}
+                  onAddUnit={handleOpenAddUnit}
+                  onStatusChange={updateUnitStatus}
+                  onDeleteUnit={deleteUnit}
+                  projectType={projectType}
+                />
+              ))
+            ) : (
+              <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
+                <Building2 className="w-12 h-12 mb-4 opacity-20" />
+                <p>No towers found for this project.</p>
+                <Button onClick={handleAddTower} variant="outline" className="mt-4">
+                  + Add your first tower
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </TooltipProvider>
+
+      {/* Drawers */}
+      {drawerMode?.includes('unit') ? (
+        <UnitDrawer 
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          mode={drawerMode === 'add_unit' ? 'add' : 'edit'}
+          unit={selectedUnit}
+          tower={activeTower}
+          projectType={projectType}
+          unitConfigs={project?.metadata?.unit_configs?.[projectType] || []}
+          floorNumber={targetFloor}
+          slotIndex={targetSlot}
+          towerId={activeTowerId}
+          projectId={projectId}
+          organizationId={organizationId}
+          onSave={drawerMode === 'add_unit' ? addUnit : (data) => updateUnit(selectedUnit.id, data)}
+          onDelete={deleteUnit}
+        />
+      ) : (
+        <TowerDrawer 
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          mode={drawerMode === 'add_tower' ? 'add' : 'edit'}
+          tower={activeTower}
+          projectId={projectId}
+          organizationId={organizationId}
+          existingTowerCount={towers.length}
+          onSave={drawerMode === 'add_tower' ? addTower : (data) => updateTower(activeTowerId, data)}
+          onDelete={deleteTower}
+        />
+      )}
+    </div>
+  );
+}
+
+function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChange, onDeleteUnit, projectType }) {
+  const slots = useMemo(() => buildEmptyFloorSlots(tower, units, floorNum), [tower, units, floorNum]);
+  const isGround = floorNum === 0;
+
+  return (
+    <div className="flex items-start gap-4 group">
+      {/* Floor Label */}
+      <div className="w-16 pt-2 shrink-0 flex flex-col items-end">
+        <span className={cn(
+          "text-xs font-bold px-2 py-1 rounded",
+          isGround ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600"
+        )}>
+          {isGround ? 'GF' : `F${floorNum}`}
+        </span>
+        <span className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">
+           {isGround ? 'Ground' : `Floor ${floorNum}`}
+        </span>
+      </div>
+
+      {/* Units Horizontal Scroll */}
+      <div className="flex gap-3 pb-4 flex-1 overflow-x-auto no-scrollbar">
+        {slots.map((unit, idx) => (
+          <div key={idx} className="shrink-0 flex-1 min-w-[120px] max-w-[180px]">
+            {unit ? (
+              <UnitCell 
+                unit={unit} 
+                onClick={() => onUnitClick(unit)} 
+                onStatusChange={onStatusChange}
+                onDelete={() => onDeleteUnit(unit.id)}
+                projectType={projectType}
+              />
+            ) : (
+              <EmptySlot onClick={() => onAddUnit(floorNum, idx)} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UnitCell({ unit, onClick, onStatusChange, onDelete, projectType }) {
+  const style = getStatusConfig(unit.status);
+  
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div 
+            onClick={onClick}
+            className={cn(
+              "p-3 rounded-xl border-2 transition-all cursor-pointer relative overflow-hidden group/cell",
+              style.bg,
+              style.border,
+              "hover:shadow-md hover:-translate-y-0.5"
+            )}
+          >
+            {/* Top Row: Unit Num + Config */}
+            <div className="flex justify-between items-start mb-2">
+              <span className={cn("text-[11px] font-bold leading-none", style.text)}>
+                {unit.unit_number}
+              </span>
+              <span className="text-[9px] font-medium opacity-70 leading-none">
+                {unit.unit_config}
+              </span>
             </div>
 
-            {/* Render Groups */}
-            {properties.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
-                    <Layers className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                    <p>No inventory units created yet.</p>
-                    <p className="text-xs mt-1">Go to &quot;Edit Project&quot; to bulk generate units.</p>
-                </div>
-            ) : (
-                sortedBlocks.map(block => {
-                    const blockProps = groupedProperties[block]
+            {/* Middle Row: Price */}
+            <div className={cn("text-xs font-bold mb-1", style.text)}>
+              {formatINR(unit.price)}
+            </div>
 
-                    const floorGroups = blockProps.reduce((acc, prop) => {
-                        const floorKey = prop.floor_number || 'Unassigned'
-                        if (!acc[floorKey]) acc[floorKey] = []
-                        acc[floorKey].push(prop)
-                        return acc
-                    }, {})
+            {/* Bottom Row: Status Dot + Label */}
+            <div className="flex items-center gap-1.5 mt-2">
+               <div className={cn("w-1.5 h-1.5 rounded-full", style.dot)} />
+               <span className={cn("text-[9px] font-bold uppercase tracking-wider opacity-80", style.text)}>
+                 {unit.status.replace('_', ' ')}
+               </span>
+            </div>
 
-                    const sortedFloors = Object.keys(floorGroups).sort((a, b) => {
-                        const numA = parseInt(a)
-                        const numB = parseInt(b)
-                        if (isNaN(numA) && isNaN(numB)) return a.localeCompare(b)
-                        if (isNaN(numA)) return 1
-                        if (isNaN(numB)) return -1
-                        return numB - numA
-                    })
+            {/* Kebab for quick actions */}
+            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <button className="absolute top-1 right-1 opacity-0 group-hover/cell:opacity-100 p-1 rounded-md hover:bg-black/5 transition-opacity">
+                 <MoreHorizontal className={cn("w-3.5 h-3.5", style.text)} />
+              </button>
+            </DropdownMenuTrigger>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="p-3 bg-white border shadow-xl max-w-xs">
+           <div className="space-y-1 text-slate-900">
+              <p className="font-bold border-b pb-1 mb-1">{unit.unit_number || unit.title}</p>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                 <span className="text-slate-500">Config:</span> <span className="font-medium">{unit.unit_config}</span>
+                 <span className="text-slate-500">Facing:</span> <span className="font-medium">{unit.facing}</span>
+                 <span className="text-slate-500">Area:</span> <span className="font-medium">{unit.size_sqft} sqft</span>
+                 <span className="text-slate-500">Status:</span> <Badge variant="outline" className="h-4 py-0 text-[10px] capitalize">{unit.status}</Badge>
+              </div>
+              <p className="text-[10px] text-slate-400 pt-2 italic">Click to edit details</p>
+           </div>
+        </TooltipContent>
+      </Tooltip>
 
-                    sortedFloors.forEach(f => {
-                        floorGroups[f].sort((a, b) =>
-                            a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' })
-                        )
-                    })
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={onClick}>View & Edit Details</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {['available', 'reserved', 'sold', 'blocked', 'under_maintenance'].map(status => (
+              <DropdownMenuItem 
+                key={status} 
+                className="capitalize"
+                onClick={() => onStatusChange(unit.id, status)}
+              >
+                <div className={cn("w-2 h-2 rounded-full mr-2", getStatusConfig(status).dot)} />
+                {status.replace('_', ' ')}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="text-red-600" onClick={onDelete}>
+          Delete Unit
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
-                    return (
-                        <div key={block} className="space-y-4 pt-4 first:pt-0">
-                            {block !== 'Unassigned' && (
-                                <div className="flex items-center gap-2 text-base font-semibold text-foreground border-b pb-2">
-                                    <Building2 className="w-5 h-5 text-primary" />
-                                    Block {block}
-                                    <Badge variant="secondary" className="ml-2">
-                                        {blockProps.length} Units
-                                    </Badge>
-                                </div>
-                            )}
+function EmptySlot({ onClick }) {
+  return (
+    <div 
+      onClick={onClick}
+      className="h-[80px] rounded-xl border-2 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group"
+    >
+      <Plus className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
+      <span className="text-[9px] font-bold text-slate-400 group-hover:text-blue-500 mt-1 uppercase tracking-tighter">
+        Add Unit
+      </span>
+    </div>
+  );
+}
 
-                            <div className="space-y-4">
-                                {sortedFloors.map(floor => (
-                                    <div key={floor} className="flex flex-col sm:flex-row gap-4 border-l-2 border-slate-200 pl-4 py-1">
-                                        {/* Floor Label */}
-                                        <div className="w-full sm:w-24 shrink-0 flex items-start pt-2">
-                                            <div className="bg-slate-100 px-3 py-1 rounded text-xs font-semibold text-slate-600 w-full text-center sm:text-left">
-                                                {floor === '0' || floor === 'Unassigned' ? floor : `Floor ${floor}`}
-                                            </div>
-                                        </div>
+function StatChip({ status, count }) {
+  const config = getStatusConfig(status);
+  return (
+    <div className={cn(
+      "flex items-center gap-2 px-3 py-1.5 rounded-full border whitespace-nowrap",
+      config.bg,
+      config.border
+    )}>
+      <div className={cn("w-2 h-2 rounded-full", config.dot)} />
+      <span className={cn("text-xs font-bold", config.text)}>{count}</span>
+      <span className={cn("text-[10px] uppercase tracking-wider font-semibold opacity-70", config.text)}>
+        {status.replace('_', ' ')}
+      </span>
+    </div>
+  );
+}
 
-                                        {/* Units Grid */}
-                                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
-                                            {floorGroups[floor].map(property => {
-                                                const Icon = getPropertyIcon(property.type)
-                                                const isHovered = hoveredId === property.id
-                                                const primaryLead = getPrimaryLead(property)
-                                                const showLead = (property.status === 'sold' || property.status === 'reserved') && primaryLead
-
-                                                return (
-                                                    <div key={property.id} className="relative group">
-                                                        {/* Unit Button */}
-                                                        <button
-                                                            onClick={() => handleUnitClick(property)}
-                                                            onMouseEnter={() => setHoveredId(property.id)}
-                                                            onMouseLeave={() => setHoveredId(null)}
-                                                            className={`
-                                                                w-full aspect-square rounded-lg border-b-4 transition-all duration-150
-                                                                active:scale-95 flex flex-col items-center justify-center p-2 gap-0.5
-                                                                text-white shadow-sm relative overflow-hidden
-                                                                ${getStatusColor(property.status)}
-                                                            `}
-                                                        >
-                                                            <Icon className="w-4 h-4 opacity-90 group-hover:scale-110 transition-transform shrink-0" />
-                                                            <span className="font-bold text-[10px] sm:text-[11px] truncate w-full text-center leading-tight">
-                                                                {property.unit_number || property.title.replace(/^(Unit|Flat|Apt)\s*/i, '')}
-                                                            </span>
-                                                            {/* Lead name shown on card for sold/reserved */}
-                                                            {showLead && (
-                                                                <span className="text-[7px] truncate w-full text-center opacity-90 leading-tight font-medium bg-black/20 px-1 rounded">
-                                                                    {primaryLead.name?.split(' ')[0]}
-                                                                </span>
-                                                            )}
-                                                            {property.configuration && (
-                                                                <span className="absolute top-0.5 right-1 text-[7px] bg-black/20 px-1 py-0 rounded backdrop-blur-[1px]">
-                                                                    {property.configuration}
-                                                                </span>
-                                                            )}
-                                                        </button>
-
-                                                        {/* Custom Hover Card - Fixed Positioning */}
-                                                        {isHovered && (
-                                                            <div
-                                                                className="absolute z-50 bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 pointer-events-none"
-                                                                onMouseEnter={() => setHoveredId(property.id)}
-                                                            >
-                                                                {/* Arrow */}
-                                                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-slate-800" />
-
-                                                                <div className="bg-slate-800 text-white rounded-xl shadow-2xl p-3 w-52 text-xs space-y-2 border border-slate-700">
-                                                                    {/* Header */}
-                                                                    <div className="flex items-center justify-between border-b border-slate-600 pb-2">
-                                                                        <p className="font-bold text-sm text-white truncate">
-                                                                            {property.title}
-                                                                        </p>
-                                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize border ${getStatusBadgeColor(property.status)}`}>
-                                                                            {property.status}
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Details Grid */}
-                                                                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-slate-300">
-                                                                        {property.configuration && (
-                                                                            <>
-                                                                                <span className="text-slate-400 flex items-center gap-1">
-                                                                                    <Building2 className="w-3 h-3" /> Type
-                                                                                </span>
-                                                                                <span className="font-medium text-white">{property.configuration}</span>
-                                                                            </>
-                                                                        )}
-                                                                        {property.size_sqft && (
-                                                                            <>
-                                                                                <span className="text-slate-400 flex items-center gap-1">
-                                                                                    <Maximize2 className="w-3 h-3" /> Area
-                                                                                </span>
-                                                                                <span className="font-medium text-white">{property.size_sqft} sqft</span>
-                                                                            </>
-                                                                        )}
-                                                                        {property.price && (
-                                                                            <>
-                                                                                <span className="text-slate-400 flex items-center gap-1">
-                                                                                    <IndianRupee className="w-3 h-3" /> Price
-                                                                                </span>
-                                                                                <span className="font-medium text-white">
-                                                                                    ₹{parseInt(property.price).toLocaleString('en-IN')}
-                                                                                </span>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Lead Name for sold/reserved */}
-                                                                    {showLead && (
-                                                                        <div className="border-t border-slate-600 pt-2 flex items-center gap-2">
-                                                                            <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center shrink-0">
-                                                                                <User className="w-3 h-3 text-slate-300" />
-                                                                            </div>
-                                                                            <div className="overflow-hidden">
-                                                                                <p className="text-slate-400 text-[10px] capitalize">
-                                                                                    {property.status === 'sold' ? 'Buyer' : 'Reserved by'}
-                                                                                </p>
-                                                                                <p className="font-semibold text-white truncate">{primaryLead.name}</p>
-                                                                                {primaryLead.phone && (
-                                                                                    <p className="text-slate-400 text-[10px]">{primaryLead.phone}</p>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-
-                                                                    {/* Multiple leads indicator */}
-                                                                    {property.leads && property.leads.length > 1 && (
-                                                                        <p className="text-slate-400 text-[10px] text-center">
-                                                                            +{property.leads.length - 1} more lead{property.leads.length > 2 ? 's' : ''}
-                                                                        </p>
-                                                                    )}
-
-                                                                    <p className="text-slate-500 text-center text-[10px] pt-1 border-t border-slate-700">
-                                                                        Click to change status
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )
-                })
-            )}
-
-            {/* Modals */}
-            {selectedProperty && (
-                <StatusChangeModal
-                    property={selectedProperty}
-                    isOpen={statusModalOpen}
-                    onClose={() => {
-                        setStatusModalOpen(false)
-                        setSelectedProperty(null)
-                    }}
-                    onStatusChanged={(updatedProp, updatedProjectMetrics) => {
-                        handleUpdate(updatedProp)
-                        setStatusModalOpen(false)
-                        setSelectedProperty(null)
-                        if (onMetricsUpdate && updatedProjectMetrics) {
-                            onMetricsUpdate(updatedProjectMetrics)
-                        }
-                    }}
-                />
-            )}
-        </div>
-    )
+function Separator({ orientation = 'horizontal', className }) {
+  return (
+    <div className={cn(
+      "bg-slate-200",
+      orientation === 'horizontal' ? "h-[1px] w-full" : "w-[1px] h-full",
+      className
+    )} />
+  );
 }

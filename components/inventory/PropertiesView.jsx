@@ -74,7 +74,9 @@ export function PropertiesView({ projectId = null }) {
     const statuses = [
         { value: 'available', label: 'Available', color: 'bg-emerald-500' },
         { value: 'sold', label: 'Sold', color: 'bg-slate-500' },
-        { value: 'reserved', label: 'Reserved', color: 'bg-amber-500' }
+        { value: 'reserved', label: 'Reserved', color: 'bg-amber-500' },
+        { value: 'blocked', label: 'Blocked', color: 'bg-red-500' },
+        { value: 'under_maintenance', label: 'Maintenance', color: 'bg-orange-500' }
     ]
 
 

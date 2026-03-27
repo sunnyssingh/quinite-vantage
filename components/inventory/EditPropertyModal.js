@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'react-hot-toast'
-import { Loader2, Upload, X, Image as ImageIcon, Trash2 } from 'lucide-react'
+import { Loader2, Upload, X, Image as ImageIcon, Trash2, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function EditPropertyModal({ property, isOpen, onClose, onPropertyUpdated, onActionComplete }) {
@@ -16,17 +16,25 @@ export default function EditPropertyModal({ property, isOpen, onClose, onPropert
     const [uploading, setUploading] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [projects, setProjects] = useState([])
+    const [towers, setTowers] = useState([])
     const [formData, setFormData] = useState({
         title: '',
         description: '',
         address: '',
         price: '',
+        base_price: '',
+        floor_rise_price: '',
+        plc_price: '',
         bedrooms: '',
         bathrooms: '',
         area: '',
-        type: '',
+        type: 'apartment',
         status: 'available',
         project_id: 'none',
+        tower_id: 'none',
+        floor_number: '',
+        unit_number: '',
+        unit_config: '',
         images: []
     })
     const fileInputRef = useRef(null)
@@ -45,27 +53,41 @@ export default function EditPropertyModal({ property, isOpen, onClose, onPropert
                 description: property.description || '',
                 address: property.address || '',
                 price: property.price || '',
+                base_price: property.base_price || '',
+                floor_rise_price: property.floor_rise_price || '',
+                plc_price: property.plc_price || '',
                 bedrooms: property.bedrooms || '',
                 bathrooms: property.bathrooms || '',
                 area: property.size_sqft || '',
-                type: property.type || '',
+                type: property.type || 'apartment',
                 status: property.status || 'available',
                 project_id: property.project_id || 'none',
+                tower_id: property.tower_id || 'none',
+                floor_number: property.floor_number !== undefined ? property.floor_number : '',
+                unit_number: property.unit_number || '',
+                unit_config: property.unit_config || '',
                 images: property.images || []
             })
+            if (property.project_id) fetchTowers(property.project_id)
         } else {
-            // Reset for Add New
             setFormData({
                 title: '',
                 description: '',
                 address: '',
                 price: '',
+                base_price: '',
+                floor_rise_price: '',
+                plc_price: '',
                 bedrooms: '',
                 bathrooms: '',
                 area: '',
-                type: '',
+                type: 'apartment',
                 status: 'available',
                 project_id: 'none',
+                tower_id: 'none',
+                floor_number: '',
+                unit_number: '',
+                unit_config: '',
                 images: []
             })
         }
@@ -73,14 +95,25 @@ export default function EditPropertyModal({ property, isOpen, onClose, onPropert
 
     const fetchProjects = async () => {
         try {
-            const res = await fetch('/api/inventory/projects')
-            const data = await res.json()
-            if (res.ok) {
-                setProjects(data.projects || [])
-            }
-        } catch (error) {
-            console.error('Failed to fetch projects', error)
+            const { data, error } = await supabase.from('projects').select('id, name').order('name')
+            if (data) setProjects(data)
+        } catch (error) { console.error(error) }
+    }
+
+    const fetchTowers = async (projectId) => {
+        if (!projectId || projectId === 'none') {
+            setTowers([])
+            return
         }
+        try {
+            const { data, error } = await supabase.from('towers').select('id, name').eq('project_id', projectId).order('order_index')
+            if (data) setTowers(data)
+        } catch (error) { console.error(error) }
+    }
+
+    const handleProjectChange = (val) => {
+        setFormData(prev => ({ ...prev, project_id: val, tower_id: 'none' }))
+        fetchTowers(val)
     }
 
     const handleImageUpload = async (e) => {
@@ -173,304 +206,169 @@ export default function EditPropertyModal({ property, isOpen, onClose, onPropert
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
-
         try {
             const isNew = !property?.id
-            const url = isNew
-                ? `/api/inventory/properties`
-                : `/api/inventory/properties/${property.id}`
-
-            const method = isNew ? 'POST' : 'PATCH'
-
             const payload = {
-                title: formData.title,
-                description: formData.description,
-                address: formData.address,
-                price: formData.price ? Number(formData.price) : null,
-                bedrooms: formData.bedrooms ? Number(formData.bedrooms) : null,
-                bathrooms: formData.bathrooms ? Number(formData.bathrooms) : null,
-                size: formData.area ? Number(formData.area) : null, // standardized to size in backend
-                type: formData.type,
-                status: formData.status,
-                projectId: formData.project_id === 'none' ? null : formData.project_id,
-                images: formData.images
+                ...formData,
+                price: Number(formData.base_price || 0) + Number(formData.floor_rise_price || 0) + Number(formData.plc_price || 0),
+                size_sqft: Number(formData.area),
+                project_id: formData.project_id === 'none' ? null : formData.project_id,
+                tower_id: formData.tower_id === 'none' ? null : formData.tower_id,
+                floor_number: formData.floor_number === '' ? null : Number(formData.floor_number),
             }
-
-            const response = await fetch(url, {
-                method: method,
+            
+            const method = isNew ? 'POST' : 'PATCH'
+            const url = isNew ? '/api/inventory/properties' : `/api/inventory/properties/${property.id}`
+            
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
-
-            const data = await response.json()
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to update property')
-            }
-
-            toast.success(isNew ? 'Property created successfully' : 'Property updated successfully')
-
-            if (onPropertyUpdated) {
-                onPropertyUpdated(data.property)
-            }
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed')
+            
+            toast.success(isNew ? 'Created' : 'Updated')
+            if (onPropertyUpdated) onPropertyUpdated(data.property)
             if (onActionComplete) onActionComplete()
-
             onClose()
         } catch (error) {
-            console.error('Update property error:', error)
-            toast.error(error.message || 'Failed to update property')
-        } finally {
-            setLoading(false)
-        }
+            toast.error(error.message)
+        } finally { setLoading(false) }
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto w-full">
+            <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{property?.id ? 'Edit Property' : 'Add Property'}</DialogTitle>
-                    <DialogDescription>
-                        {property?.id ? 'Update property details and images' : 'Create a new property listing'}
-                    </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6 py-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Left Column: Basic Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="title">Property Title *</Label>
-                                <Input
-                                    id="title"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                                    placeholder="e.g., Luxury 3BHK Apartment"
-                                    required
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Project</Label>
+                                    <Select value={formData.project_id} onValueChange={handleProjectChange}>
+                                        <SelectTrigger><SelectValue placeholder="Project" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No Project</SelectItem>
+                                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Tower / Block</Label>
+                                    <Select value={formData.tower_id} onValueChange={(v) => setFormData(p => ({ ...p, tower_id: v }))}>
+                                        <SelectTrigger><SelectValue placeholder="Tower" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No Tower</SelectItem>
+                                            {towers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 text-xs">
+                                    <Label>Floor Number</Label>
+                                    <Input type="number" value={formData.floor_number} onChange={e => setFormData(p => ({ ...p, floor_number: e.target.value }))} placeholder="e.g. 5" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Unit Number</Label>
+                                    <Input value={formData.unit_number} onChange={e => setFormData(p => ({ ...p, unit_number: e.target.value }))} placeholder="e.g. A-502" />
+                                </div>
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="project">Project</Label>
-                                <Select
-                                    value={formData.project_id}
-                                    onValueChange={(val) => setFormData(prev => ({ ...prev, project_id: val }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Project (Optional)" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">No Project</SelectItem>
-                                        {projects.map(p => (
-                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label>Property Title *</Label>
+                                <Input value={formData.title} onChange={e => setFormData(p => ({ ...p, title: e.target.value }))} placeholder="Title" required />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="type">Type *</Label>
-                                    <Select
-                                        value={formData.type}
-                                        onValueChange={(val) => setFormData(prev => ({ ...prev, type: val }))}
-                                        required
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select Type" />
-                                        </SelectTrigger>
+                                    <Label>Type *</Label>
+                                    <Select value={formData.type} onValueChange={v => setFormData(p => ({ ...p, type: v }))}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="apartment">Apartment</SelectItem>
-                                            <SelectItem value="villa">Villa</SelectItem>
-                                            <SelectItem value="plot">Plot</SelectItem>
-                                            <SelectItem value="commercial">Commercial</SelectItem>
-                                            <SelectItem value="penthouse">Penthouse</SelectItem>
-                                            <SelectItem value="studio">Studio</SelectItem>
+                                            {['apartment', 'villa', 'plot', 'commercial', 'penthouse', 'studio'].map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
-
                                 <div className="space-y-2">
-                                    <Label htmlFor="status">Status</Label>
-                                    <Select
-                                        value={formData.status}
-                                        onValueChange={(val) => setFormData(prev => ({ ...prev, status: val }))}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="available">Available</SelectItem>
-                                            <SelectItem value="sold">Sold</SelectItem>
-                                            <SelectItem value="reserved">Reserved</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <Label>Config (BHK)</Label>
+                                    <Input value={formData.unit_config} onChange={e => setFormData(p => ({ ...p, unit_config: e.target.value }))} placeholder="e.g. 3BHK" />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="price">Price (₹) *</Label>
-                                <Input
-                                    id="price"
-                                    type="number"
-                                    value={formData.price}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                                    placeholder="e.g., 5000000"
-                                    min="0"
-                                    required
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="address">Address</Label>
-                                <Textarea
-                                    id="address"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                                    placeholder="Property address..."
-                                    rows={2}
-                                />
+                            <div className="space-y-2 pt-2 border-t mt-4">
+                                <Label className="font-bold text-blue-600">Pricing Breakdown (₹)</Label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase">Base</Label>
+                                        <Input type="number" value={formData.base_price} onChange={e => setFormData(p => ({ ...p, base_price: e.target.value }))} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase">Floor Rise</Label>
+                                        <Input type="number" value={formData.floor_rise_price} onChange={e => setFormData(p => ({ ...p, floor_rise_price: e.target.value }))} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] uppercase">PLC</Label>
+                                        <Input type="number" value={formData.plc_price} onChange={e => setFormData(p => ({ ...p, plc_price: e.target.value }))} />
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded flex justify-between items-center text-sm">
+                                    <span className="font-medium text-slate-500">Calculated Price:</span>
+                                    <span className="font-bold text-slate-900">₹{(Number(formData.base_price) + Number(formData.floor_rise_price) + Number(formData.plc_price)).toLocaleString()}</span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Right Column: Specs & Images */}
                         <div className="space-y-4">
                             <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="bedrooms">Beds</Label>
-                                    <Input
-                                        id="bedrooms"
-                                        type="number"
-                                        value={formData.bedrooms}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, bedrooms: e.target.value }))}
-                                        placeholder="0"
-                                        min="0"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="bathrooms">Baths</Label>
-                                    <Input
-                                        id="bathrooms"
-                                        type="number"
-                                        value={formData.bathrooms}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, bathrooms: e.target.value }))}
-                                        placeholder="0"
-                                        min="0"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="area">Sq Ft</Label>
-                                    <Input
-                                        id="area"
-                                        type="number"
-                                        value={formData.area}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, area: e.target.value }))}
-                                        placeholder="0"
-                                        min="0"
-                                    />
-                                </div>
+                                <div className="space-y-2"><Label>Beds</Label><Input type="number" value={formData.bedrooms} onChange={e => setFormData(p => ({ ...p, bedrooms: e.target.value }))} /></div>
+                                <div className="space-y-2"><Label>Baths</Label><Input type="number" value={formData.bathrooms} onChange={e => setFormData(p => ({ ...p, bathrooms: e.target.value }))} /></div>
+                                <div className="space-y-2"><Label>Area (Sqft)</Label><Input type="number" value={formData.area} onChange={e => setFormData(p => ({ ...p, area: e.target.value }))} /></div>
                             </div>
-
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Textarea
-                                    id="description"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                                    placeholder="Full description..."
-                                    rows={3}
-                                />
+                                <Label>Address</Label>
+                                <Textarea value={formData.address} onChange={e => setFormData(p => ({ ...p, address: e.target.value }))} rows={2} />
                             </div>
-
-                            {/* Image Upload */}
                             <div className="space-y-2">
                                 <Label>Images</Label>
-                                <div className="grid grid-cols-3 gap-2 mb-2">
-                                    {formData.images.map((img, index) => (
-                                        <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-border group bg-muted">
-                                            <img
-                                                src={img.url}
-                                                alt={`Property ${index}`}
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                                <Button
-                                                    type="button"
-                                                    variant="destructive"
-                                                    size="icon"
-                                                    className="h-6 w-6"
-                                                    onClick={() => removeImage(index)}
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant={img.is_featured ? "default" : "secondary"}
-                                                    size="icon"
-                                                    className="h-6 w-6"
-                                                    onClick={() => setFeaturedImage(index)}
-                                                    title="Set as Featured"
-                                                >
-                                                    <ImageIcon className="w-3 h-3" />
-                                                </Button>
-                                            </div>
-                                            {img.is_featured && (
-                                                <div className="absolute top-1 left-1 bg-blue-600 text-[10px] text-white px-1.5 rounded-sm">Featured</div>
-                                            )}
+                                <div className="grid grid-cols-4 gap-2">
+                                    {formData.images.map((img, i) => (
+                                        <div key={i} className="relative aspect-square rounded border overflow-hidden bg-slate-100 group">
+                                            <img src={img.url} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => removeImage(i)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"><X className="w-3 h-3" /></button>
                                         </div>
                                     ))}
-                                    <div
-                                        className="aspect-square rounded-md border-2 border-dashed border-muted-foreground/25 hover:border-blue-500/50 hover:bg-blue-50/50 transition-colors flex flex-col items-center justify-center cursor-pointer"
-                                        onClick={() => fileInputRef.current?.click()}
-                                    >
-                                        <input
-                                            type="file"
-                                            ref={fileInputRef}
-                                            className="hidden"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={handleImageUpload}
-                                        />
-                                        {uploading ? (
-                                            <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
-                                        ) : (
-                                            <>
-                                                <Upload className="w-6 h-6 text-muted-foreground mb-1" />
-                                                <span className="text-xs text-muted-foreground">Upload</span>
-                                            </>
-                                        )}
-                                    </div>
+                                    <button type="button" onClick={() => fileInputRef.current.click()} className="aspect-square border-2 border-dashed rounded flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-colors">
+                                        <Upload className="w-5 h-5" />
+                                        <span className="text-[10px] mt-1">Upload</span>
+                                        <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleImageUpload} />
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="flex justify-between items-center w-full">
-                        {property?.id && (
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={handleDelete}
-                                disabled={loading || uploading || deleting}
-                            >
-                                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                                {deleting ? 'Deleting...' : 'Delete'}
-                            </Button>
-                        )}
-                        <div className="flex gap-2 ml-auto">
-                            <Button type="button" variant="outline" onClick={onClose} disabled={loading || deleting}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={loading || uploading || deleting} className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto sm:min-w-[120px]">
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        {property?.id ? 'Updating...' : 'Creating...'}
-                                    </>
-                                ) : (
-                                    property?.id ? 'Update Property' : 'Create Property'
-                                )}
-                            </Button>
+                    <DialogFooter className="border-t pt-6">
+                        <div className="flex justify-between items-center w-full">
+                            {property?.id && (
+                                <Button type="button" variant="destructive" size="sm" onClick={handleDelete} disabled={loading || uploading || deleting}>
+                                    {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                                    Delete
+                                </Button>
+                            )}
+                            <div className="flex gap-2 ml-auto">
+                                <Button type="button" variant="outline" onClick={onClose} disabled={loading || deleting}>Cancel</Button>
+                                <Button type="submit" disabled={loading || uploading || deleting} className="bg-blue-600 hover:bg-blue-700 min-w-[140px]">
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                                    {property?.id ? 'Save Changes' : 'Create Property'}
+                                </Button>
+                            </div>
                         </div>
                     </DialogFooter>
                 </form>

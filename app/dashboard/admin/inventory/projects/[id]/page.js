@@ -17,7 +17,11 @@ import EditProjectModal from '@/components/inventory/EditProjectModal'
 import { useQueryClient } from '@tanstack/react-query'
 import { useInventoryProject } from '@/hooks/useInventory'
 
+import { useAuth } from '@/contexts/AuthContext'
+
 export default function InventoryProjectDetailsPage() {
+    const { profile } = useAuth()
+    const organizationId = profile?.organization_id
     const router = useRouter()
     const params = useParams()
     const projectId = params.id
@@ -244,7 +248,8 @@ export default function InventoryProjectDetailsPage() {
                         </div>
                         <VisualUnitGrid
                             projectId={projectId}
-                            onMetricsUpdate={handleMetricsUpdate}
+                            project={project}
+                            organizationId={organizationId}
                         />
                     </Card>
                 </TabsContent>
