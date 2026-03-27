@@ -49,7 +49,7 @@ export function useInventoryProject(projectId) {
             const res = await fetch(`/api/projects/${projectId}`)
             if (!res.ok) throw new Error('Failed to fetch project')
             const data = await res.json()
-            return data.project
+            return data.project || null
         },
         enabled: !!projectId,
         staleTime: 5 * 60 * 1000,
@@ -84,8 +84,8 @@ export function useInventory({ projectId, organizationId }) {
                 .eq('project_id', projectId)
                 .eq('organization_id', organizationId)
                 .order('order_index')
-            if (error) throw error
-            return data
+            if (error) throw new Error(error.message)
+            return data || []
         },
         enabled: !!projectId && !!organizationId,
     })
@@ -99,7 +99,7 @@ export function useInventory({ projectId, organizationId }) {
                 .eq('project_id', projectId)
                 .eq('organization_id', organizationId)
                 .order('floor_number', { ascending: false })
-            if (error) throw error
+            if (error) throw new Error(error.message)
             
             // Return as object keyed by tower_id
             return (data || []).reduce((acc, unit) => {
@@ -123,7 +123,7 @@ export function useInventory({ projectId, organizationId }) {
 
         if (error) {
             toast.error('Failed to add tower')
-            throw error
+            throw new Error(error.message)
         }
         await refetchTowers()
         return data
@@ -139,7 +139,7 @@ export function useInventory({ projectId, organizationId }) {
 
         if (error) {
             toast.error('Failed to update tower')
-            throw error
+            throw new Error(error.message)
         }
         await refetchTowers()
         return data
@@ -152,7 +152,7 @@ export function useInventory({ projectId, organizationId }) {
         
         if (error) {
             toast.error('Failed to delete tower')
-            throw error
+            throw new Error(error.message)
         }
         await refetchTowers()
         await refetchUnits()
@@ -166,7 +166,7 @@ export function useInventory({ projectId, organizationId }) {
 
         if (error) {
             toast.error('Failed to add unit')
-            throw error
+            throw new Error(error.message)
         }
         await refetchUnits()
         return data
@@ -182,7 +182,7 @@ export function useInventory({ projectId, organizationId }) {
 
         if (error) {
             toast.error('Failed to update unit')
-            throw error
+            throw new Error(error.message)
         }
         await refetchUnits()
         return data
@@ -192,7 +192,7 @@ export function useInventory({ projectId, organizationId }) {
         const { error } = await supabase.from('properties').delete().eq('id', unitId).eq('organization_id', organizationId)
         if (error) {
             toast.error('Failed to delete unit')
-            throw error
+            throw new Error(error.message)
         }
         await refetchUnits()
     }
@@ -203,6 +203,29 @@ export function useInventory({ projectId, organizationId }) {
 
     const updateUnitPrice = async (unitId, priceData) => {
         return updateUnit(unitId, priceData)
+    }
+
+    const updateProjectUnits = async (newUnitTypes) => {
+        // Calculate total units from configurations
+        const calculatedTotalUnits = newUnitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)
+
+        const response = await fetch(`/api/projects/${projectId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                unit_types: newUnitTypes,
+                total_units: calculatedTotalUnits
+            })
+        })
+
+        if (!response.ok) {
+            const data = await res.json()
+            toast.error(data.error || 'Failed to update configurations')
+            throw new Error(data.error || 'Failed to update configurations')
+        }
+        
+        toast.success('Inventory configurations updated')
+        return response.json()
     }
 
     return {
@@ -217,6 +240,7 @@ export function useInventory({ projectId, organizationId }) {
         deleteUnit,
         updateUnitStatus,
         updateUnitPrice,
+        updateProjectUnits,
         refetch: () => { refetchTowers(); refetchUnits(); },
     }
 }

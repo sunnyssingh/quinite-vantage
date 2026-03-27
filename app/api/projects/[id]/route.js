@@ -165,12 +165,14 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
             )
         } catch { }
 
-        // Automatic Inventory Sync
+        /* 
+        // Manual sync is deprecated in favor of Visual Unit Painting
         try {
             await PropertyService.syncProjectInventory(project, user.id)
         } catch (syncError) {
             console.error('Failed to sync project inventory:', syncError)
         }
+        */
 
         return handleCORS(NextResponse.json({ project }))
     } catch (e) {

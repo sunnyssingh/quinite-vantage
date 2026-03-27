@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetFooter,
+  SheetDescription
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,10 +29,30 @@ import {
   Compass, 
   LayoutGrid,
   Trash2,
-  Save
+  Save,
+  User,
+  Search,
+  Check,
+  ChevronRight,
+  UserPlus
 } from 'lucide-react';
+import { 
+  Command, 
+  CommandEmpty, 
+  CommandGroup, 
+  CommandInput, 
+  CommandItem, 
+  CommandList 
+} from '@/components/ui/command';
+import { 
+  Popover, 
+  PopoverContent, 
+  PopoverTrigger 
+} from '@/components/ui/popover';
 import { formatINR, calculateFinalPrice, generateUnitNumber, getStatusConfig } from '@/lib/inventory';
-import { toast } from 'sonner';
+import { useLeads } from '@/hooks/useLeads';
+import { toast } from 'react-hot-toast';
+import { cn } from '@/lib/utils';
 
 export default function UnitDrawer({
   open,
@@ -63,8 +84,14 @@ export default function UnitDrawer({
     super_built_up_area: 0,
     bedrooms: null,
     bathrooms: null,
+    lead_id: null,
     metadata: {},
   });
+
+  const [openLeadPicker, setOpenLeadPicker] = useState(false);
+  const [leadSearch, setLeadSearch] = useState('');
+  const { data: leadsData } = useLeads({ search: leadSearch, limit: 10 });
+  const leads = leadsData?.leads || [];
 
   useEffect(() => {
     if (mode === 'edit' && unit) {
@@ -82,6 +109,7 @@ export default function UnitDrawer({
         super_built_up_area: Number(unit.super_built_up_area) || 0,
         bedrooms: unit.bedrooms || null,
         bathrooms: unit.bathrooms || null,
+        lead_id: unit.lead_id || null,
         metadata: unit.metadata || {},
       });
     } else if (mode === 'add' && tower) {
@@ -97,15 +125,17 @@ export default function UnitDrawer({
   }, [mode, unit, tower, floorNumber, slotIndex, towerId]);
 
   const handleConfigChange = (configLabel) => {
-    const config = unitConfigs.find(c => c.label === configLabel);
+    // Try to find in project unit_types (unitConfigs)
+    const config = unitConfigs.find(c => (c.configuration || c.property_type || c.label) === configLabel);
+    
     if (config) {
       setFormData(prev => ({
         ...prev,
-        unit_config: config.label,
-        size_sqft: config.size_sqft || 0,
-        base_price: config.base_price || 0,
-        bedrooms: config.bedrooms || null,
-        bathrooms: config.bathrooms || null,
+        unit_config: configLabel,
+        size_sqft: config.carpet_area || config.size_sqft || 0,
+        carpet_area: config.carpet_area || 0,
+        base_price: config.price || 0,
+        bedrooms: config.bedrooms || (config.configuration?.includes('BHK') ? parseInt(config.configuration) : null)
       }));
     } else {
       setFormData(prev => ({ ...prev, unit_config: configLabel }));
@@ -130,205 +160,273 @@ export default function UnitDrawer({
 
     try {
       await onSave(payload);
+      toast.success(mode === 'add' ? 'Unit created!' : 'Unit updated!');
       onClose();
     } catch (error) {
       console.error('Error saving unit:', error);
+      toast.error('Failed to save unit');
     }
   };
 
   const finalPrice = calculateFinalPrice(formData.base_price, formData.floor_rise_price, formData.plc_price);
+  const selectedLead = leads.find(l => l.id === formData.lead_id);
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-md w-full p-0 flex flex-col">
-        <SheetHeader className="p-6 border-b">
+      <SheetContent className="sm:max-w-xl w-full p-0 flex flex-col border-l shadow-2xl overflow-hidden bg-slate-50">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none" />
+        
+        <SheetHeader className="p-6 bg-white border-b relative z-10">
           <div className="flex items-center justify-between">
-            <SheetTitle>
-              {mode === 'add' ? 'Add Unit' : 'Edit Unit'} — {tower?.name}
-            </SheetTitle>
+            <div>
+              <SheetTitle className="text-xl font-bold text-slate-900">
+                {mode === 'add' ? 'Add Unit' : `Unit ${formData.unit_number}`}
+              </SheetTitle>
+              <SheetDescription className="text-xs text-slate-500 font-medium">
+                {tower?.name} • Floor {floorNumber === 0 ? 'Ground' : floorNumber}
+              </SheetDescription>
+            </div>
             {mode === 'edit' && (
-              <Button variant="ghost" size="icon" className="text-red-500" onClick={() => onDelete(unit.id)}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" 
+                onClick={() => {
+                  if(confirm('Are you sure you want to delete this unit?')) onDelete(unit.id);
+                }}
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             )}
           </div>
-          <div className="text-sm text-slate-500 flex gap-2 items-center mt-1">
-            <Badge variant="outline">{projectType.toUpperCase()}</Badge>
-            <span>Floor {floorNumber === 0 ? 'GF' : floorNumber}</span>
-            <span>Slot {slotIndex + 1}</span>
-          </div>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden relative z-10">
           <ScrollArea className="flex-1 p-6">
             <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="unit_number">Unit Number</Label>
-                    <Input
-                      id="unit_number"
-                      value={formData.unit_number}
-                      onChange={(e) => setFormData(p => ({ ...p, unit_number: e.target.value }))}
-                      placeholder="e.g. A-101"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unit_config">Configuration</Label>
-                    <Select value={formData.unit_config} onValueChange={handleConfigChange}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Config" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {unitConfigs.map((c) => (
-                          <SelectItem key={c.id || c.label} value={c.label}>
-                            {c.label} ({c.size_sqft} sqft)
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="Custom">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              {/* Primary Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="unit_number" className="text-xs font-bold text-slate-500 uppercase">Unit Number *</Label>
+                  <Input
+                    id="unit_number"
+                    value={formData.unit_number}
+                    onChange={(e) => setFormData(p => ({ ...p, unit_number: e.target.value }))}
+                    placeholder="e.g. 901"
+                    className="h-10 bg-white rounded-lg border-slate-200"
+                    required
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="facing">Facing</Label>
-                    <Select value={formData.facing} onValueChange={(v) => setFormData(p => ({ ...p, facing: v }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'].map(opt => (
-                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select value={formData.status} onValueChange={(v) => setFormData(p => ({ ...p, status: v }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['available', 'reserved', 'sold', 'blocked', 'under_maintenance'].map(opt => (
-                          <SelectItem key={opt} value={opt} className="capitalize">{opt.replace('_', ' ')}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="unit_config" className="text-xs font-bold text-slate-500 uppercase">Unit Type *</Label>
+                  <Select 
+                    value={formData.unit_config} 
+                    onValueChange={handleConfigChange}
+                    required
+                  >
+                    <SelectTrigger className="h-10 bg-white rounded-lg border-slate-200">
+                      <SelectValue placeholder="Select Type" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl">
+                      {unitConfigs.map((c, i) => (
+                        <SelectItem key={i} value={c.configuration || c.property_type || c.label}>
+                          {c.configuration || c.property_type || c.label} {c.carpet_area && `(${c.carpet_area} sqft)`}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="Custom">Custom / Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <Separator />
+              {/* Status and Facing */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="status" className="text-xs font-bold text-slate-500 uppercase">Status</Label>
+                  <Select value={formData.status} onValueChange={(v) => setFormData(p => ({ ...p, status: v }))}>
+                    <SelectTrigger className={cn("h-10 bg-white rounded-lg border transition-all", getStatusConfig(formData.status).border)}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl">
+                      {['available', 'reserved', 'sold', 'blocked', 'under_maintenance'].map(opt => (
+                        <SelectItem key={opt} value={opt} className="capitalize py-2">
+                           <div className="flex items-center gap-2">
+                              <div className={cn("w-2 h-2 rounded-full", getStatusConfig(opt).dot)} />
+                              {opt.replace('_', ' ')}
+                           </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="facing" className="text-xs font-bold text-slate-500 uppercase">Facing</Label>
+                  <Select value={formData.facing} onValueChange={(v) => setFormData(p => ({ ...p, facing: v }))}>
+                    <SelectTrigger className="h-10 bg-white rounded-lg border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {['None', 'North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West'].map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-              {/* Pricing */}
+              <Separator className="bg-slate-100" />
+
+              {/* Pricing and Area */}
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <IndianRupee className="w-4 h-4" /> Pricing Details
-                </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="base_price">Base Price</Label>
-                    <Input
-                      id="base_price"
-                      type="number"
-                      value={formData.base_price}
-                      onChange={(e) => setFormData(p => ({ ...p, base_price: Number(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="floor_rise">Floor Rise</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Pricing Structure (₹)</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="base_price" className="text-[10px] text-slate-400 font-bold uppercase">Base</Label>
+                      <Input
+                        id="base_price"
+                        type="number"
+                        value={formData.base_price}
+                        onChange={(e) => setFormData(p => ({ ...p, base_price: Number(e.target.value) }))}
+                        className="h-9 bg-white rounded-lg border-slate-200 font-bold text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="floor_rise" className="text-[10px] text-slate-400 font-bold uppercase">Floor Rise</Label>
                       <Input
                         id="floor_rise"
                         type="number"
                         value={formData.floor_rise_price}
                         onChange={(e) => setFormData(p => ({ ...p, floor_rise_price: Number(e.target.value) }))}
+                        className="h-9 bg-white rounded-lg border-slate-200 text-xs"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="plc">PLC Charges</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="plc" className="text-[10px] text-slate-400 font-bold uppercase">PLC</Label>
                       <Input
                         id="plc"
                         type="number"
                         value={formData.plc_price}
                         onChange={(e) => setFormData(p => ({ ...p, plc_price: Number(e.target.value) }))}
+                        className="h-9 bg-white rounded-lg border-slate-200 text-xs"
                       />
+                    </div>
+                  </div>
+                  <div className="bg-slate-900 p-4 rounded-xl text-white shadow-lg flex justify-between items-center overflow-hidden relative mt-2">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl pointer-events-none" />
+                    <div className="relative z-10">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Total Value</span>
+                      <p className="text-xl font-black">{formatINR(finalPrice)}</p>
+                    </div>
+                    <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center backdrop-blur-md relative z-10">
+                       <IndianRupee className="w-5 h-5 text-white" />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-600">Final Price</span>
-                  <span className="text-lg font-bold text-slate-900">{formatINR(finalPrice)}</span>
+                <div className="space-y-1.5 pt-2">
+                  <Label className="text-xs font-bold text-slate-500 uppercase">Area Configuration (SQFT)</Label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="carpet_area" className="text-[10px] text-slate-400 font-bold uppercase">Carpet</Label>
+                      <Input
+                        id="carpet_area"
+                        type="number"
+                        value={formData.carpet_area}
+                        onChange={(e) => setFormData(p => ({ ...p, carpet_area: Number(e.target.value) }))}
+                        className="h-9 bg-white rounded-lg border-slate-200 font-bold text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="built_up" className="text-[10px] text-slate-400 font-bold uppercase">Built-up</Label>
+                      <Input
+                        id="built_up"
+                        type="number"
+                        value={formData.built_up_area}
+                        onChange={(e) => setFormData(p => ({ ...p, built_up_area: Number(e.target.value) }))}
+                        className="h-9 bg-white rounded-lg border-slate-200 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="super_built_up" className="text-[10px] text-slate-400 font-bold uppercase">Super</Label>
+                      <Input
+                        id="super_built_up"
+                        type="number"
+                        value={formData.super_built_up_area}
+                        onChange={(e) => setFormData(p => ({ ...p, super_built_up_area: Number(e.target.value) }))}
+                        className="h-9 bg-white rounded-lg border-slate-200 text-xs"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Area Details */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Maximize2 className="w-4 h-4" /> Area Details
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="carpet_area">Carpet Area (sqft)</Label>
-                    <Input
-                      id="carpet_area"
-                      type="number"
-                      value={formData.carpet_area}
-                      onChange={(e) => setFormData(p => ({ ...p, carpet_area: Number(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="super_built_up">Super Built-up (sqft)</Label>
-                    <Input
-                      id="super_built_up"
-                      type="number"
-                      value={formData.super_built_up_area}
-                      onChange={(e) => setFormData(p => ({ ...p, super_built_up_area: Number(e.target.value) }))}
-                    />
-                  </div>
-                </div>
+              {/* Lead Association (Simplified) */}
+              <div className="pt-4 border-t border-slate-100">
+                 <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Lead Association</Label>
+                 <Popover open={openLeadPicker} onOpenChange={setOpenLeadPicker}>
+                    <PopoverTrigger asChild>
+                       <Button 
+                        variant="outline" 
+                        className={cn(
+                          "w-full justify-between h-10 px-3 bg-slate-50 border-slate-100 rounded-lg hover:bg-slate-100 transition-all",
+                          !formData.lead_id && "text-slate-400 font-medium"
+                        )}
+                       >
+                          <div className="flex items-center gap-2">
+                             {selectedLead ? (
+                                <span className="text-xs font-bold text-slate-900 truncate max-w-[200px]">{selectedLead.name}</span>
+                             ) : (
+                                <span className="text-[11px]">Select Lead...</span>
+                             )}
+                          </div>
+                          <ChevronRight className="w-3 h-3 text-slate-400" />
+                       </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-xl shadow-2xl border-slate-200" align="start">
+                       <Command shouldFilter={false}>
+                          <CommandInput 
+                            placeholder="Search leads..." 
+                            value={leadSearch}
+                            onValueChange={setLeadSearch}
+                          />
+                          <CommandList>
+                             <CommandEmpty>No leads found.</CommandEmpty>
+                             <CommandGroup>
+                                {leads.map((lead) => (
+                                   <CommandItem
+                                      key={lead.id}
+                                      onSelect={() => {
+                                         setFormData(p => ({ ...p, lead_id: lead.id }));
+                                         setOpenLeadPicker(false);
+                                      }}
+                                      className="py-2.5"
+                                   >
+                                      <div className="flex flex-col">
+                                         <span className="text-xs font-bold">{lead.name}</span>
+                                         <span className="text-[9px] text-slate-500">{lead.phone || lead.email}</span>
+                                      </div>
+                                   </CommandItem>
+                                ))}
+                             </CommandGroup>
+                          </CommandList>
+                       </Command>
+                    </PopoverContent>
+                 </Popover>
               </div>
 
-              {projectType === 'residential' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Bedrooms</Label>
-                    <Input
-                      type="number"
-                      value={formData.bedrooms || ''}
-                      onChange={(e) => setFormData(p => ({ ...p, bedrooms: Number(e.target.value) }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Bathrooms</Label>
-                    <Input
-                      type="number"
-                      value={formData.bathrooms || ''}
-                      onChange={(e) => setFormData(p => ({ ...p, bathrooms: Number(e.target.value) }))}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </ScrollArea>
 
-          <SheetFooter className="p-6 border-t bg-white">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+          <footer className="p-6 bg-white border-t flex gap-3">
+            <Button type="button" variant="ghost" onClick={onClose} className="h-10 flex-1 rounded-lg font-bold text-slate-500">
               Cancel
             </Button>
-            <Button type="submit" className="flex-1 gap-2">
+            <Button type="submit" className="h-10 flex-1 gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 font-bold">
               <Save className="w-4 h-4" />
-              {mode === 'add' ? 'Create Unit' : 'Save Changes'}
+              {mode === 'add' ? 'Add Unit' : 'Save'}
             </Button>
-          </SheetFooter>
+          </footer>
         </form>
       </SheetContent>
     </Sheet>

@@ -37,14 +37,18 @@ export default function ProjectCard({ project }) {
         // Prefetch project details
         queryClient.prefetchQuery({
             queryKey: ['inventory-project', project.id],
-            queryFn: () => fetch(`/api/projects/${project.id}`).then(res => res.json()).then(d => d.project),
+            queryFn: () => fetch(`/api/projects/${project.id}`)
+                .then(res => res.ok ? res.json() : { project: null })
+                .then(d => d.project || null),
             staleTime: 5 * 60 * 1000
         })
 
         // Prefetch properties for this project
         queryClient.prefetchQuery({
             queryKey: ['inventory-properties', project.id],
-            queryFn: () => fetch(`/api/inventory/properties?project_id=${project.id}`).then(res => res.json()).then(d => d.properties),
+            queryFn: () => fetch(`/api/inventory/properties?project_id=${project.id}`)
+                .then(res => res.ok ? res.json() : { properties: [] })
+                .then(d => d.properties || []),
             staleTime: 2 * 60 * 1000
         })
     }

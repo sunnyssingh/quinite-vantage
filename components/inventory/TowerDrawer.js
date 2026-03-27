@@ -142,16 +142,6 @@ export default function TowerDrawer({
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="order_index">Display Order</Label>
-                <Input
-                  id="order_index"
-                  type="number"
-                  value={formData.order_index}
-                  onChange={(e) => setFormData(p => ({ ...p, order_index: Number(e.target.value) }))}
-                />
-                <p className="text-xs text-slate-500">Determines the position in tower tabs (lower is first)</p>
-              </div>
             </div>
 
             <Separator />

@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from "@/components/ui/skeleton"
-import { ArrowLeft, Building2, Package, BarChart3, Edit } from 'lucide-react'
+import { ArrowLeft, Building2, Package, BarChart3, Edit, Layers } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import ProjectMetrics from '@/components/projects/ProjectMetrics'
 import ProjectInventoryTab from '@/components/projects/ProjectInventoryTab'
 import VisualUnitGrid from '@/components/inventory/VisualUnitGrid'
-import EditProjectModal from '@/components/inventory/EditProjectModal'
+import UnitTypesTab from '@/components/inventory/UnitTypesTab'
 
 import { useQueryClient } from '@tanstack/react-query'
 import { useInventoryProject } from '@/hooks/useInventory'
@@ -31,7 +31,6 @@ export default function InventoryProjectDetailsPage() {
     // 1. Fetch project with React Query (Hydrates instantly if hovered)
     const { data: project, isLoading: loading, refetch: fetchProject } = useInventoryProject(projectId)
     
-    const [showEditModal, setShowEditModal] = useState(false)
 
 
     const handleMetricsUpdate = (updatedMetrics) => {
@@ -86,19 +85,11 @@ export default function InventoryProjectDetailsPage() {
                         <p className="text-sm text-muted-foreground mt-1">{project.address}</p>
                     )}
                 </div>
-                <Button
-                    variant="outline"
-                    onClick={() => setShowEditModal(true)}
-                    className="flex items-center gap-2"
-                >
-                    <Edit className="w-4 h-4" />
-                    Edit Project
-                </Button>
-            </div>
+             </div>
 
             {/* Tabs */}
             <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-3">
+                <TabsList className="grid w-full max-w-xl grid-cols-4 bg-slate-100/50 p-1 rounded-2xl border border-slate-200/50">
                     <TabsTrigger value="overview" className="flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
                         Overview
@@ -110,6 +101,10 @@ export default function InventoryProjectDetailsPage() {
                     <TabsTrigger value="visual" className="flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
                         Visual View
+                    </TabsTrigger>
+                    <TabsTrigger value="configs" className="flex items-center gap-2">
+                        <Layers className="w-4 h-4" />
+                        Unit Types
                     </TabsTrigger>
                 </TabsList>
 
@@ -253,15 +248,17 @@ export default function InventoryProjectDetailsPage() {
                         />
                     </Card>
                 </TabsContent>
+
+                <TabsContent value="configs">
+                    <Card className="p-6 bg-white shadow-sm border-slate-200">
+                        <UnitTypesTab 
+                            projectId={projectId}
+                            project={project}
+                        />
+                    </Card>
+                </TabsContent>
             </Tabs>
 
-            {/* Edit Project Modal */}
-            <EditProjectModal
-                project={project}
-                isOpen={showEditModal}
-                onClose={() => setShowEditModal(false)}
-                onProjectUpdated={handleProjectUpdated}
-            />
         </div>
     )
 }

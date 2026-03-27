@@ -914,20 +914,17 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                                 onClick={() => setShowAddConfig(true)}
                                                 className="bg-white"
                                             >
-                                                <Plus className="w-3 h-3 mr-1" /> Add Configuration
+                                                <Plus className="w-3 h-3 mr-1" /> Add Unit Type
                                             </Button>
                                         )}
                                     </div>
 
                                     {/* Modal for adding configuration */}
                                     <Dialog open={showAddConfig} onOpenChange={setShowAddConfig}>
-                                        <DialogContent className="max-w-2xl">
-                                            <DialogHeader>
-                                                <DialogTitle>Add New Configuration</DialogTitle>
-                                                <DialogDescription>
-                                                    Select the unit type and specify details for the new configuration.
-                                                </DialogDescription>
-                                            </DialogHeader>
+                                        <DialogContent className="max-w-2xl p-0 overflow-hidden shadow-2xl border-none gap-0">
+                                            <div className="px-6 py-4 border-b bg-slate-50/50">
+                                                <DialogTitle className="text-sm font-bold text-slate-900 uppercase tracking-tight">Add New Unit Type</DialogTitle>
+                                            </div>
                                             <ResidentialConfigForm
                                                 onCancel={() => setShowAddConfig(false)}
                                                 category={formData.propertyCategory}
@@ -983,11 +980,10 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                             ))}
                                             {formData.unitTypes.length === 0 && (
                                                 <div className="col-span-full py-8 text-center text-slate-400 text-sm italic border-2 border-dashed border-slate-200 rounded-lg">
-                                                    No unit types added yet. Click "Add Configuration" to start.
+                                                    No unit types added yet. Click "Add Unit Type" to start.
                                                 </div>
                                             )}
                                         </div>
-                                    <p className="text-xs text-slate-500 mt-3">Specify how many units of each type to auto-generate inventory properties</p>
                                 </div>
 
                                 {/* Project Status */}

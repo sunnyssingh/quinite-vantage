@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Building2, Home, Store, ConciergeBell, Briefcase, ShoppingBag, Factory } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export default function ResidentialConfigForm({ onAdd, onCancel, category = 'residential' }) {
-    const [config, setConfig] = useState({
+export default function ResidentialConfigForm({ onAdd, onCancel, category = 'residential', initialData = null }) {
+    const [config, setConfig] = useState(initialData || {
         transaction_type: 'Sell',
         category: category,
         property_type: '',
@@ -95,10 +95,8 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
     }
 
     return (
-        <div className="space-y-5 border rounded-lg p-4 bg-muted/20">
-            <h4 className="text-sm font-medium">Add New Configuration</h4>
-
-            <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-6 bg-white p-6">
+            <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label>Transaction Type</Label>
                     <Select
@@ -244,7 +242,7 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
             <div className="flex justify-end gap-3 pt-2">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
                 <Button type="button" onClick={handleSubmit} disabled={!config.count || !config.carpet_area || !config.price} className="bg-blue-600 hover:bg-blue-700">
-                    Add Configuration
+                    {initialData ? 'Update Unit Type' : 'Add Unit Type'}
                 </Button>
             </div>
         </div>

@@ -21,7 +21,7 @@ import { getStatusConfig, formatINR, getInventoryStats } from '@/lib/inventory';
 import { cn } from '@/lib/utils';
 import UnitDrawer from './UnitDrawer';
 
-export default function FloorPlanLand({ projectId, project, units = [], organizationId, onAddTower }) {
+export default function FloorPlanLand({ projectId, project, units = [], organizationId, onAddUnit, onUpdateUnit, onDeleteUnit }) {
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewType, setViewType] = useState('grid'); // 'grid' | 'sections'
@@ -157,11 +157,24 @@ export default function FloorPlanLand({ projectId, project, units = [], organiza
         projectType="land"
         projectId={projectId}
         organizationId={organizationId}
-        onSave={(data) => {
-           // In land mode, we don't have towers so towerId is null
-           // handle saving...
-           console.log('Saving plot:', data);
-           setDrawerOpen(false);
+        unitConfigs={project?.unit_types || []}
+        onSave={async (data) => {
+           try {
+              if (selectedUnit) {
+                 await onUpdateUnit(selectedUnit.id, data);
+              } else {
+                 await onAddUnit({ ...data, type: 'land' });
+              }
+              setDrawerOpen(false);
+           } catch (error) {
+              console.error('Error saving plot:', error);
+           }
+        }}
+        onDelete={async (id) => {
+           if (confirm('Delete this plot?')) {
+              await onDeleteUnit(id);
+              setDrawerOpen(false);
+           }
         }}
       />
     </div>

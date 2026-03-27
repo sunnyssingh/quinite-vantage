@@ -1,20 +1,22 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Plus, 
   Building2, 
-  Map as MapIcon, 
-  LayoutGrid, 
-  List, 
-  Search, 
-  Filter,
+  Layers, 
+  Info, 
   MoreVertical,
-  ChevronDown,
-  ArrowRight,
-  Info,
-  Layers,
-  MoreHorizontal
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  LandPlot,
+  X,
+  Check,
+  MousePointer2,
+  Zap,
+  Trash,
+  ChevronRight
 } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -32,7 +34,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInventory } from '@/hooks/useInventory';
 import { 
-  STATUS_STYLES, 
   formatINR, 
   getInventoryStats, 
   getStatusConfig,
@@ -41,13 +42,18 @@ import {
 import UnitDrawer from './UnitDrawer';
 import TowerDrawer from './TowerDrawer';
 import FloorPlanLand from './FloorPlanLand';
+import ResidentialConfigForm from '@/components/projects/ResidentialConfigForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 export default function VisualUnitGrid({ projectId, project, organizationId, readOnly = false }) {
-  const projectType = project?.project_type || 'residential';
+  const projectType = project?.real_estate?.property?.category || project?.project_type || 'residential';
+  
   const { 
-    towers, 
-    units, 
+    towers = [], 
+    units = {}, 
     isLoading, 
     addTower, 
     updateTower, 
@@ -55,19 +61,25 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
     addUnit, 
     updateUnit, 
     deleteUnit,
-    updateUnitStatus
+    updateUnitStatus,
+    updateProjectUnits,
   } = useInventory({ projectId, organizationId });
-
+  
+  const queryClient = useQueryClient();
   const [activeTowerId, setActiveTowerId] = useState(null);
-  const [activeView, setActiveView] = useState('visual');
+  const [selectedConfig, setSelectedConfig] = useState(null); // The 'Paint' tool
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState(null); // 'add_unit', 'edit_unit', 'add_tower', 'edit_tower'
+  const [drawerMode, setDrawerMode] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [targetFloor, setTargetFloor] = useState(null);
   const [targetSlot, setTargetSlot] = useState(null);
+  const [showPlots, setShowPlots] = useState(false);
+  const [isUpdatingProject, setIsUpdatingProject] = useState(false);
 
+  const unitConfigs = useMemo(() => project?.unit_types || [], [project]);
+  
   // Set first tower as active by default
-  useMemo(() => {
+  useEffect(() => {
     if (towers.length > 0 && !activeTowerId) {
       setActiveTowerId(towers[0].id);
     }
@@ -75,12 +87,104 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
 
   const activeTower = towers.find(t => t.id === activeTowerId);
   const towerUnits = units[activeTowerId] || [];
+  const unassignedUnits = units['unassigned'] || [];
+
+  const unitCountsByConfig = useMemo(() => {
+    const allUnits = Object.values(units).flat();
+    return allUnits.reduce((acc, unit) => {
+      // Use unit_config_id if it exists (for new units), fallback to unit_config name (for old ones)
+      const configKey = unit.unit_config_id || unit.unit_config;
+      if (configKey) {
+        acc[configKey] = (acc[configKey] || 0) + 1;
+      }
+      return acc;
+    }, {});
+  }, [units]);
 
   const stats = useMemo(() => getInventoryStats(towerUnits), [towerUnits]);
-  const overallStats = useMemo(() => {
-    const allUnits = Object.values(units).flat();
-    return getInventoryStats(allUnits);
-  }, [units]);
+
+  const handlePaintUnit = async (floorNum, slotIdx) => {
+    if (!selectedConfig) return;
+    
+    // Check if configuration limit is reached
+    const configKey = selectedConfig.id || selectedConfig.configuration;
+    const alreadyCreated = unitCountsByConfig[configKey] || 0;
+    const totalTarget = parseInt(selectedConfig.count || 0);
+
+    if (alreadyCreated >= totalTarget) {
+      toast.error(`Limit Reached: All ${totalTarget} units of ${selectedConfig.configuration} have already been placed.`);
+      return false;
+    }
+    
+    try {
+      await addUnit({
+        tower_id: activeTowerId,
+        project_id: projectId,
+        organization_id: organizationId,
+        floor_number: floorNum,
+        slot_index: slotIdx,
+        type: selectedConfig.property_type || projectType || 'residential',
+        unit_number: `${floorNum}${String(slotIdx + 1).padStart(2, '0')}`,
+        unit_config: selectedConfig.configuration || selectedConfig.property_type,
+        unit_config_id: selectedConfig.id, // Store unique ID
+        price: selectedConfig.price || 0,
+        base_price: selectedConfig.price || 0,
+        status: 'available',
+        carpet_area: selectedConfig.carpet_area || 0,
+        bedrooms: selectedConfig.configuration?.toLowerCase().includes('bhk') ? parseInt(selectedConfig.configuration) : 0,
+        title: `${selectedConfig.configuration || selectedConfig.property_type} Unit`
+      });
+      return true;
+    } catch (error) {
+      console.error('Painting error:', error);
+      return false;
+    }
+  };
+
+  const handleFillFloor = async (floorNum) => {
+    if (!selectedConfig) return;
+    
+    // Find empty slots in this floor
+    const slots = buildEmptyFloorSlots(activeTower, towerUnits, floorNum);
+    const emptySlotIndices = slots.reduce((acc, unit, idx) => {
+      if (!unit) acc.push(idx);
+      return acc;
+    }, []);
+
+    if (emptySlotIndices.length === 0) return;
+
+    // Sequential add with limit check
+    let addedCount = 0;
+    for (const slotIdx of emptySlotIndices) {
+      const success = await handlePaintUnit(floorNum, slotIdx);
+      if (success) addedCount++;
+      else break; // Stop loop if we hit the limit
+    }
+    
+    if (addedCount > 0) {
+       toast.success(`Added ${addedCount} units to floor ${floorNum}.`);
+    }
+  };
+
+  const handleOpenAddUnit = (floorNum, slotIdx) => {
+    if (selectedConfig) {
+       handlePaintUnit(floorNum, slotIdx);
+    } else {
+       setTargetFloor(floorNum);
+       setTargetSlot(slotIdx);
+       setDrawerMode('add_unit');
+       setSelectedUnit(null);
+       setDrawerOpen(true);
+    }
+  };
+
+  const handleEditUnit = (unit) => {
+    setSelectedUnit(unit);
+    setTargetFloor(unit.floor_number);
+    setTargetSlot(unit.slot_index);
+    setDrawerMode('edit_unit');
+    setDrawerOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -93,364 +197,399 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
     );
   }
 
-  const handleAddTower = () => {
-    setDrawerMode('add_tower');
-    setDrawerOpen(true);
-  };
-
-  const handleEditTower = (tower) => {
-    setDrawerMode('edit_tower');
-    setSelectedUnit(null); // reuse for tower in tower mode
-    setDrawerOpen(true);
-  };
-
-  const handleOpenAddUnit = (floorNum, slotIdx) => {
-    setTargetFloor(floorNum);
-    setTargetSlot(slotIdx);
-    setDrawerMode('add_unit');
-    setSelectedUnit(null);
-    setDrawerOpen(true);
-  };
-
-  const handleEditUnit = (unit) => {
-    setSelectedUnit(unit);
-    setTargetFloor(unit.floor_number);
-    setTargetSlot(unit.slot_index);
-    setDrawerMode('edit_unit');
-    setDrawerOpen(true);
-  };
-
   if (projectType === 'land') {
-     return <FloorPlanLand projectId={projectId} project={project} units={Object.values(units).flat()} organizationId={organizationId} onAddTower={handleAddTower} />;
+     return <FloorPlanLand 
+        projectId={projectId} 
+        project={project} 
+        units={Object.values(units).flat()} 
+        organizationId={organizationId} 
+        onAddUnit={addUnit}
+        onUpdateUnit={updateUnit}
+        onDeleteUnit={deleteUnit}
+     />;
   }
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-      {/* Top Bar - Tower Navigation */}
-      <div className="px-4 pt-4 border-b border-slate-100 bg-slate-50/30">
-        <div className="flex items-center justify-between mb-2">
-           <div className="flex gap-1">
-              {towers.map(tower => (
-                <button
-                  key={tower.id}
-                  onClick={() => setActiveTowerId(tower.id)}
-                  className={cn(
-                    "px-4 py-2 rounded-t-lg text-sm font-medium transition-all relative border-x border-t",
-                    activeTowerId === tower.id
-                      ? "bg-white border-slate-200 text-slate-900 -mb-[1px] z-10 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]"
-                      : "bg-transparent border-transparent text-slate-500 hover:text-slate-800"
-                  )}
-                >
-                  {tower.name}
-                  <span className="ml-2 text-[10px] opacity-60">
-                    {towerUnits.filter(u => u.tower_id === tower.id && u.status === 'available').length}
-                  </span>
-                </button>
-              ))}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleAddTower}
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 ml-2"
-              >
-                <Plus className="w-4 h-4 mr-1" /> Add Tower
-              </Button>
-           </div>
-
-           <div className="flex items-center gap-2 pb-2">
-              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                <Button 
-                  variant={activeView === 'visual' ? 'white' : 'ghost'} 
-                  size="sm" 
-                  onClick={() => setActiveView('visual')}
-                  className={cn("h-7 px-3 text-xs gap-1.5", activeView === 'visual' && "bg-white shadow-sm")}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" /> Visual
-                </Button>
-                <Button 
-                  variant={activeView === 'list' ? 'white' : 'ghost'} 
-                  size="sm" 
-                  onClick={() => setActiveView('list')}
-                  className={cn("h-7 px-3 text-xs gap-1.5", activeView === 'list' && "bg-white shadow-sm")}
-                >
-                  <List className="w-3.5 h-3.5" /> List
-                </Button>
-              </div>
-           </div>
-        </div>
-      </div>
-
-      {/* Stats Bar */}
-      <div className="flex items-center gap-6 px-6 py-3 border-b border-slate-100 bg-white sticky top-0 z-10">
-        <div className="flex gap-4 overflow-x-auto no-scrollbar">
-           <StatChip status="available" count={stats.available} />
-           <StatChip status="reserved" count={stats.reserved} />
-           <StatChip status="sold" count={stats.sold} />
-           <StatChip status="blocked" count={stats.blocked} />
-           <StatChip status="under_maintenance" count={stats.under_maintenance} />
+    <div className="flex flex-col lg:flex-row h-full bg-slate-50 border border-slate-200 overflow-hidden shadow-sm min-h-[700px]">
+      {/* Configuration Palette */}
+      <aside className="w-full lg:w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 shadow-xl z-20">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+              <Layers className="w-4 h-4 text-blue-600" /> Unit Types
+            </h3>
+            <p className="text-[10px] text-slate-400 font-medium mt-0.5 uppercase tracking-wider">Select to fill grid</p>
+          </div>
+          {selectedConfig && (
+             <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full"
+              onClick={() => setSelectedConfig(null)}
+             >
+               <X className="w-4 h-4" />
+             </Button>
+          )}
         </div>
         
-        <div className="ml-auto hidden md:flex items-center gap-4 text-xs font-medium text-slate-500">
-          <div className="flex flex-col items-end">
-            <span className="text-slate-400">Inventory Value</span>
-            <span className="text-slate-900">{formatINR(stats.totalValue)}</span>
-          </div>
-          <Separator orientation="vertical" className="h-8" />
-          <div className="flex flex-col items-end">
-            <span className="text-slate-400">Total Units</span>
-            <span className="text-slate-900">{stats.total} across {towers.length} towers</span>
-          </div>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEditTower(activeTower)}>
-                 Edit Tower Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-red-600" onClick={() => deleteTower(activeTowerId)}>
-                 Delete Tower
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+        <div className="flex-1 overflow-auto p-3 space-y-4 custom-scrollbar">
+          <div>
+            <div className="flex items-center justify-between px-1 mb-3">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Unit Types</p>
+              <span className="text-[10px] font-medium text-slate-300">{unitConfigs.length} Types</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {unitConfigs.length > 0 ? unitConfigs.map((config, idx) => {
+                // Determine unique ID for counting and selection
+                const configId = config.id || `${config.configuration}-${config.property_type}-${idx}`;
+                const alreadyCreated = unitCountsByConfig[configId] || unitCountsByConfig[config.configuration] || 0;
+                const totalTarget = parseInt(config.count || 0);
+                const leftPercent = Math.max(0, ((totalTarget - alreadyCreated) / (totalTarget || 1)) * 100);
+                const isSelected = selectedConfig?.id === configId;
 
-      {/* Main Floor Grid Canvas */}
-      <TooltipProvider>
-        <div className="flex-1 overflow-auto p-4 md:p-8 bg-slate-50/50">
-          <div className="max-w-7xl mx-auto space-y-4">
-            {activeTower ? (
-              Array.from({ length: activeTower.total_floors + 1 }, (_, i) => activeTower.total_floors - i).map(floorNum => (
-                <FloorRow 
-                  key={floorNum}
-                  floorNum={floorNum}
-                  tower={activeTower}
-                  units={towerUnits}
-                  onUnitClick={handleEditUnit}
-                  onAddUnit={handleOpenAddUnit}
-                  onStatusChange={updateUnitStatus}
-                  onDeleteUnit={deleteUnit}
-                  projectType={projectType}
-                />
-              ))
-            ) : (
-              <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-white">
-                <Building2 className="w-12 h-12 mb-4 opacity-20" />
-                <p>No towers found for this project.</p>
-                <Button onClick={handleAddTower} variant="outline" className="mt-4">
-                  + Add your first tower
+                return (
+                  <div 
+                    key={idx}
+                    onClick={() => setSelectedConfig(isSelected ? null : { ...config, id: configId })}
+                    className={cn(
+                      "px-3.5 py-3 rounded-2xl border transition-all relative group bg-white overflow-hidden cursor-pointer",
+                      isSelected 
+                        ? "border-blue-500 bg-blue-50/40 shadow-sm translate-x-1" 
+                        : "border-slate-100 hover:border-slate-300 hover:shadow-sm"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                       <div className={cn(
+                         "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all",
+                         isSelected ? "bg-blue-600 text-white shadow-md" : "bg-slate-50 text-slate-400 border border-slate-100/50"
+                       )}>
+                          <Layers className="w-4 h-4" />
+                       </div>
+                       <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center gap-2">
+                             <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-tight">
+                               {config.configuration || config.property_type}
+                             </h4>
+                             <span className="text-[10px] font-bold text-blue-600 shrink-0 bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100/50">
+                               {formatINR(config.price).replace('.00', '').replace('₹', '₹ ')}
+                             </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-1 mt-1.5">
+                             <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tight truncate">
+                                   {config.property_type} • {config.carpet_area}ft
+                                </span>
+                             </div>
+                             <span className={cn(
+                               "text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none italic",
+                               alreadyCreated >= totalTarget ? "bg-emerald-50 text-emerald-700" : "bg-slate-100/80 text-slate-500"
+                             )}>
+                               {alreadyCreated}/{totalTarget} Left
+                             </span>
+                          </div>
+                       </div>
+                    </div>
+                    {/* Bottom Progress Line */}
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-100/30">
+                       <div 
+                         className={cn("h-full transition-all duration-500", alreadyCreated >= totalTarget ? "bg-emerald-400" : "bg-blue-400")}
+                         style={{ width: `${Math.min(100, (alreadyCreated / (totalTarget || 1)) * 100)}%` }}
+                       />
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div className="text-center py-10 px-4 border-2 border-dashed rounded-2xl bg-slate-50 border-slate-200">
+                  <p className="text-[9px] text-slate-400 font-black uppercase italic">Inventory types missing</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col bg-slate-100/50">
+        <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar">
+            {towers.map(tower => (
+              <Button
+                key={tower.id}
+                variant={activeTowerId === tower.id ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTowerId(tower.id)}
+                className={cn(
+                  "px-4 transition-all rounded-lg font-bold shrink-0",
+                  activeTowerId === tower.id && "bg-slate-900 text-white hover:bg-slate-800"
+                )}
+              >
+                {tower.name}
+              </Button>
+            ))}
+            <Button variant="outline" size="sm" onClick={() => { setDrawerMode('add_tower'); setDrawerOpen(true); }} className="text-blue-600 border-blue-100 hover:bg-blue-50 shrink-0">
+              <Plus className="w-4 h-4 mr-1" /> Tower
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="bg-white hidden sm:flex">{stats.total} Total Units</Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="w-4 h-4" />
                 </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl">
+                <DropdownMenuItem onClick={() => { setSelectedUnit(null); setDrawerMode('edit_tower'); setDrawerOpen(true); }}>Edit Tower</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-600" onClick={() => deleteTower(activeTowerId)}>Delete Tower</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar">
+          <div className="max-w-[1400px] mx-auto space-y-12 pb-20">
+            {selectedConfig && (
+              <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in slide-in-from-top-4 sticky top-0 z-50 ring-4 ring-white">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-white/20 rounded-xl animate-pulse">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm uppercase tracking-tight italic">Quick-Fill Active</h4>
+                    <p className="text-[10px] opacity-90 font-bold uppercase tracking-widest">Click empty boxes to place <span className="underline">{selectedConfig.configuration}</span></p>
+                  </div>
+                </div>
+                <Button variant="secondary" size="sm" onClick={() => setSelectedConfig(null)} className="h-8 font-black text-xs uppercase px-4 rounded-lg">Done</Button>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {activeTower ? (
+                Array.from({ length: activeTower.total_floors + 1 }, (_, i) => activeTower.total_floors - i).map(floorNum => (
+                  <FloorRow 
+                    key={floorNum}
+                    floorNum={floorNum}
+                    tower={activeTower}
+                    units={towerUnits}
+                    onUnitClick={handleEditUnit}
+                    onAddUnit={handleOpenAddUnit}
+                    onStatusChange={updateUnitStatus}
+                    onDeleteUnit={deleteUnit}
+                    onFillFloor={() => handleFillFloor(floorNum)}
+                    paintingActive={!!selectedConfig}
+                  />
+                ))
+              ) : (
+                <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white/50">
+                  <Building2 className="w-16 h-16 mb-4 opacity-10" />
+                  <p className="text-lg font-black uppercase tracking-tighter text-slate-300">No towers defined</p>
+                  <Button onClick={() => { setDrawerMode('add_tower'); setDrawerOpen(true); }} className="mt-6 bg-slate-900 text-white rounded-xl h-12 px-8 font-bold">Create Tower</Button>
+                </div>
+              )}
+            </div>
+
+            {/* Land Section - Always show at bottom if unassigned units exist */}
+            {unassignedUnits.length > 0 && (
+              <div className="pt-16 border-t-2 border-slate-200 border-dashed animate-in fade-in slide-in-from-bottom-8">
+                 <div className="flex items-center gap-4 mb-6">
+                   <div className="w-10 h-10 rounded-xl bg-emerald-500 shadow-lg shadow-emerald-100 flex items-center justify-center text-white">
+                     <LandPlot className="w-5 h-5" />
+                   </div>
+                   <div>
+                     <h3 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Plots & Assets</h3>
+                     <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Other project inventory assets</p>
+                   </div>
+                 </div>
+                 
+                 <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar scroll-smooth">
+                    {unassignedUnits.map(unit => (
+                      <div key={unit.id} className="min-w-[100px] max-w-[100px]">
+                        <UnitCell unit={unit} onClick={() => handleEditUnit(unit)} onStatusChange={updateUnitStatus} onDelete={() => deleteUnit(unit.id)} />
+                      </div>
+                    ))}
+                    <button 
+                      onClick={() => { setTargetFloor(null); setTargetSlot(null); setDrawerMode('add_plot'); setSelectedUnit(null); setDrawerOpen(true); }}
+                      className="h-[64px] min-w-[100px] rounded-xl border-2 border-dashed border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-emerald-500 group"
+                    >
+                       <Plus className="w-4 h-4 mb-1 group-hover:scale-110 transition-transform" />
+                       <span className="text-[8px] font-black uppercase tracking-tighter">New Plot</span>
+                    </button>
+                 </div>
               </div>
             )}
           </div>
         </div>
-      </TooltipProvider>
+      </div>
 
-      {/* Drawers */}
-      {drawerMode?.includes('unit') ? (
-        <UnitDrawer 
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          mode={drawerMode === 'add_unit' ? 'add' : 'edit'}
-          unit={selectedUnit}
-          tower={activeTower}
-          projectType={projectType}
-          unitConfigs={project?.metadata?.unit_configs?.[projectType] || []}
-          floorNumber={targetFloor}
-          slotIndex={targetSlot}
-          towerId={activeTowerId}
-          projectId={projectId}
-          organizationId={organizationId}
-          onSave={drawerMode === 'add_unit' ? addUnit : (data) => updateUnit(selectedUnit.id, data)}
-          onDelete={deleteUnit}
-        />
-      ) : (
-        <TowerDrawer 
-          open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          mode={drawerMode === 'add_tower' ? 'add' : 'edit'}
-          tower={activeTower}
-          projectId={projectId}
-          organizationId={organizationId}
-          existingTowerCount={towers.length}
-          onSave={drawerMode === 'add_tower' ? addTower : (data) => updateTower(activeTowerId, data)}
-          onDelete={deleteTower}
-        />
-      )}
+      <UnitDrawer 
+        open={drawerOpen && (drawerMode?.includes('unit') || drawerMode === 'add_plot')}
+        onClose={() => setDrawerOpen(false)}
+        mode={drawerMode?.includes('add') ? 'add' : 'edit'}
+        unit={selectedUnit}
+        tower={drawerMode === 'add_plot' ? null : activeTower}
+        projectType={drawerMode === 'add_plot' ? 'land' : projectType}
+        unitConfigs={unitConfigs}
+        floorNumber={targetFloor}
+        slotIndex={targetSlot}
+        towerId={drawerMode === 'add_plot' ? null : activeTowerId}
+        projectId={projectId}
+        organizationId={organizationId}
+        onSave={drawerMode?.includes('add') ? addUnit : (data) => updateUnit(selectedUnit.id, data)}
+        onDelete={deleteUnit}
+      />
+      
+      <TowerDrawer 
+        open={drawerOpen && (drawerMode?.includes('tower'))}
+        onClose={() => setDrawerOpen(false)}
+        mode={drawerMode === 'add_tower' ? 'add' : 'edit'}
+        tower={activeTower}
+        projectId={projectId}
+        organizationId={organizationId}
+        onSave={drawerMode === 'add_tower' ? addTower : (data) => updateTower(activeTowerId, data)}
+        onDelete={deleteTower}
+      />
     </div>
   );
 }
 
-function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChange, onDeleteUnit, projectType }) {
+function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChange, onDeleteUnit, onFillFloor, paintingActive }) {
   const slots = useMemo(() => buildEmptyFloorSlots(tower, units, floorNum), [tower, units, floorNum]);
   const isGround = floorNum === 0;
 
   return (
-    <div className="flex items-start gap-4 group">
-      {/* Floor Label */}
-      <div className="w-16 pt-2 shrink-0 flex flex-col items-end">
+    <div className="flex items-start gap-3 group/row max-w-full">
+      <div className="w-14 pt-1.5 shrink-0 flex flex-col items-end">
         <span className={cn(
-          "text-xs font-bold px-2 py-1 rounded",
-          isGround ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-600"
+          "text-[9px] font-black px-1.5 py-0.5 rounded-lg border-2 shadow-sm transition-transform group-hover/row:scale-105",
+          isGround ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-500"
         )}>
-          {isGround ? 'GF' : `F${floorNum}`}
+          {isGround ? 'G' : `F${floorNum}`}
         </span>
-        <span className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">
-           {isGround ? 'Ground' : `Floor ${floorNum}`}
-        </span>
+        {paintingActive && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onFillFloor}
+            className="text-[7px] font-black uppercase text-blue-600 h-4 px-1 mt-1 opacity-0 group-hover/row:opacity-100 transition-opacity bg-blue-50/50 hover:bg-blue-100"
+          >
+            Fill
+          </Button>
+        )}
       </div>
 
-      {/* Units Horizontal Scroll */}
-      <div className="flex gap-3 pb-4 flex-1 overflow-x-auto no-scrollbar">
+      <div className="flex gap-2 pb-2 flex-1 overflow-x-auto custom-scrollbar pt-0.5 scroll-smooth no-scrollbar select-none">
         {slots.map((unit, idx) => (
-          <div key={idx} className="shrink-0 flex-1 min-w-[120px] max-w-[180px]">
+          <div key={idx} className="shrink-0 min-w-[110px] max-w-[110px]">
             {unit ? (
-              <UnitCell 
-                unit={unit} 
-                onClick={() => onUnitClick(unit)} 
-                onStatusChange={onStatusChange}
-                onDelete={() => onDeleteUnit(unit.id)}
-                projectType={projectType}
-              />
+              <UnitCell unit={unit} onClick={() => onUnitClick(unit)} onStatusChange={onStatusChange} onDelete={() => onDeleteUnit(unit.id)} />
             ) : (
-              <EmptySlot onClick={() => onAddUnit(floorNum, idx)} />
+              <div 
+                onClick={() => onAddUnit(floorNum, idx)}
+                className="h-[80px] rounded-2xl border-2 border-dashed border-slate-100 bg-white hover:border-blue-400 hover:bg-blue-50/20 transition-all flex items-center justify-center cursor-pointer group/box shadow-sm"
+              >
+                 <Plus className="w-4 h-4 text-slate-100 group-hover/box:text-blue-400 transition-colors scale-75" />
+              </div>
             )}
           </div>
         ))}
+        <div className="shrink-0 flex items-center pt-1.5 px-2">
+           <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6 rounded-full opacity-0 group-hover/row:opacity-100 transition-all bg-white border border-slate-100 shadow-sm"
+            onClick={() => onAddUnit(floorNum, slots.length)}
+           >
+             <Plus className="w-3.5 h-3.5 text-slate-300" />
+           </Button>
+        </div>
       </div>
     </div>
   );
 }
 
-function UnitCell({ unit, onClick, onStatusChange, onDelete, projectType }) {
+function UnitCell({ unit, onClick, onStatusChange, onDelete }) {
   const style = getStatusConfig(unit.status);
   
   return (
-    <DropdownMenu>
+    <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           <div 
             onClick={onClick}
             className={cn(
-              "p-3 rounded-xl border-2 transition-all cursor-pointer relative overflow-hidden group/cell",
+              "p-2.5 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden h-[80px] flex flex-col justify-between shadow-sm group/cell",
               style.bg,
               style.border,
-              "hover:shadow-md hover:-translate-y-0.5"
+              "hover:shadow-md hover:-translate-y-0.5 active:scale-95"
             )}
           >
-            {/* Top Row: Unit Num + Config */}
-            <div className="flex justify-between items-start mb-2">
-              <span className={cn("text-[11px] font-bold leading-none", style.text)}>
+            {/* Header: Number and Delete */}
+            <div className="flex justify-between items-start">
+              <span className={cn(
+                "text-[8px] font-black leading-none px-1.2 py-0.5 rounded-md shadow-sm border border-black/5", 
+                style.bg === 'bg-white' ? "bg-slate-50 border-slate-100" : "bg-white/40 border-white/10", 
+                style.text
+              )}>
                 {unit.unit_number}
               </span>
-              <span className="text-[9px] font-medium opacity-70 leading-none">
-                {unit.unit_config}
-              </span>
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="p-1 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-500 opacity-0 group-hover/cell:opacity-100 transition-all"
+              >
+                <Trash className="w-2.5 h-2.5" />
+              </button>
             </div>
 
-            {/* Middle Row: Price */}
-            <div className={cn("text-xs font-bold mb-1", style.text)}>
-              {formatINR(unit.price)}
+            {/* Price section */}
+            <div className={cn("text-[10px] font-black tracking-tight leading-none mb-1", style.text)}>
+              {formatINR(unit.price).length > 8 ? formatINR(unit.price).split('.')[0] : formatINR(unit.price)}
             </div>
 
-            {/* Bottom Row: Status Dot + Label */}
-            <div className="flex items-center gap-1.5 mt-2">
-               <div className={cn("w-1.5 h-1.5 rounded-full", style.dot)} />
-               <span className={cn("text-[9px] font-bold uppercase tracking-wider opacity-80", style.text)}>
-                 {unit.status.replace('_', ' ')}
+            {/* Area and Configuration */}
+            <div className="flex items-center gap-1.5 overflow-hidden">
+               <span className={cn("text-[7px] font-bold uppercase truncate opacity-70", style.text)}>
+                  {unit.unit_config}
+               </span>
+               <span className={cn("text-[7px] font-medium opacity-40 px-1 border-l", style.text)}>
+                  {unit.carpet_area || '--'} <span className="text-[5px]">SQFT</span>
                </span>
             </div>
 
-            {/* Kebab for quick actions */}
-            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <button className="absolute top-1 right-1 opacity-0 group-hover/cell:opacity-100 p-1 rounded-md hover:bg-black/5 transition-opacity">
-                 <MoreHorizontal className={cn("w-3.5 h-3.5", style.text)} />
-              </button>
-            </DropdownMenuTrigger>
+            {/* Footer: Facing and Lead tag */}
+            <div className="flex items-center justify-between mt-auto pt-1">
+               <span className={cn("text-[8px] font-black uppercase tracking-widest", style.text)}>
+                {unit.facing || 'East'}
+               </span>
+               {unit.lead_id && (
+                  <Badge className="h-3.5 px-1 bg-blue-500 text-white border-0 text-[6px] font-black rounded-sm shadow-sm">LEAD</Badge>
+               )}
+            </div>
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top" className="p-3 bg-white border shadow-xl max-w-xs">
-           <div className="space-y-1 text-slate-900">
-              <p className="font-bold border-b pb-1 mb-1">{unit.unit_number || unit.title}</p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-                 <span className="text-slate-500">Config:</span> <span className="font-medium">{unit.unit_config}</span>
-                 <span className="text-slate-500">Facing:</span> <span className="font-medium">{unit.facing}</span>
-                 <span className="text-slate-500">Area:</span> <span className="font-medium">{unit.size_sqft} sqft</span>
-                 <span className="text-slate-500">Status:</span> <Badge variant="outline" className="h-4 py-0 text-[10px] capitalize">{unit.status}</Badge>
+        <TooltipContent side="top" className="p-4 bg-white border border-slate-200 shadow-xl rounded-xl z-50">
+           <div className="space-y-2 min-w-[170px]">
+              <div className="flex justify-between items-center border-b pb-2">
+                 <p className="font-black text-slate-900">Unit {unit.unit_number}</p>
+                 <Badge variant="outline" className="text-[8px] uppercase font-black">{unit.status}</Badge>
               </div>
-              <p className="text-[10px] text-slate-400 pt-2 italic">Click to edit details</p>
+              <div className="grid grid-cols-2 gap-y-2 text-[11px] font-medium pt-1">
+                 <span className="text-slate-400 uppercase tracking-tighter text-[9px] font-bold">Config</span> 
+                 <span className="text-right text-slate-700 font-bold">{unit.unit_config}</span>
+                 
+                 <span className="text-slate-400 uppercase tracking-tighter text-[9px] font-bold">Area</span> 
+                 <span className="text-right text-slate-700 font-bold">{unit.carpet_area} sqft</span>
+                 
+                 <span className="text-slate-400 uppercase tracking-tighter text-[9px] font-bold">Facing</span> 
+                 <span className="text-right text-slate-700 font-bold">{unit.facing || 'East'}</span>
+                 
+                 <span className="text-slate-400 uppercase tracking-tighter text-[9px] font-bold">Price</span> 
+                 <span className="text-right font-black text-blue-600 underline decoration-2 underline-offset-4">{formatINR(unit.price)}</span>
+              </div>
            </div>
         </TooltipContent>
       </Tooltip>
-
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuItem onClick={onClick}>View & Edit Details</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Change Status</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            {['available', 'reserved', 'sold', 'blocked', 'under_maintenance'].map(status => (
-              <DropdownMenuItem 
-                key={status} 
-                className="capitalize"
-                onClick={() => onStatusChange(unit.id, status)}
-              >
-                <div className={cn("w-2 h-2 rounded-full mr-2", getStatusConfig(status).dot)} />
-                {status.replace('_', ' ')}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-red-600" onClick={onDelete}>
-          Delete Unit
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function EmptySlot({ onClick }) {
-  return (
-    <div 
-      onClick={onClick}
-      className="h-[80px] rounded-xl border-2 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group"
-    >
-      <Plus className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
-      <span className="text-[9px] font-bold text-slate-400 group-hover:text-blue-500 mt-1 uppercase tracking-tighter">
-        Add Unit
-      </span>
-    </div>
-  );
-}
-
-function StatChip({ status, count }) {
-  const config = getStatusConfig(status);
-  return (
-    <div className={cn(
-      "flex items-center gap-2 px-3 py-1.5 rounded-full border whitespace-nowrap",
-      config.bg,
-      config.border
-    )}>
-      <div className={cn("w-2 h-2 rounded-full", config.dot)} />
-      <span className={cn("text-xs font-bold", config.text)}>{count}</span>
-      <span className={cn("text-[10px] uppercase tracking-wider font-semibold opacity-70", config.text)}>
-        {status.replace('_', ' ')}
-      </span>
-    </div>
-  );
-}
-
-function Separator({ orientation = 'horizontal', className }) {
-  return (
-    <div className={cn(
-      "bg-slate-200",
-      orientation === 'horizontal' ? "h-[1px] w-full" : "w-[1px] h-full",
-      className
-    )} />
+    </TooltipProvider>
   );
 }

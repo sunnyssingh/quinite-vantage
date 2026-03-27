@@ -269,12 +269,14 @@ export async function POST(request) {
       console.error('Failed to auto-create campaign:', campError)
     }
 
-    // Automatic Inventory Sync
+    /* 
+    // Manual sync is deprecated in favor of Visual Unit Painting
     try {
       await PropertyService.syncProjectInventory(project, user.id)
     } catch (syncError) {
       console.error('Failed to sync project inventory:', syncError)
     }
+    */
 
     return corsJSON({ project })
   } catch (e) {
