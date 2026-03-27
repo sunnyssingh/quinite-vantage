@@ -10,7 +10,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 
-import { useInventoryProjects, useInventoryProperties } from '@/hooks/useInventory'
+import { useInventoryProjects, useInventoryUnits } from '@/hooks/useInventory'
 
 export default function InventoryOverviewPage() {
     const [search, setSearch] = useState('')
@@ -23,23 +23,23 @@ export default function InventoryOverviewPage() {
     } = useInventoryProjects()
 
     const { 
-        data: properties = [], 
-        isLoading: propertiesLoading 
-    } = useInventoryProperties()
+        data: units = [], 
+        isLoading: unitsLoading 
+    } = useInventoryUnits()
 
-    const loading = projectsLoading || propertiesLoading
+    const loading = projectsLoading || unitsLoading
 
 
     const filteredProjects = inventoryProjects.filter(p =>
         p.name?.toLowerCase().includes(search.toLowerCase())
     )
 
-    // Calculate quick stats from ACTUAL properties, not total_units field
+    // Calculate quick stats from ACTUAL units
     const totalProjects = inventoryProjects.length
-    const totalUnits = properties.length // Use actual property count
-    const totalSold = properties.filter(p => p.status === 'sold').length
-    const totalAvailable = properties.filter(p => p.status === 'available').length
-    const totalReserved = properties.filter(p => p.status === 'reserved').length
+    const totalUnits = units.length // Use actual units count
+    const totalSold = units.filter(p => p.status === 'sold').length
+    const totalAvailable = units.filter(p => p.status === 'available').length
+    const totalReserved = units.filter(p => p.status === 'reserved').length
 
     const quickStats = [
         {
@@ -85,10 +85,10 @@ export default function InventoryOverviewPage() {
                         <h1 className="text-3xl font-semibold tracking-tight text-foreground">Inventory Overview</h1>
                         <p className="text-muted-foreground mt-1 text-sm">Track active inventory projects and properties.</p>
                     </div>
-                    <Link href="/dashboard/admin/inventory/properties">
+                    <Link href="/dashboard/admin/inventory/units">
                         <Button variant="outline" size="sm">
                             <Building2 className="w-4 h-4 mr-2" />
-                            View All Properties
+                            View All Units
                         </Button>
                     </Link>
                 </div>

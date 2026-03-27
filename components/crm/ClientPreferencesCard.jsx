@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast'
 export default function ClientPreferencesCard({ profile, leadId, onUpdate, currency = 'USD' }) {
     const [formData, setFormData] = useState({
         location: profile?.location || '',
-        property_type_interest: profile?.property_type_interest || '',
+        unit_type_interest: profile?.unit_type_interest || profile?.property_type_interest || '',
         sub_category_interest: profile?.sub_category_interest || '',
         timeline: profile?.timeline || '',
         min_budget: profile?.min_budget || '',
@@ -25,7 +25,7 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
         if (profile) {
             const newData = {
                 location: profile.location || '',
-                property_type_interest: profile.property_type_interest || '',
+                unit_type_interest: profile.unit_type_interest || profile.property_type_interest || '',
                 sub_category_interest: profile.sub_category_interest || '',
                 timeline: profile.timeline || '',
                 min_budget: profile.min_budget || '',
@@ -104,12 +104,12 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
         })
     }, [triggerAutoSave])
 
-    // Handle property type change (resets sub-category)
-    const handlePropertyTypeChange = useCallback((value) => {
+    // Handle unit type change (resets sub-category)
+    const handleUnitTypeChange = useCallback((value) => {
         setFormData(prev => {
             const newData = {
                 ...prev,
-                property_type_interest: value,
+                unit_type_interest: value,
                 sub_category_interest: '' // Reset sub-category on type change
             }
             triggerAutoSave(newData)
@@ -117,7 +117,7 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
         })
     }, [triggerAutoSave])
 
-    const PROPERTY_OPTS = {
+    const UNIT_OPTS = {
         "Residential": [
             "Flat / Apartment",
             "Independent House",
@@ -230,21 +230,21 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                         </Select>
                     </div>
 
-                    {/* Property Type */}
+                    {/* Unit Type */}
                     <div className="group">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
                             <Building className="w-3.5 h-3.5" />
-                            <span className="text-xs font-semibold uppercase tracking-wide">Property Type</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide">Unit Type</span>
                         </div>
                         <Select
-                            value={formData.property_type_interest}
-                            onValueChange={handlePropertyTypeChange}
+                            value={formData.unit_type_interest}
+                            onValueChange={handleUnitTypeChange}
                         >
                             <SelectTrigger className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors">
                                 <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                             <SelectContent>
-                                {Object.keys(PROPERTY_OPTS).map((type) => (
+                                {Object.keys(UNIT_OPTS).map((type) => (
                                     <SelectItem key={type} value={type}>{type}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -260,13 +260,13 @@ export default function ClientPreferencesCard({ profile, leadId, onUpdate, curre
                         <Select
                             value={formData.sub_category_interest}
                             onValueChange={(val) => handleFieldChange('sub_category_interest', val)}
-                            disabled={!formData.property_type_interest}
+                            disabled={!formData.unit_type_interest}
                         >
                             <SelectTrigger className="h-9 bg-gray-50/50 hover:bg-gray-100/50 focus:bg-white transition-colors disabled:opacity-50">
                                 <SelectValue placeholder="Select sub-category" />
                             </SelectTrigger>
                             <SelectContent>
-                                {formData.property_type_interest && PROPERTY_OPTS[formData.property_type_interest]?.map((sub) => (
+                                {formData.unit_type_interest && UNIT_OPTS[formData.unit_type_interest]?.map((sub) => (
                                     <SelectItem key={sub} value={sub}>{sub}</SelectItem>
                                 ))}
                             </SelectContent>

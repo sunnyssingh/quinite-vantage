@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast'
 
 import LeadActivityTimeline from '@/components/crm/LeadActivityTimeline'
 import EditLeadProfileDialog from '@/components/crm/EditLeadProfileDialog'
-import LinkPropertyDialog from '@/components/crm/LinkPropertyDialog'
+import LinkUnitDialog from '@/components/crm/LinkUnitDialog'
 import AvatarPickerDialog from '@/components/crm/AvatarPickerDialog'
 
 // New sub-components
@@ -46,14 +46,14 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     }
 
     const handleUnlink = async () => {
-        if (!confirm('Are you sure you want to unlink this property?')) return
+        if (!confirm('Are you sure you want to unlink this unit?')) return
         try {
-            const res = await fetch(`/api/leads/${leadId}/unlink-property`, { method: 'POST' })
-            if (!res.ok) throw new Error('Failed to unlink property')
-            toast.success('Property unlinked')
+            const res = await fetch(`/api/leads/${leadId}/unlink-unit`, { method: 'POST' })
+            if (!res.ok) throw new Error('Failed to unlink unit')
+            toast.success('Unit unlinked')
             refreshAll()
         } catch (error) {
-            toast.error('Failed to unlink property')
+            toast.error('Failed to unlink unit')
         }
     }
 
@@ -141,8 +141,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                             profile={profile}
                             organization={organization}
                             onUpdate={refreshAll}
-                            onLinkProperty={() => setLinkDialogOpen(true)}
-                            onUnlinkProperty={handleUnlink}
+                            onLinkUnit={() => setLinkDialogOpen(true)}
+                            onUnlinkUnit={handleUnlink}
                         />
                     )}
 
@@ -180,13 +180,13 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 onSave={refreshAll}
             />
 
-            <LinkPropertyDialog
+            <LinkUnitDialog
                 lead={lead}
                 isOpen={linkDialogOpen}
                 onClose={() => setLinkDialogOpen(false)}
                 onLinkSuccess={() => {
                     refreshAll()
-                    toast.success('Property linked successfully')
+                    toast.success('Unit linked successfully')
                 }}
             />
         </div>

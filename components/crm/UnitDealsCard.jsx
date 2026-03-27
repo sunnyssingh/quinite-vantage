@@ -33,7 +33,7 @@ function getDealStatusConfig(status) {
     return { label: status || 'Active', color: 'bg-blue-100 text-blue-700 border-blue-200' }
 }
 
-export default function PropertyDealsCard({ deals = [], leadId, onUpdate, currency = 'INR', defaultProperty, defaultProject }) {
+export default function UnitDealsCard({ deals = [], leadId, onUpdate, currency = 'INR', defaultUnit, defaultProject }) {
     const [isAddDealOpen, setIsAddDealOpen] = useState(false)
     const [updatingDealId, setUpdatingDealId] = useState(null)
 
@@ -94,7 +94,7 @@ export default function PropertyDealsCard({ deals = [], leadId, onUpdate, curren
                         <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md">
                             <TrendingUp className="w-4 h-4" />
                         </div>
-                        <CardTitle className="text-sm font-semibold text-gray-900">Property Deals</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-gray-900">Unit Deals</CardTitle>
                     </div>
                     <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="px-1.5 py-0 h-5 text-[10px] font-medium">
@@ -136,8 +136,8 @@ export default function PropertyDealsCard({ deals = [], leadId, onUpdate, curren
                                                 <div className="flex items-center gap-2 min-w-0 flex-1">
                                                     <Home className="w-3.5 h-3.5 text-gray-400 shrink-0 group-hover:text-emerald-500 transition-colors" />
                                                     <span className="text-sm font-medium text-gray-900 truncate group-hover:text-emerald-700 transition-colors">
-                                                        {deal.property
-                                                            ? `${deal.property.title}${deal.property.project ? ` (${deal.property.project.name})` : ''}`
+                                                        {deal.unit
+                                                            ? `${deal.unit.unit_number}${deal.unit.project ? ` (${deal.unit.project.name})` : ''}`
                                                             : (deal.project?.name || deal.name || `Deal #${index + 1}`)
                                                         }
                                                     </span>
@@ -237,7 +237,7 @@ export default function PropertyDealsCard({ deals = [], leadId, onUpdate, curren
                 isOpen={isAddDealOpen}
                 onClose={() => setIsAddDealOpen(false)}
                 onSuccess={onUpdate}
-                defaultProperty={defaultProperty}
+                defaultUnit={defaultUnit}
                 defaultProject={defaultProject}
             />
         </>

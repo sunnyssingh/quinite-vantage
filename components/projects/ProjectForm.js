@@ -159,7 +159,14 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 isDraft: !!(initialData.is_draft ?? (initialData.project_status === 'draft')),
                 // Inventory fields
                 totalUnits: initialData.total_units || '',
-                unitTypes: Array.isArray(initialData.unit_types) ? initialData.unit_types : [],
+                unitTypes: Array.isArray(initialData.unit_configs) && initialData.unit_configs.length > 0
+                    ? initialData.unit_configs.map(uc => ({
+                        ...uc,
+                        configuration: uc.config_name,
+                        price: uc.base_price,
+                        type: uc.property_type
+                    }))
+                    : (Array.isArray(initialData.unit_types) ? initialData.unit_types : []),
                 projectStatus: initialData.project_status === 'draft' ? 'planning' : (initialData.project_status || 'planning'),
                 possessionDate: initialData.metadata?.possession_date || initialData.possession_date || '',
                 completionDate: initialData.metadata?.completion_date || initialData.completion_date || '',
@@ -212,9 +219,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 data.unitTypes.forEach((ut, idx) => {
                     if (!ut.configuration && !ut.property_type) {
                         newErrors[`unitType_${idx}_config`] = 'Configuration or property type is required'
-                    }
-                    if (!ut.count || ut.count <= 0) {
-                        newErrors[`unitType_${idx}_count`] = 'Unit count must be greater than 0'
                     }
                     // Price is optional
                 })
@@ -278,7 +282,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
             for (const ut of data.unitTypes) {
                 // Must have either configuration or property_type
                 if (!ut.configuration && !ut.property_type) return false
-                if (!ut.count || ut.count <= 0) return false
             }
 
             // Check date based on status
@@ -306,8 +309,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
             formData.locLocality?.trim() &&
             formData.unitTypes?.length > 0 &&
             formData.unitTypes.every(ut =>
-                (ut.configuration || ut.property_type) &&
-                ut.count > 0
+                (ut.configuration || ut.property_type)
             ) &&
             ((['planning', 'under_construction'].includes(formData.projectStatus) && formData.possessionDate) ||
              (['ready_to_move', 'completed'].includes(formData.projectStatus) && formData.completionDate))
@@ -374,8 +376,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
             return
         }
         if (validateStep(currentStep)) {
-            // Calculate total units from configurations
-            const calculatedTotalUnits = formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)
+            // Calculate total units from configurations (no longer used as primary source)
+            const calculatedTotalUnits = Number(formData.totalUnits) || 0
 
             // Add calculated total to formData
             const submitData = {
@@ -886,21 +888,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     currentStep === 2 && (
                         <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 pt-6">
                             <div className="grid gap-6 max-w-3xl mx-auto">
-                                {/* Total Units - Auto-calculated */}
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <label className="text-sm font-semibold text-slate-800 block">Total Units in Project</label>
-                                            <p className="text-xs text-slate-500 mt-1">Auto-calculated from unit configurations</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-3xl font-bold text-blue-600">
-                                                {formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)}
-                                            </div>
-                                            <p className="text-xs text-slate-500">units</p>
-                                        </div>
-                                    </div>
-                                </div>
 
                                 {/* Unit Types Breakdown */}
                                 <div className="bg-slate-50 p-5 rounded-xl border-2 border-slate-200">
@@ -959,8 +946,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
 
                                                     <div className="flex items-center gap-3">
                                                         <div className="flex flex-col items-end">
-                                                            <span className="text-[10px] text-slate-400 font-medium">COUNT</span>
-                                                            <span className="font-bold text-slate-900">{ut.count}</span>
+                                                            <span className="text-[10px] text-slate-400 font-medium italic">MASTER PROTOTYPE</span>
                                                         </div>
                                                         <button
                                                             type="button"
@@ -1249,10 +1235,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         </Button>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Total Units</p>
-                                            <p className="text-sm font-semibold">{formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)}</p>
-                                        </div>
                                         {formData.unitTypes && formData.unitTypes.length > 0 && (
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-2">Unit Configurations</p>
@@ -1277,8 +1259,7 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                                                         </p>
                                                                     </div>
                                                                     <div className="text-right">
-                                                                        <p className="text-sm font-bold text-green-600">₹{formatPrice(ut.price)}</p>
-                                                                        <p className="text-xs text-muted-foreground">{ut.count} units</p>
+                                                                        <p className="text-sm font-bold text-green-600">₹{formatPrice(ut.base_price || ut.price)}</p>
                                                                     </div>
                                                                 </div>
                                                             </div>

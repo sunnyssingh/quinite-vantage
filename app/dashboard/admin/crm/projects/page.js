@@ -722,9 +722,9 @@ export default function ProjectsPage() {
                             {viewingProject.project_status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </Badge>
                         )}
-                        {viewingProject.project_type && (
-                          <Badge variant="outline" className="bg-white/20 text-white border-white/40">
-                            {viewingProject.project_type}
+                        {viewingProject.metadata?.real_estate?.property?.category && (
+                          <Badge variant="outline" className="bg-white/20 text-white border-white/40 capitalize">
+                            {viewingProject.metadata.real_estate.property.category}
                           </Badge>
                         )}
                       </div>

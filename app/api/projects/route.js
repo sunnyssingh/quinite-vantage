@@ -9,7 +9,7 @@ import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 import * as fs from 'fs'
 import * as path from 'path'
 import Ajv from 'ajv'
-import { PropertyService } from '@/services/property.service'
+import { UnitService } from '@/services/unit.service'
 
 /**
  * GET /api/projects
@@ -28,7 +28,6 @@ export const GET = withPermission('view_projects', async (request, context) => {
     const { searchParams } = new URL(request.url)
     const filters = {
       status: searchParams.get('status'),
-      projectType: searchParams.get('project_type'),
       search: searchParams.get('search'),
       archived: searchParams.get('archived') === 'true',
       page: searchParams.get('page') || 1,
@@ -63,9 +62,6 @@ export const GET = withPermission('view_projects', async (request, context) => {
       query = query.eq('status', filters.status)
     }
 
-    if (filters.projectType && filters.projectType !== 'all') {
-      query = query.eq('project_type', filters.projectType)
-    }
 
     // 3. Pagination
     const page = parseInt(filters.page)
@@ -155,7 +151,6 @@ export async function POST(request) {
       name,
       description,
       address,
-      type,
       metadata,
       image_url,
       image_path
@@ -193,7 +188,6 @@ export async function POST(request) {
       name,
       description: description || null,
       address: address || null,
-      project_type: type || null,
       metadata: metadata || (realEstate ? { real_estate: realEstate } : null),
       image_url: image_url || null,
       image_path: image_path || null,
@@ -229,6 +223,11 @@ export async function POST(request) {
       .single()
 
     if (error) throw error
+
+    // Sync Unit Configs to unit_configs table
+    if (body.unit_types) {
+      await ProjectService.syncUnitConfigs(project.id, profile.organization_id, body.unit_types, user.id)
+    }
 
     try {
       await logAudit(

@@ -9,7 +9,7 @@ import { Mail, Phone, Building, MapPin, TrendingUp, X, Edit2, Save } from 'lucid
 import { toast } from 'react-hot-toast'
 import LeadActivityTimeline from '@/components/crm/LeadActivityTimeline'
 import ClientPreferencesCard from '@/components/crm/ClientPreferencesCard'
-import PropertyDealsCard from '@/components/crm/PropertyDealsCard'
+import UnitDealsCard from '@/components/crm/UnitDealsCard'
 import ComingUpNextCard from '@/components/crm/ComingUpNextCard'
 import BestTimeToContactCard from '@/components/crm/BestTimeToContactCard'
 import SentimentAnalysisCard from '@/components/crm/SentimentAnalysisCard'
@@ -242,7 +242,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                                         <div className="flex items-center gap-2">
                                             <Building className="w-5 h-5" />
-                                            <CardTitle className="text-base font-semibold">Properties</CardTitle>
+                                            <CardTitle className="text-base font-semibold">Units</CardTitle>
                                             <Badge variant="secondary" className="rounded-sm px-1.5 py-0 text-xs text-muted-foreground">1</Badge>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -251,22 +251,23 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                                     </CardHeader>
                                     <CardContent>
                                         <div className="text-sm text-muted-foreground">
-                                            {profile.project ? (
+                                            {profile.unit || profile.project ? (
                                                 <div className="flex gap-4">
                                                     <div className="h-16 w-16 bg-muted rounded-lg shrink-0 overflow-hidden">
-                                                        {/* Placeholder for project image */}
                                                         <div className="w-full h-full bg-secondary flex items-center justify-center">
                                                             <Building className="w-6 h-6 text-muted-foreground/50" />
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-primary">{profile.project.name}</p>
+                                                        <p className="font-semibold text-primary">
+                                                            {profile.unit ? `${profile.unit.unit_number} (${profile.project?.name || 'Unit'})` : profile.project?.name}
+                                                        </p>
                                                         <p className="text-xs text-muted-foreground mt-1">Ready to Occupy ✓</p>
                                                         <p className="text-xs text-muted-foreground mt-2 line-clamp-2">Amenities: Pool, Gym, WiFi...</p>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <p>No associated properties</p>
+                                                <p>No associated units</p>
                                             )}
                                         </div>
                                     </CardContent>
@@ -278,7 +279,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
 
                             {/* Row 2 */}
                             <div className="col-span-12 md:col-span-6 lg:col-span-5">
-                                <PropertyDealsCard deals={lead.deals || []} />
+                                <UnitDealsCard deals={lead.deals || []} />
                             </div>
                             <div className="col-span-12 md:col-span-6 lg:col-span-7 grid grid-rows-2 gap-6">
                                 <div className="row-span-1">

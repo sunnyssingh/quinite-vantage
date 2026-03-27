@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 
@@ -21,21 +21,40 @@ export function useInventoryProjects() {
 }
 
 /**
- * Hook to fetch all properties for the inventory
+ * Hook to fetch all units for the inventory
  */
-export function useInventoryProperties(projectId = null) {
+export function useInventoryUnits(projectId = null) {
     return useQuery({
-        queryKey: ['inventory-properties', projectId],
+        queryKey: ['inventory-units', projectId],
         queryFn: async () => {
             const url = projectId 
-                ? `/api/inventory/properties?project_id=${projectId}`
-                : '/api/inventory/properties'
+                ? `/api/inventory/units?project_id=${projectId}`
+                : '/api/inventory/units'
             const res = await fetch(url)
-            if (!res.ok) throw new Error('Failed to fetch properties')
+            if (!res.ok) throw new Error('Failed to fetch units')
             const data = await res.json()
-            return data.properties || []
+            return data.units || []
         },
-        staleTime: 2 * 60 * 1000, // Properties change more frequently
+        staleTime: 2 * 60 * 1000, // Units change more frequently
+    })
+}
+
+/**
+ * Hook to fetch unit configurations for a project
+ */
+export function useUnitConfigs(projectId) {
+    return useQuery({
+        queryKey: ['unit-configs', projectId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('unit_configs')
+                .select('*')
+                .eq('project_id', projectId)
+                .order('created_at', { ascending: true })
+            if (error) throw new Error(error.message)
+            return data || []
+        },
+        enabled: !!projectId,
     })
 }
 
@@ -75,6 +94,8 @@ export function useInventoryAnalytics() {
  * Comprehensive hook for inventory management (Towers + Units)
  */
 export function useInventory({ projectId, organizationId }) {
+    const queryClient = useQueryClient()
+
     const { data: towers = [], isLoading: towersLoading, refetch: refetchTowers } = useQuery({
         queryKey: ['inventory-towers', projectId, organizationId],
         queryFn: async () => {
@@ -91,11 +112,11 @@ export function useInventory({ projectId, organizationId }) {
     })
 
     const { data: units = {}, isLoading: unitsLoading, refetch: refetchUnits } = useQuery({
-        queryKey: ['inventory-units', projectId, organizationId],
+        queryKey: ['inventory-units-grouped', projectId, organizationId],
         queryFn: async () => {
             const { data, error } = await supabase
-                .from('properties')
-                .select('*')
+                .from('units')
+                .select('*, config:unit_configs(*)')
                 .eq('project_id', projectId)
                 .eq('organization_id', organizationId)
                 .order('floor_number', { ascending: false })
@@ -146,8 +167,7 @@ export function useInventory({ projectId, organizationId }) {
     }
 
     const deleteTower = async (towerId) => {
-        // Cascades via FK, but manually delete properties first for safety or if no cascade
-        await supabase.from('properties').delete().eq('tower_id', towerId).eq('organization_id', organizationId)
+        await supabase.from('units').delete().eq('tower_id', towerId).eq('organization_id', organizationId)
         const { error } = await supabase.from('towers').delete().eq('id', towerId).eq('organization_id', organizationId)
         
         if (error) {
@@ -160,7 +180,7 @@ export function useInventory({ projectId, organizationId }) {
 
     const addUnit = async (unitData) => {
         const { data, error } = await supabase
-            .from('properties')
+            .from('units')
             .insert({ ...unitData, project_id: projectId, organization_id: organizationId })
             .select().single()
 
@@ -174,7 +194,7 @@ export function useInventory({ projectId, organizationId }) {
 
     const updateUnit = async (unitId, updates) => {
         const { data, error } = await supabase
-            .from('properties')
+            .from('units')
             .update({ ...updates, updated_at: new Date().toISOString() })
             .eq('id', unitId)
             .eq('organization_id', organizationId)
@@ -189,7 +209,7 @@ export function useInventory({ projectId, organizationId }) {
     }
 
     const deleteUnit = async (unitId) => {
-        const { error } = await supabase.from('properties').delete().eq('id', unitId).eq('organization_id', organizationId)
+        const { error } = await supabase.from('units').delete().eq('id', unitId).eq('organization_id', organizationId)
         if (error) {
             toast.error('Failed to delete unit')
             throw new Error(error.message)
@@ -205,26 +225,40 @@ export function useInventory({ projectId, organizationId }) {
         return updateUnit(unitId, priceData)
     }
 
-    const updateProjectUnits = async (newUnitTypes) => {
-        // Calculate total units from configurations
-        const calculatedTotalUnits = newUnitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)
-
-        const response = await fetch(`/api/projects/${projectId}`, {
-            method: 'PUT',
+    const saveUnitConfig = async (configData) => {
+        const method = configData.id ? 'PUT' : 'POST'
+        const url = configData.id ? `/api/inventory/units/configs/${configData.id}` : '/api/inventory/units/configs'
+        
+        const response = await fetch(url, {
+            method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                unit_types: newUnitTypes,
-                total_units: calculatedTotalUnits
-            })
+            body: JSON.stringify({ ...configData, project_id: projectId })
         })
 
         if (!response.ok) {
-            const data = await res.json()
-            toast.error(data.error || 'Failed to update configurations')
-            throw new Error(data.error || 'Failed to update configurations')
+            const data = await response.json()
+            toast.error(data.error || 'Failed to save configuration')
+            throw new Error(data.error || 'Failed to save configuration')
         }
         
-        toast.success('Inventory configurations updated')
+        queryClient.invalidateQueries({ queryKey: ['unit-configs', projectId] })
+        toast.success('Unit configuration saved')
+        return response.json()
+    }
+
+    const deleteUnitConfig = async (configId) => {
+        const response = await fetch(`/api/inventory/units/configs/${configId}`, {
+            method: 'DELETE'
+        })
+
+        if (!response.ok) {
+            const data = await response.json()
+            toast.error(data.error || 'Failed to delete configuration')
+            throw new Error(data.error || 'Failed to delete configuration')
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['unit-configs', projectId] })
+        toast.success('Unit configuration removed')
         return response.json()
     }
 
@@ -240,7 +274,8 @@ export function useInventory({ projectId, organizationId }) {
         deleteUnit,
         updateUnitStatus,
         updateUnitPrice,
-        updateProjectUnits,
+        saveUnitConfig,
+        deleteUnitConfig,
         refetch: () => { refetchTowers(); refetchUnits(); },
     }
 }

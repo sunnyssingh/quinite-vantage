@@ -62,7 +62,7 @@ export default function PublicProjectsSection({ content, organizationId, slug })
             address: displayAddress,
             bhk: bhk ? bhk.replace('bhk', ' BHK').toUpperCase() : null,
             area: area ? `${area} SqFt` : null,
-            type: realEstate.property?.use_case || project.project_type || 'Residential'
+            type: realEstate.property?.use_case || realEstate.property?.category || 'Residential'
         }
     }
 

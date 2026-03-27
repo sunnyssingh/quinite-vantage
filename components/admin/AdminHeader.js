@@ -113,7 +113,7 @@ export default function AdminHeader({ user, profile }) {
     // [NEW] Define permissions for Inventory nav items
     const inventoryNavItems = [
         { label: 'Overview', href: '/dashboard/admin/inventory', icon: LayoutDashboard, permission: 'view_inventory' },
-        { label: 'Properties', href: '/dashboard/admin/inventory/properties', icon: Building, permission: 'view_inventory' },
+        { label: 'Units', href: '/dashboard/admin/inventory/units', icon: Building, permission: 'view_inventory' },
         { label: 'Analytics', href: '/dashboard/admin/inventory/analytics', icon: BarChart3, permission: 'view_inventory' },
     ]
 

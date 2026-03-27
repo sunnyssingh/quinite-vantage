@@ -4,11 +4,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { withAuth } from '@/lib/middleware/withAuth'
-import { PropertyService } from '@/services/property.service'
+import { UnitService } from '@/services/unit.service'
 
 /**
- * GET /api/inventory/properties
- * Fetch properties with filters
+ * GET /api/inventory/units
+ * Fetch units with filters
  */
 export const GET = withAuth(async (request, context) => {
     try {
@@ -30,22 +30,22 @@ export const GET = withAuth(async (request, context) => {
         const { searchParams } = new URL(request.url)
         const filters = {
             status: searchParams.get('status'),
-            propertyType: searchParams.get('type'),
+            category: searchParams.get('category'),
             projectId: searchParams.get('project_id')
         }
 
-        const properties = await PropertyService.getProperties(profile.organization_id, filters)
+        const units = await UnitService.getUnits(profile.organization_id, filters)
 
-        return corsJSON({ properties: properties || [] })
+        return corsJSON({ units: units || [] })
     } catch (error) {
-        console.error('Error fetching properties:', error)
+        console.error('Error fetching units:', error)
         return corsJSON({ error: error.message }, { status: 500 })
     }
 })
 
 /**
- * POST /api/inventory/properties
- * Create a new property
+ * POST /api/inventory/units
+ * Create a new unit
  */
 export async function POST(request) {
     try {
@@ -74,57 +74,55 @@ export async function POST(request) {
 
         const body = await request.json()
         const {
-            title, description, projectId, address,
-            price, type, status, bedrooms, bathrooms, size,
-            block_name, floor_number, unit_number, configuration
+            projectId, tower_id, config_id,
+            floor_number, unit_number, transaction_type,
+            status, base_price, floor_rise_price, plc_price,
+            carpet_area, built_up_area, super_built_up_area, plot_area,
+            bedrooms, bathrooms, balconies, facing,
+            is_corner, is_vastu_compliant,
+            possession_date, completion_date, construction_status
         } = body
 
-        if (!title || !price || !type) {
+        if (!unit_number || !projectId) {
             return corsJSON({ error: 'Missing required fields' }, { status: 400 })
         }
 
-        // Insert Property
-        const { data: property, error } = await adminClient
-            .from('properties')
+        // Insert Unit
+        const { data: unit, error } = await adminClient
+            .from('units')
             .insert({
                 organization_id: profile.organization_id,
-                project_id: projectId || null,
-                title,
-                description,
-                address,
-                price,
-                type,
+                project_id: projectId,
+                config_id: config_id || null,
+                tower_id: tower_id || null,
+                floor_number: floor_number !== undefined ? Number(floor_number) : null,
+                unit_number,
+                transaction_type: transaction_type || 'sell',
                 status: status || 'available',
-                show_in_crm: typeof body.show_in_crm !== 'undefined' ? body.show_in_crm : true,
-                bedrooms: bedrooms || 0,
-                bathrooms: bathrooms || 0,
-                size_sqft: size || 0,
+                base_price: Number(base_price) || 0,
+                floor_rise_price: Number(floor_rise_price) || 0,
+                plc_price: Number(plc_price) || 0,
+                total_price: (Number(base_price) || 0) + (Number(floor_rise_price) || 0) + (Number(plc_price) || 0),
+                carpet_area: Number(carpet_area) || 0,
+                built_up_area: Number(built_up_area) || 0,
+                super_built_up_area: Number(super_built_up_area) || 0,
+                plot_area: Number(plot_area) || 0,
+                bedrooms: Number(bedrooms) || 0,
+                bathrooms: Number(bathrooms) || 0,
+                balconies: Number(balconies) || 0,
+                facing: facing || null,
+                is_corner: is_corner || false,
+                is_vastu_compliant: is_vastu_compliant || false,
+                possession_date: possession_date || null,
+                completion_date: completion_date || null,
+                construction_status: construction_status || 'under_construction',
                 created_by: user.id,
-                block_name: block_name || null,
-                floor_number: floor_number || null,
-                unit_number: unit_number || null,
-                configuration: configuration || null
+                updated_at: new Date().toISOString()
             })
             .select()
             .single()
 
         if (error) throw error
-
-        // 2. Insert Images if any
-        if (body.images && Array.isArray(body.images) && body.images.length > 0) {
-            const imageInserts = body.images.map((img, index) => ({
-                property_id: property.id,
-                url: img.url,
-                is_featured: img.is_featured || false,
-                order_index: index
-            }))
-
-            const { error: imgError } = await adminClient
-                .from('property_images')
-                .insert(imageInserts)
-
-            if (imgError) console.error('Failed to insert images:', imgError)
-        }
 
         // Audit Log
         try {
@@ -132,18 +130,18 @@ export async function POST(request) {
                 supabase,
                 user.id,
                 profile.full_name || user.email,
-                'property.create',
-                'property',
-                property.id,
-                { title: property.title }
+                'unit.create',
+                'unit',
+                unit.id,
+                { unit_number: unit.unit_number }
             )
         } catch (e) {
             console.error('Audit log failed', e)
         }
 
-        return corsJSON({ property }, { status: 201 })
+        return corsJSON({ unit }, { status: 201 })
     } catch (e) {
-        console.error('properties POST error:', e)
+        console.error('units POST error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
 }

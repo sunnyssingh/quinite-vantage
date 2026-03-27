@@ -27,7 +27,7 @@ export async function GET(request, { params }) {
         // Verify project belongs to user's organization
         const { data: project } = await adminClient
             .from('projects')
-            .select('id, organization_id')
+            .select('id')
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
             .single()
@@ -36,18 +36,18 @@ export async function GET(request, { params }) {
             return corsJSON({ error: 'Project not found' }, { status: 404 })
         }
 
-        // Fetch all properties for this project
-        const { data: properties, error } = await adminClient
-            .from('properties')
-            .select('*')
+        // Fetch all units for this project with configuration details
+        const { data: units, error } = await adminClient
+            .from('units')
+            .select('*, config:unit_configs(*)')
             .eq('project_id', id)
-            .order('created_at', { ascending: false })
+            .order('unit_number', { ascending: true })
 
         if (error) throw error
 
-        return corsJSON({ properties: properties || [] })
+        return corsJSON({ units: units || [] })
     } catch (e) {
-        console.error('projects/[id]/properties GET error:', e)
+        console.error('projects/[id]/units GET error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
 }

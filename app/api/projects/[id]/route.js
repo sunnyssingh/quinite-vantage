@@ -18,7 +18,7 @@ function handleCORS(response) {
 /* ===================== UPDATE PROJECT ===================== */
 import { withAuth } from '@/lib/middleware/withAuth'
 import { ProjectService } from '@/services/project.service'
-import { PropertyService } from '@/services/property.service'
+import { UnitService } from '@/services/unit.service'
 
 export const PUT = withAuth(async (request, { params, user, profile }) => {
     try {
@@ -141,6 +141,11 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
 
         if (error) throw error
 
+        // Sync Unit Configs to unit_configs table if provided
+        if (body.unit_types) {
+            await ProjectService.syncUnitConfigs(project.id, profile.organization_id, body.unit_types, user.id)
+        }
+
         // 7️⃣ Auto-delete old image if replaced
         if (
             existing.image_path &&
@@ -168,7 +173,7 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
         /* 
         // Manual sync is deprecated in favor of Visual Unit Painting
         try {
-            await PropertyService.syncProjectInventory(project, user.id)
+            await UnitService.syncProjectInventory(project, user.id)
         } catch (syncError) {
             console.error('Failed to sync project inventory:', syncError)
         }
@@ -277,7 +282,7 @@ export async function DELETE(request, { params }) {
             .eq('project_id', id)
             .eq('organization_id', profile.organization_id),
           adminClient
-            .from('properties')
+            .from('units')
             .update({ archived_at: now, archived_by: user.id })
             .eq('project_id', id)
             .eq('organization_id', profile.organization_id)
@@ -344,15 +349,11 @@ export async function GET(request, { params }) {
             return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
         }
 
-        const { data: project, error } = await adminClient
-            .from('projects')
-            .select('*')
-            .eq('id', id)
-            .eq('organization_id', profile.organization_id)
-            .is('archived_at', null)
-            .single()
+        const project = await ProjectService.getProjectById(id, profile.organization_id)
 
-        if (error) throw error
+        if (!project) {
+            return handleCORS(NextResponse.json({ error: 'Project not found' }, { status: 404 }))
+        }
 
         return handleCORS(NextResponse.json({ project }))
     } catch (e) {

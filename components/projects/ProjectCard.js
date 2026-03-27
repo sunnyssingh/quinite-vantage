@@ -62,11 +62,10 @@ export default function ProjectCard({ project, onEdit, onDelete, onView, onStart
     const getDetailsString = () => {
         const category = property.category
 
-        // If unit_types exist, show total units count
+        // If unit_types exist, show configuration count
         if (project.unit_types && project.unit_types.length > 0) {
-            const totalUnits = project.unit_types.reduce((sum, ut) => sum + (parseInt(ut.count) || 0), 0)
             const configCount = project.unit_types.length
-            return `${totalUnits} Units • ${configCount} Configuration${configCount > 1 ? 's' : ''}`
+            return `${configCount} Configuration${configCount > 1 ? 's' : ' Prototype'}`
         }
 
         // Fallback to old structure if no unit_types

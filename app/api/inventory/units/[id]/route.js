@@ -4,8 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
 
 /**
- * PATCH /api/inventory/properties/[id]
- * Update property fields (especially show_in_crm toggle)
+ * PATCH /api/inventory/units/[id]
+ * Update unit fields
  */
 export async function PATCH(request, { params }) {
     try {
@@ -42,24 +42,32 @@ export async function PATCH(request, { params }) {
             updated_at: new Date().toISOString()
         }
 
-        // Core fields
-        if (body.title !== undefined) allowedUpdates.title = body.title
-        if (body.description !== undefined) allowedUpdates.description = body.description
-        if (body.address !== undefined) allowedUpdates.address = body.address
-        if (body.price !== undefined) allowedUpdates.price = body.price
-        if (body.bedrooms !== undefined) allowedUpdates.bedrooms = body.bedrooms
-        if (body.bathrooms !== undefined) allowedUpdates.bathrooms = body.bathrooms
-        if (body.size_sqft !== undefined) allowedUpdates.size_sqft = body.size_sqft
-        // Handle legacy/frontend 'area' payload if necessary, or just rely on correct frontend
-        if (body.area !== undefined) allowedUpdates.size_sqft = body.area
+        // Mapping fields from body to schema
+        const fields = [
+            'config_id', 'tower_id', 'floor_number', 'unit_number', 'status',
+            'transaction_type', 'base_price', 'floor_rise_price', 'plc_price',
+            'carpet_area', 'built_up_area', 'super_built_up_area', 'plot_area',
+            'bedrooms', 'bathrooms', 'balconies', 'facing',
+            'is_corner', 'is_vastu_compliant', 'possession_date', 'completion_date',
+            'construction_status', 'is_archived', 'metadata', 'lead_id'
+        ]
 
-        // Status and visibility
-        if (body.status !== undefined) allowedUpdates.status = body.status
-        if (body.show_in_crm !== undefined) allowedUpdates.show_in_crm = body.show_in_crm
-        if (body.project_id !== undefined) allowedUpdates.project_id = body.project_id
+        fields.forEach(field => {
+            if (body[field] !== undefined) allowedUpdates[field] = body[field]
+        })
 
-        const { data: property, error } = await adminClient
-            .from('properties')
+        // Recalculate total_price if prices changed
+        if (allowedUpdates.base_price !== undefined || allowedUpdates.floor_rise_price !== undefined || allowedUpdates.plc_price !== undefined) {
+            // Need current values if not provided
+            const { data: currentUnit } = await adminClient.from('units').select('*').eq('id', id).single()
+            const base = allowedUpdates.base_price ?? currentUnit.base_price ?? 0
+            const rise = allowedUpdates.floor_rise_price ?? currentUnit.floor_rise_price ?? 0
+            const plc = allowedUpdates.plc_price ?? currentUnit.plc_price ?? 0
+            allowedUpdates.total_price = Number(base) + Number(rise) + Number(plc)
+        }
+
+        const { data: unit, error } = await adminClient
+            .from('units')
             .update(allowedUpdates)
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
@@ -68,41 +76,16 @@ export async function PATCH(request, { params }) {
 
         if (error) throw error
 
-        // Update Images (Delete all and re-insert strategy)
-        if (body.images && Array.isArray(body.images)) {
-            // Delete existing
-            await adminClient
-                .from('property_images')
-                .delete()
-                .eq('property_id', id)
-
-            // Insert new ones
-            if (body.images.length > 0) {
-                const imageInserts = body.images.map((img, index) => ({
-                    property_id: id,
-                    url: img.url,
-                    is_featured: img.is_featured || false,
-                    order_index: index
-                }))
-
-                const { error: imgError } = await adminClient
-                    .from('property_images')
-                    .insert(imageInserts)
-
-                if (imgError) console.error('Failed to update images:', imgError)
-            }
-        }
-
-        return corsJSON({ property })
+        return corsJSON({ unit })
     } catch (e) {
-        console.error('properties PATCH error:', e)
+        console.error('units PATCH error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
 }
 
 /**
- * DELETE /api/inventory/properties/[id]
- * Delete a property
+ * DELETE /api/inventory/units/[id]
+ * Delete a unit
  */
 export async function DELETE(request, { params }) {
     try {
@@ -132,29 +115,18 @@ export async function DELETE(request, { params }) {
 
         if (!profile?.organization_id) return corsJSON({ error: 'Organization not found' }, { status: 400 })
 
-        // Check ownership
-        const { data: property, error: fetchError } = await adminClient
-            .from('properties')
-            .select('id')
-            .eq('id', id)
-            .eq('organization_id', profile.organization_id)
-            .single()
-
-        if (fetchError || !property) {
-            return corsJSON({ error: 'Property not found or access denied' }, { status: 404 })
-        }
-
-        // Delete (images cascade via FK)
+        // Delete
         const { error: deleteError } = await adminClient
-            .from('properties')
+            .from('units')
             .delete()
             .eq('id', id)
+            .eq('organization_id', profile.organization_id)
 
         if (deleteError) throw deleteError
 
         return corsJSON({ success: true })
     } catch (e) {
-        console.error('properties DELETE error:', e)
+        console.error('units DELETE error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
 }

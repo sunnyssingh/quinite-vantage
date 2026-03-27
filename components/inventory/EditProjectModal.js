@@ -26,7 +26,14 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
             setFormData({
                 totalUnits: project.total_units || '',
                 projectStatus: project.project_status || 'planning',
-                unitTypes: Array.isArray(project.unit_types) ? project.unit_types : []
+                unitTypes: Array.isArray(project.unit_configs) && project.unit_configs.length > 0
+                    ? project.unit_configs.map(uc => ({
+                        ...uc,
+                        configuration: uc.config_name,
+                        price: uc.base_price,
+                        type: uc.property_type
+                    }))
+                    : (Array.isArray(project.unit_types) ? project.unit_types : [])
             })
         }
     }, [project])
@@ -37,7 +44,7 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
 
         try {
             // Calculate total units from configurations
-            const calculatedTotalUnits = formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)
+            const calculatedTotalUnits = Number(formData.totalUnits) || 0
 
             const response = await fetch(`/api/projects/${project.id}`, {
                 method: 'PUT',
@@ -85,20 +92,6 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
 
                     <form onSubmit={handleSubmit} className="space-y-4 py-4">
                         {/* Total Units - Auto-calculated */}
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label>Total Units in Project</Label>
-                                    <p className="text-xs text-muted-foreground mt-1">Auto-calculated from unit configurations</p>
-                                </div>
-                                <div className="text-right">
-                                    <div className="text-3xl font-bold text-blue-600">
-                                        {formData.unitTypes.reduce((sum, ut) => sum + (Number(ut.count) || 0), 0)}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">units</p>
-                                </div>
-                            </div>
-                        </div>
 
                         {/* Project Status */}
                         <div className="space-y-2">
@@ -179,8 +172,7 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
 
                                             <div className="flex items-center gap-3">
                                                 <div className="flex flex-col items-end">
-                                                    <span className="text-xs text-muted-foreground">Count</span>
-                                                    <span className="font-bold">{ut.count}</span>
+                                                    <span className="text-[10px] text-muted-foreground italic uppercase">Prototype</span>
                                                 </div>
 
                                                 <Button

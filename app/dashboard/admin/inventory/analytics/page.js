@@ -1,6 +1,6 @@
 'use client'
 
-import { useInventoryProjects, useInventoryProperties } from '@/hooks/useInventory'
+import { useInventoryProjects, useInventoryUnits } from '@/hooks/useInventory'
 
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AnalyticsView } from '@/components/inventory/AnalyticsView'
@@ -10,9 +10,9 @@ import { PermissionGate } from '@/components/permissions/PermissionGate'
 export default function AnalyticsPage() {
     // 1. Parallel Fetching with React Query
     const { 
-        data: properties = [], 
-        isLoading: propsLoading 
-    } = useInventoryProperties()
+        data: units = [], 
+        isLoading: unitsLoading 
+    } = useInventoryUnits()
 
     const { 
         data: invProjects = [], 
@@ -20,7 +20,7 @@ export default function AnalyticsPage() {
     } = useInventoryProjects()
 
 
-    const loading = propsLoading || invLoading
+    const loading = unitsLoading || invLoading
 
     if (loading) {
         return (
@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    <AnalyticsView properties={properties} projects={invProjects} />
+                    <AnalyticsView units={units} projects={invProjects} />
                 </div>
             </div>
         </PermissionGate>

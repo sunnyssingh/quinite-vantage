@@ -32,21 +32,21 @@ export async function PATCH(request, { params }) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 
-        // Verify property belongs to user's organization
-        const { data: property } = await adminClient
-            .from('properties')
+        // Verify unit belongs to user's organization
+        const { data: unit } = await adminClient
+            .from('units')
             .select('id, organization_id, project_id')
             .eq('id', id)
             .eq('organization_id', profile.organization_id)
             .single()
 
-        if (!property) {
-            return corsJSON({ error: 'Property not found' }, { status: 404 })
+        if (!unit) {
+            return corsJSON({ error: 'Unit not found' }, { status: 404 })
         }
 
-        // Update property status
+        // Update unit status
         const { data: updated, error } = await adminClient
-            .from('properties')
+            .from('units')
             .update({
                 status,
                 updated_at: new Date().toISOString()
@@ -59,48 +59,48 @@ export async function PATCH(request, { params }) {
 
         // Handle lead linking / unlinking
         if (lead_id && (status === 'reserved' || status === 'sold')) {
-            // First clear any previous lead linked to this property
+            // First clear any previous lead linked to this unit
             await adminClient
                 .from('leads')
-                .update({ property_id: null })
-                .eq('property_id', id)
+                .update({ unit_id: null })
+                .eq('unit_id', id)
                 .neq('id', lead_id)
 
-            // Link the selected lead to this property
+            // Link the selected lead to this unit
             const { error: leadError } = await adminClient
                 .from('leads')
-                .update({ property_id: id })
+                .update({ unit_id: id })
                 .eq('id', lead_id)
                 .eq('organization_id', profile.organization_id)
 
-            if (leadError) console.error('Failed to link lead to property:', leadError)
+            if (leadError) console.error('Failed to link lead to unit:', leadError)
         } else if (status === 'available') {
-            // Unlink all leads from this property when it becomes available again
+            // Unlink all leads from this unit when it becomes available again
             await adminClient
                 .from('leads')
-                .update({ property_id: null })
-                .eq('property_id', id)
+                .update({ unit_id: null })
+                .eq('unit_id', id)
         }
 
-        // Fetch updated project metrics if property is linked to a project
+        // Fetch updated project metrics if unit is linked to a project
         let projectMetrics = null
-        if (property.project_id) {
+        if (unit.project_id) {
             const { data: project } = await adminClient
                 .from('projects')
                 .select('total_units, sold_units, reserved_units, available_units')
-                .eq('id', property.project_id)
+                .eq('id', unit.project_id)
                 .single()
 
             projectMetrics = project
         }
 
         return corsJSON({
-            property: updated,
+            unit: updated,
             projectMetrics,
-            message: 'Property status updated successfully'
+            message: 'Unit status updated successfully'
         })
     } catch (e) {
-        console.error('properties/[id]/status PATCH error:', e)
+        console.error('units/[id]/status PATCH error:', e)
         return corsJSON({ error: e.message }, { status: 500 })
     }
 }

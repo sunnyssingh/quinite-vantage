@@ -146,19 +146,19 @@ export async function PUT(request, { params }) {
             return NextResponse.json({ error: 'Lead row not found after update' }, { status: 404 })
         }
 
-        // [Inventory Automation] If Lead is WON, mark linked property as SOLD
+        // [Inventory Automation] If Lead is WON, mark linked unit as SOLD
         const isWon = body.status === 'won' || 
                       body.stage === 'won' || 
                       (body.stageId && ['won', 'closed-won'].includes(body.stageId))
 
-        if (isWon && data.property_id) {
+        if (isWon && data.unit_id) {
             const adminClient = createAdminClient()
             await adminClient
-                .from('properties')
+                .from('units')
                 .update({ status: 'sold' })
-                .eq('id', data.property_id)
+                .eq('id', data.unit_id)
 
-            console.log(`[Inventory] Auto-sold property ${data.property_id} for lead ${id}`)
+            console.log(`[Inventory] Auto-sold unit ${data.unit_id} for lead ${id}`)
         }
 
         // [Schema Alignment] Update Deal if value is provided

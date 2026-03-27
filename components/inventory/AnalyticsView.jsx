@@ -2,16 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Building2, Home, Wallet, TrendingUp, Users, Percent, ShieldAlert, CheckCircle2, Clock } from "lucide-react"
 import { formatINR } from "@/lib/inventory"
 
-export function AnalyticsView({ properties = [], projects = [] }) {
-    const totalUnits = properties.length
-    const availableUnits = properties.filter(p => p.status === 'available').length
-    const soldUnits = properties.filter(p => p.status === 'sold').length
-    const reservedUnits = properties.filter(p => p.status === 'reserved').length
-    const blockedUnits = properties.filter(p => p.status === 'blocked' || p.status === 'under_maintenance').length
+export function AnalyticsView({ units = [], projects = [] }) {
+    const totalUnits = units.length
+    const availableUnits = units.filter(p => p.status === 'available').length
+    const soldUnits = units.filter(p => p.status === 'sold').length
+    const reservedUnits = units.filter(p => p.status === 'reserved').length
+    const blockedUnits = units.filter(p => p.status === 'blocked' || p.status === 'under_maintenance').length
 
-    const totalValue = properties.reduce((acc, curr) => acc + (curr.price || 0), 0)
+    const totalValue = units.reduce((acc, curr) => acc + (Number(curr.total_price || curr.base_price) || 0), 0)
 
-    const byType = properties.reduce((acc, curr) => {
+    const byType = units.reduce((acc, curr) => {
         acc[curr.type] = (acc[curr.type] || 0) + 1
         return acc
     }, {})
@@ -106,9 +106,9 @@ export function AnalyticsView({ properties = [], projects = [] }) {
                                         <tr><td colSpan={5} className="py-8 text-center text-slate-400 italic">No project data available</td></tr>
                                     ) : (
                                         projects.sort((a,b) => (b.total_units || 0) - (a.total_units || 0)).map(project => {
-                                            const projectProps = properties.filter(p => p.project_id === project.id)
-                                            const confirmed = projectProps.filter(p => p.status === 'sold' || p.status === 'reserved').length
-                                            const avail = projectProps.filter(p => p.status === 'available').length
+                                            const projectUnits = units.filter(p => p.project_id === project.id)
+                                            const confirmed = projectUnits.filter(p => p.status === 'sold' || p.status === 'reserved').length
+                                            const avail = projectUnits.filter(p => p.status === 'available').length
                                             const progress = project.total_units ? Math.round((confirmed / project.total_units) * 100) : 0
                                             
                                             return (

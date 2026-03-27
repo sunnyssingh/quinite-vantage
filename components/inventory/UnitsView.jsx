@@ -8,8 +8,8 @@ import {
     Search, X, Filter, ChevronDown, Plus,
     IndianRupee, Maximize, Building2, BedDouble, Info, Home
 } from 'lucide-react'
-import { PropertyCard } from './PropertyCard'
-import EditPropertyModal from './EditPropertyModal'
+import { UnitCard } from './UnitCard'
+import EditUnitModal from './EditUnitModal'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { toast } from 'react-hot-toast'
 import { Label } from '@/components/ui/label'
@@ -23,28 +23,28 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { usePermission } from '@/contexts/PermissionContext'
 
-import { useInventoryProjects, useInventoryProperties } from '@/hooks/useInventory'
+import { useInventoryProjects, useInventoryUnits } from '@/hooks/useInventory'
 
-export function PropertiesView({ projectId = null }) {
+export function UnitsView({ projectId = null }) {
     const canManage = usePermission('manage_inventory')
     const canEdit = usePermission('edit_inventory')
 
     // 1. Parallel Fetching with specialized hooks
     const { 
-        data: properties = [], 
-        isLoading: propertiesLoading,
-        refetch: refetchProperties
-    } = useInventoryProperties(projectId)
+        data: units = [], 
+        isLoading: unitsLoading,
+        refetch: refetchUnits
+    } = useInventoryUnits(projectId)
 
     const { 
         data: projects = [], 
         isLoading: projectsLoading 
     } = useInventoryProjects()
 
-    const loading = propertiesLoading || projectsLoading
+    const loading = unitsLoading || projectsLoading
 
     const fetchData = () => {
-        refetchProperties()
+        refetchUnits()
     }
 
     const [search, setSearch] = useState('')
@@ -61,9 +61,9 @@ export function PropertiesView({ projectId = null }) {
     const [bathrooms, setBathrooms] = useState([])
 
     // UI States
-    const [isAddPropertyOpen, setIsAddPropertyOpen] = useState(false)
+    const [isAddUnitOpen, setIsAddUnitOpen] = useState(false)
 
-    const propertyTypes = [
+    const unitTypes = [
         { value: 'apartment', label: 'Apartment' },
         { value: 'villa', label: 'Villa' },
         { value: 'plot', label: 'Plot' },
@@ -82,40 +82,41 @@ export function PropertiesView({ projectId = null }) {
 
 
     // Filter logic
-    const filteredProperties = properties.filter(property => {
+    const filteredUnits = units.filter(unit => {
         // Search filter
         const matchesSearch = !search ||
-            property.title?.toLowerCase().includes(search.toLowerCase()) ||
-            property.address?.toLowerCase().includes(search.toLowerCase())
+            unit.unit_number?.toLowerCase().includes(search.toLowerCase()) ||
+            unit.title?.toLowerCase().includes(search.toLowerCase())
 
         // Type filter
         const matchesType = selectedTypes.length === 0 ||
-            selectedTypes.includes(property.type)
+            selectedTypes.includes(unit.config?.property_type) || 
+            selectedTypes.includes(unit.type)
 
         // Status filter
         const matchesStatus = selectedStatuses.length === 0 ||
-            selectedStatuses.includes(property.status)
+            selectedStatuses.includes(unit.status)
 
         // Project filter
         const matchesProject = selectedProjects.length === 0 ||
-            selectedProjects.includes(property.project_id)
+            selectedProjects.includes(unit.project_id)
 
         // Price filter
-        const price = parseInt(property.price) || 0
+        const price = parseInt(unit.total_price || unit.base_price) || 0
         const matchesPriceMin = !priceRange.min || price >= parseInt(priceRange.min)
         const matchesPriceMax = !priceRange.max || price <= parseInt(priceRange.max)
 
         // Area filter
-        const area = parseInt(property.size_sqft) || 0
+        const area = parseInt(unit.carpet_area || unit.size_sqft) || 0
         const matchesAreaMin = !areaRange.min || area >= parseInt(areaRange.min)
         const matchesAreaMax = !areaRange.max || area <= parseInt(areaRange.max)
 
         // Beds filter
-        const beds = property.bedrooms || 0
+        const beds = unit.bedrooms || unit.config?.bedrooms || 0
         const matchesBeds = bedrooms.length === 0 || bedrooms.includes(beds.toString())
 
         // Baths filter
-        const baths = property.bathrooms || 0
+        const baths = unit.bathrooms || unit.config?.bathrooms || 0
         const matchesBaths = bathrooms.length === 0 || bathrooms.includes(baths.toString())
 
         return matchesSearch && matchesType && matchesStatus && matchesProject &&
@@ -151,25 +152,25 @@ export function PropertiesView({ projectId = null }) {
         bedrooms.length > 0 || bathrooms.length > 0
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-slate-50/50">
             {/* Filters Bar */}
-            <div className="flex flex-col gap-4 p-6 border-b border-border bg-background shrink-0">
+            <div className="flex flex-col gap-4 p-6 border-b border-border bg-white shadow-sm shrink-0">
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                     {/* Search */}
                     <div className="relative flex-1 w-full max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                            placeholder="Search properties..."
-                            className="pl-10 h-10 bg-background"
+                            placeholder="Search units..."
+                            className="pl-10 h-11 bg-slate-50 border-slate-200 focus:bg-white transition-all text-sm font-medium"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
 
                     {canManage && (
-                        <Button onClick={() => setIsAddPropertyOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                        <Button onClick={() => setIsAddUnitOpen(true)} className="bg-blue-600 hover:bg-blue-700 h-11 px-6 font-bold shadow-lg shadow-blue-200 uppercase tracking-wider text-xs">
                             <Plus className="w-4 h-4 mr-2" />
-                            Add Property
+                            Add Unit
                         </Button>
                     )}
                 </div>
@@ -181,11 +182,11 @@ export function PropertiesView({ projectId = null }) {
                     {!projectId && projects.length > 0 && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-9 border-dashed">
+                                <Button variant="outline" size="sm" className="h-9 border-dashed rounded-full px-4 hover:bg-slate-50">
                                     <Building2 className="w-3.5 h-3.5 mr-2" />
                                     Project
                                     {selectedProjects.length > 0 && (
-                                        <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                                        <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px] font-bold bg-blue-100 text-blue-700">
                                             {selectedProjects.length}
                                         </Badge>
                                     )}
@@ -201,8 +202,8 @@ export function PropertiesView({ projectId = null }) {
                                         onCheckedChange={() => toggleFilter(selectedProjects, setSelectedProjects, project.id)}
                                     >
                                         <div className="flex flex-col">
-                                            <span>{project.name}</span>
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="font-medium">{project.name}</span>
+                                            <span className="text-[10px] text-muted-foreground">
                                                 {project.total_units} units
                                             </span>
                                         </div>
@@ -215,37 +216,39 @@ export function PropertiesView({ projectId = null }) {
                     {/* Price Range Filter */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 border-dashed">
+                            <Button variant="outline" size="sm" className="h-9 border-dashed rounded-full px-4 hover:bg-slate-50">
                                 <IndianRupee className="w-3.5 h-3.5 mr-2" />
                                 Price
                                 {(priceRange.min || priceRange.max) && (
-                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px] font-bold bg-blue-100 text-blue-700">
                                         Active
                                     </Badge>
                                 )}
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-80 p-4">
+                        <DropdownMenuContent align="start" className="w-80 p-5">
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Price Range</h4>
-                                    <p className="text-sm text-muted-foreground">Filter properties by price</p>
+                                <div className="space-y-1">
+                                    <h4 className="font-bold text-sm tracking-tight">Price Range</h4>
+                                    <p className="text-[11px] text-muted-foreground font-medium">Filter units by price in ₹</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs">Min Price</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Min</Label>
                                         <Input
                                             type="number"
                                             placeholder="Min"
+                                            className="h-10 text-xs font-bold"
                                             value={priceRange.min}
                                             onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-xs">Max Price</Label>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Max</Label>
                                         <Input
                                             type="number"
                                             placeholder="Max"
+                                            className="h-10 text-xs font-bold"
                                             value={priceRange.max}
                                             onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
                                         />
@@ -258,36 +261,39 @@ export function PropertiesView({ projectId = null }) {
                     {/* Area Range Filter */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 border-dashed">
+                            <Button variant="outline" size="sm" className="h-9 border-dashed rounded-full px-4 hover:bg-slate-50">
                                 <Maximize className="w-3.5 h-3.5 mr-2" />
                                 Area
                                 {(areaRange.min || areaRange.max) && (
-                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px] font-bold bg-blue-100 text-blue-700">
                                         Active
                                     </Badge>
                                 )}
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-80 p-4">
+                        <DropdownMenuContent align="start" className="w-80 p-5">
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <h4 className="font-medium leading-none">Area Range (Sq Ft)</h4>
+                                <div className="space-y-1">
+                                    <h4 className="font-bold text-sm tracking-tight">Area Range (Sq Ft)</h4>
+                                    <p className="text-[11px] text-muted-foreground font-medium">Surface area in sq ft</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs">Min Area</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Min Area</Label>
                                         <Input
                                             type="number"
                                             placeholder="Min"
+                                            className="h-10 text-xs font-bold"
                                             value={areaRange.min}
                                             onChange={(e) => setAreaRange(prev => ({ ...prev, min: e.target.value }))}
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-xs">Max Area</Label>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Max Area</Label>
                                         <Input
                                             type="number"
                                             placeholder="Max"
+                                            className="h-10 text-xs font-bold"
                                             value={areaRange.max}
                                             onChange={(e) => setAreaRange(prev => ({ ...prev, max: e.target.value }))}
                                         />
@@ -300,11 +306,11 @@ export function PropertiesView({ projectId = null }) {
                     {/* Type Filter */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 border-dashed">
+                            <Button variant="outline" size="sm" className="h-9 border-dashed rounded-full px-4 hover:bg-slate-50">
                                 <Home className="w-3.5 h-3.5 mr-2" />
                                 Type
                                 {selectedTypes.length > 0 && (
-                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px] font-bold bg-blue-100 text-blue-700">
                                         {selectedTypes.length}
                                     </Badge>
                                 )}
@@ -313,7 +319,7 @@ export function PropertiesView({ projectId = null }) {
                         <DropdownMenuContent align="start" className="w-48">
                             <DropdownMenuLabel>Select Type</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            {propertyTypes.map(type => (
+                            {unitTypes.map(type => (
                                 <DropdownMenuCheckboxItem
                                     key={type.value}
                                     checked={selectedTypes.includes(type.value)}
@@ -328,11 +334,11 @@ export function PropertiesView({ projectId = null }) {
                     {/* Status Filter */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 border-dashed">
+                            <Button variant="outline" size="sm" className="h-9 border-dashed rounded-full px-4 hover:bg-slate-50">
                                 <Info className="w-3.5 h-3.5 mr-2" />
                                 Status
                                 {selectedStatuses.length > 0 && (
-                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px] font-bold bg-blue-100 text-blue-700">
                                         {selectedStatuses.length}
                                     </Badge>
                                 )}
@@ -357,11 +363,11 @@ export function PropertiesView({ projectId = null }) {
                     {/* Bedrooms Filter */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 border-dashed">
+                            <Button variant="outline" size="sm" className="h-9 border-dashed rounded-full px-4 hover:bg-slate-50">
                                 <BedDouble className="w-3.5 h-3.5 mr-2" />
                                 Beds
                                 {bedrooms.length > 0 && (
-                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
+                                    <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px] font-bold bg-blue-100 text-blue-700">
                                         {bedrooms.length}
                                     </Badge>
                                 )}
@@ -387,7 +393,7 @@ export function PropertiesView({ projectId = null }) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="h-9 text-muted-foreground hover:text-foreground"
+                            className="h-9 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-full px-4"
                             onClick={clearAllFilters}
                         >
                             <X className="w-3.5 h-3.5 mr-1.5" />
@@ -398,56 +404,59 @@ export function PropertiesView({ projectId = null }) {
 
                 {/* Active Filter Badges */}
                 {hasActiveFilters && (
-                    <div className="flex flex-wrap gap-2">
-                        {priceRange.min && <Badge variant="secondary" className="h-6 px-2">Min Price: {priceRange.min}</Badge>}
-                        {priceRange.max && <Badge variant="secondary" className="h-6 px-2">Max Price: {priceRange.max}</Badge>}
-                        {areaRange.min && <Badge variant="secondary" className="h-6 px-2">Min Area: {areaRange.min}</Badge>}
-                        {areaRange.max && <Badge variant="secondary" className="h-6 px-2">Max Area: {areaRange.max}</Badge>}
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+                        {priceRange.min && <Badge variant="secondary" className="h-6 px-3 bg-white border-slate-200 text-[10px] font-bold">Min: ₹{priceRange.min}</Badge>}
+                        {priceRange.max && <Badge variant="secondary" className="h-6 px-3 bg-white border-slate-200 text-[10px] font-bold">Max: ₹{priceRange.max}</Badge>}
+                        {areaRange.min && <Badge variant="secondary" className="h-6 px-3 bg-white border-slate-200 text-[10px] font-bold">Min Area: {areaRange.min}</Badge>}
+                        {areaRange.max && <Badge variant="secondary" className="h-6 px-3 bg-white border-slate-200 text-[10px] font-bold">Max Area: {areaRange.max}</Badge>}
 
                         {selectedTypes.map(type => (
-                            <Badge key={type} variant="secondary" className="h-6 px-2 capitalize">
+                            <Badge key={type} variant="secondary" className="h-6 px-3 bg-blue-50 text-blue-700 border-blue-100 capitalize text-[10px] font-bold">
                                 {type}
                                 <X className="w-3 h-3 ml-1.5 cursor-pointer hover:text-destructive" onClick={() => toggleFilter(selectedTypes, setSelectedTypes, type)} />
                             </Badge>
                         ))}
                         {selectedStatuses.map(status => (
-                            <Badge key={status} variant="secondary" className="h-6 px-2 capitalize">
+                            <Badge key={status} variant="secondary" className="h-6 px-3 bg-white border-slate-200 capitalize text-[10px] font-bold">
                                 {status}
                                 <X className="w-3 h-3 ml-1.5 cursor-pointer hover:text-destructive" onClick={() => toggleFilter(selectedStatuses, setSelectedStatuses, status)} />
                             </Badge>
                         ))}
                     </div>
                 )}
-
-                {/* Results Count */}
-                <div className="text-sm text-muted-foreground">
-                    Showing {filteredProperties.length} of {properties.length} properties
-                </div>
             </div>
 
-            {/* Properties Grid */}
+            {/* Units Grid */}
             <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                        Found {filteredUnits.length} results
+                    </h2>
+                </div>
+
                 {loading ? (
-                    <div className="flex bg-muted/20 rounded-xl border border-border h-64 items-center justify-center">
+                    <div className="flex bg-white rounded-2xl border border-border h-64 items-center justify-center shadow-sm">
                         <LoadingSpinner />
                     </div>
-                ) : filteredProperties.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed rounded-xl bg-muted/5">
-                        <Filter className="w-10 h-10 text-muted-foreground/50 mb-4" />
-                        <h3 className="text-lg font-medium">No Properties Found</h3>
-                        <p className="text-muted-foreground text-sm mt-1 max-w-sm">
-                            {hasActiveFilters ? 'Try adjusting your filters' : 'No properties available'}
+                ) : filteredUnits.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-20 text-center border border-dashed rounded-2xl bg-white shadow-sm border-slate-200">
+                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-6">
+                            <Filter className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <h3 className="text-xl font-bold tracking-tight">No Units Match Your Search</h3>
+                        <p className="text-muted-foreground text-sm mt-2 max-w-sm font-medium">
+                            {hasActiveFilters ? 'We couldn\'t find any units with these filters. Try clearing some selections.' : 'There are no units in this project yet.'}
                         </p>
-                        <Button variant="outline" size="sm" className="mt-4" onClick={clearAllFilters}>
+                        <Button variant="outline" size="sm" className="mt-8 rounded-full h-10 px-6" onClick={clearAllFilters}>
                             Clear All Filters
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filteredProperties.map(property => (
-                            <PropertyCard
-                                key={property.id}
-                                property={property}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredUnits.map(unit => (
+                            <UnitCard
+                                key={unit.id}
+                                unit={unit}
                                 onActionComplete={fetchData}
                                 canManage={canManage}
                                 canEdit={canEdit}
@@ -457,10 +466,10 @@ export function PropertiesView({ projectId = null }) {
                 )}
             </div>
 
-            {/* Add Property Modal */}
-            <EditPropertyModal
-                isOpen={isAddPropertyOpen}
-                onClose={() => setIsAddPropertyOpen(false)}
+            {/* Add Unit Modal */}
+            <EditUnitModal
+                isOpen={isAddUnitOpen}
+                onClose={() => setIsAddUnitOpen(false)}
                 onActionComplete={fetchData}
             />
         </div>
