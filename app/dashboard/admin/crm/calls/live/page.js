@@ -40,6 +40,7 @@ export default function LiveCallMonitor() {
 
     useEffect(() => {
         if (user && hasAccess) {
+            console.log('📡 [Live Monitor] Configured WebSocket Server:', process.env.NEXT_PUBLIC_WEBSOCKET_SERVER_URL || 'Not Set (Using Internal)');
             handleRefresh()
         } else if (!loading && (!hasAccess || !user)) {
             setLoading(false)
