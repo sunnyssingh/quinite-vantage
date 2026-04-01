@@ -31,6 +31,12 @@ export default function LiveCallMonitor() {
 
     // Fetch initial data
     useEffect(() => {
+        // Immediate log to check Env Var loading
+        console.log('📡 [Live Monitor] ENV LOAD CHECK:', {
+            ws_url: process.env.NEXT_PUBLIC_WEBSOCKET_SERVER_URL,
+            site_url: process.env.NEXT_PUBLIC_SITE_URL
+        });
+
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             setUser(user)
@@ -40,7 +46,6 @@ export default function LiveCallMonitor() {
 
     useEffect(() => {
         if (user && hasAccess) {
-            console.log('📡 [Live Monitor] Configured WebSocket Server:', process.env.NEXT_PUBLIC_WEBSOCKET_SERVER_URL || 'Not Set (Using Internal)');
             handleRefresh()
         } else if (!loading && (!hasAccess || !user)) {
             setLoading(false)
