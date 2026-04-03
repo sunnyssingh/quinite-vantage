@@ -5,6 +5,7 @@ import {
   Plus, 
   Building2, 
   Layers, 
+  Home,
   Info, 
   MoreVertical,
   MoreHorizontal,
@@ -17,7 +18,12 @@ import {
   Zap,
   Trash,
   ChevronRight,
-  Compass
+  Compass,
+  Store,
+  Briefcase,
+  ShoppingBag,
+  Factory,
+  ConciergeBell
 } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -61,6 +67,13 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
     updateUnitStatus,
   } = useInventory({ projectId, organizationId });
 
+  const normalizeProjectStatus = (status) => {
+    const s = (status || '').toLowerCase();
+    if (s.includes('ready') || s.includes('move')) return 'ready_to_move';
+    if (s.includes('complete') || s.includes('finished')) return 'completed';
+    return 'under_construction';
+  };
+
   const { data: unitConfigs = [], isLoading: configsLoading } = useUnitConfigs(projectId);
   
   const queryClient = useQueryClient();
@@ -92,14 +105,30 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
     }, {});
   }, [units]);
 
+  const getIcon = (type) => {
+    const icons = {
+      Apartment: Building2,
+      Villa: Home,
+      'Villa Bungalow': Home,
+      Penthouse: ConciergeBell,
+      Office: Briefcase,
+      Retail: ShoppingBag,
+      Showroom: Store,
+      Industrial: Factory,
+      Plot: Home,
+      Land: Building2,
+    };
+    return icons[type] || Building2;
+  };
+
   const stats = useMemo(() => getInventoryStats(towerUnits), [towerUnits]);
 
-  const handlePaintUnit = async (floorNum) => {
+  const handlePaintUnit = async (floorNum, slotIndex = null) => {
     if (!selectedConfig) return;
     
     try {
       const currentFloorUnits = towerUnits.filter(u => Number(u.floor_number) === Number(floorNum));
-      const nextIndex = currentFloorUnits.length;
+      const nextIndex = slotIndex !== null ? slotIndex : currentFloorUnits.length;
 
       await addUnit({
         tower_id: activeTowerId,
@@ -109,6 +138,12 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
         config_id: selectedConfig.id,
         unit_number: generateUnitNumber(activeTower?.name, floorNum, nextIndex),
         status: 'available',
+        transaction_type: selectedConfig.transaction_type || 'sell',
+        construction_status: normalizeProjectStatus(project?.status || project?.metadata?.real_estate?.project?.status),
+        bedrooms: selectedConfig.config_name?.match(/\d+/) ? parseInt(selectedConfig.config_name.match(/\d+/)[0]) : null,
+        metadata: {
+           slot_index: nextIndex
+        },
         carpet_area: selectedConfig.carpet_area || 0,
         built_up_area: selectedConfig.built_up_area || selectedConfig.builtup_area || 0,
         super_built_up_area: selectedConfig.super_built_up_area || selectedConfig.super_builtup_area || 0,
@@ -135,10 +170,11 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
     let addedCount = 0;
     const toastId = toast.loading(`Filling floor ${floorNum}...`);
     
-    for (let i = 0; i < emptyCount; i++) {
-      const success = await handlePaintUnit(floorNum);
-      if (success) addedCount++;
-      else break; 
+    for (let i = 0; i < slots.length; i++) {
+      if (!slots[i]) {
+        const success = await handlePaintUnit(floorNum, i);
+        if (success) addedCount++;
+      }
     }
     
     if (addedCount > 0) {
@@ -148,9 +184,9 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
     }
   };
 
-  const handleOpenAddUnit = (floorNum) => {
+  const handleOpenAddUnit = (floorNum, slotIndex = null) => {
     if (selectedConfig) {
-       handlePaintUnit(floorNum);
+       handlePaintUnit(floorNum, slotIndex);
     } else {
        setTargetFloor(floorNum);
        setDrawerMode('add_unit');
@@ -195,7 +231,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
       <aside className="w-full lg:w-72 bg-white border-r border-slate-200 flex flex-col shrink-0 shadow-xl z-20">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 uppercase tracking-wider">
               <Layers className="w-4 h-4 text-blue-600" /> Unit Configs
             </h3>
             <p className="text-[10px] text-slate-400 font-medium mt-0.5 uppercase tracking-wider">Select to fill grid</p>
@@ -216,12 +252,13 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
           <div>
             <div className="flex items-center justify-between px-1 mb-3">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Unit Configs</p>
-              <span className="text-[10px] font-medium text-slate-300">{unitConfigs.length} Configs</span>
+              <span className="text-[10px] font-medium text-slate-400">{unitConfigs.length} Configs</span>
             </div>
             <div className="grid grid-cols-1 gap-2">
               {unitConfigs.length > 0 ? unitConfigs.map((config) => {
                 const isSelected = selectedConfig?.id === config.id;
                 const placed = unitCountsByConfig[config.id] || 0;
+                const Icon = getIcon(config.property_type);
 
                 return (
                   <div 
@@ -230,7 +267,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
                     className={cn(
                       "px-3.5 py-3 rounded-2xl border transition-all relative group bg-white overflow-hidden cursor-pointer",
                       isSelected 
-                        ? "border-blue-500 bg-blue-50/40 shadow-sm translate-x-1" 
+                        ? "border-blue-500 bg-blue-50/60 shadow-sm" 
                         : "border-slate-100 hover:border-slate-300 hover:shadow-sm"
                     )}
                   >
@@ -239,7 +276,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all",
                          isSelected ? "bg-blue-600 text-white shadow-md" : "bg-slate-50 text-slate-400 border border-slate-100/50"
                        )}>
-                          <Layers className="w-4 h-4" />
+                          <Icon className="w-4 h-4" />
                        </div>
                        <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-center gap-2">
@@ -250,10 +287,10 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
                                {formatINR(config.base_price).replace('.00', '').replace('₹', '₹ ')}
                              </span>
                           </div>
-                          <div className="flex items-center justify-between gap-1 mt-1.5">
+                          <div className="flex items-center justify-between gap-1 mt-0.5">
                              <div className="flex items-center gap-1.5">
                                 <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tight truncate">
-                                   {config.property_type} • {config.carpet_area || config.plot_area}ft
+                                   {config.property_type} • {config.carpet_area || config.plot_area} sqft
                                 </span>
                              </div>
                              <span className={cn(
@@ -316,17 +353,17 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar">
-          <div className="max-w-[1400px] mx-auto space-y-12 pb-20">
+        <div className="flex-1 overflow-auto p-4 md:p-8 overflow-x-auto">
+          <div className="max-w-[1400px] mx-auto space-y-12 pb-20 overflow-x-auto">
             {selectedConfig && (
-              <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in slide-in-from-top-4 sticky top-0 z-50 ring-4 ring-white">
+              <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in slide-in-from-top-3 sticky top-0 z-50">
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-white/20 rounded-xl animate-pulse">
                     <Zap className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="font-black text-sm uppercase tracking-tight italic">Quick-Fill Active</h4>
-                    <p className="text-[10px] opacity-90 font-bold uppercase tracking-widest">Click empty boxes to place <span className="underline">{selectedConfig.config_name}</span></p>
+                    <h4 className="text-yellow-300 text-sm uppercase tracking-tight">Quick-Fill Active</h4>
+                    <p className="text-[10px] opacity-90 font-bold uppercase tracking-widest">Click empty boxes to place <span className="underline">{selectedConfig.config_name || selectedConfig.property_type}</span></p>
                   </div>
                 </div>
                 <Button variant="secondary" size="sm" onClick={() => setSelectedConfig(null)} className="h-8 font-black text-xs uppercase px-4 rounded-lg">Done</Button>
@@ -352,7 +389,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
               ) : (
                 <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white/50">
                   <Building2 className="w-16 h-16 mb-4 opacity-10" />
-                  <p className="text-lg font-black uppercase tracking-tighter text-slate-300">No towers defined</p>
+                  <p className="text-lg font-black uppercase tracking-wider text-slate-300">No towers defined</p>
                   <Button onClick={() => { setDrawerMode('add_tower'); setDrawerOpen(true); }} className="mt-6 bg-slate-900 text-white rounded-xl h-12 px-8 font-bold">Create Tower</Button>
                 </div>
               )}
@@ -397,6 +434,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
         mode={drawerMode?.includes('add') ? 'add' : 'edit'}
         unit={selectedUnit}
         tower={activeTower}
+        project={project}
         projectType={projectType}
         unitConfigs={unitConfigs}
         floorNumber={targetFloor}
@@ -414,6 +452,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
         tower={activeTower}
         projectId={projectId}
         organizationId={organizationId}
+        existingTowers={towers}
         onSave={drawerMode === 'add_tower' ? addTower : (data) => updateTower(activeTowerId, data)}
         onDelete={deleteTower}
       />
@@ -427,22 +466,34 @@ function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChan
 
   return (
     <div className="flex items-start gap-3 group/row max-w-full">
-      <div className="w-14 pt-1.5 shrink-0 flex flex-col items-end">
+      <div className="w-14 pt-1.5 shrink-0 flex flex-col items-end gap-1.5">
         <span className={cn(
-          "text-[9px] font-black px-1.5 py-0.5 rounded-lg border-2 shadow-sm transition-transform group-hover/row:scale-105",
+          "text-[10px] font-black px-2 py-0.5 rounded-lg border-2 shadow-sm transition-all group-hover/row:bg-blue-500 group-hover/row:text-white",
           isGround ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-500"
         )}>
           {isGround ? 'G' : `F${floorNum}`}
         </span>
         {paintingActive && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onFillFloor}
-            className="text-[7px] font-black uppercase text-blue-600 h-4 px-1 mt-1 opacity-0 group-hover/row:opacity-100 transition-opacity bg-blue-50/50 hover:bg-blue-100"
-          >
-            Fill
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onFillFloor}
+                  className="h-6 rounded-full px-2 text-xs text-blue-600 bg-white hover:bg-blue-500 hover:text-white shadow-sm transition-all"
+                >
+                  <span className="flex items-center gap-0.5">
+                    <Zap className="w-2 h-2 fill-current" />Fill Floor
+                  </span> 
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg flex items-center gap-2">
+                <Zap className="w-3 h-3 text-yellow-400" />
+                <span>Fill whole floor with active config</span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 
@@ -453,10 +504,10 @@ function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChan
               <UnitCell unit={unit} onClick={() => onUnitClick(unit)} onStatusChange={onStatusChange} onDelete={() => onDeleteUnit(unit.id)} />
             ) : (
               <div 
-                onClick={() => onAddUnit(floorNum)}
-                className="h-[80px] rounded-2xl border-2 border-dashed border-slate-100 bg-white hover:border-blue-400 hover:bg-blue-50/20 transition-all flex items-center justify-center cursor-pointer group/box shadow-sm"
+                onClick={() => onAddUnit(floorNum, idx)}
+                className="h-[80px] rounded-2xl border-2 border-dashed border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/20 transition-all flex items-center justify-center cursor-pointer group/box shadow-sm"
               >
-                 <Plus className="w-4 h-4 text-slate-100 group-hover/box:text-blue-400 transition-colors scale-75" />
+                 <Plus className="w-4 h-4 text-slate-200 group-hover/box:text-blue-400 transition-colors scale-75" />
               </div>
             )}
           </div>
@@ -466,7 +517,7 @@ function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChan
             variant="ghost" 
             size="icon" 
             className="h-6 w-6 rounded-full opacity-0 group-hover/row:opacity-100 transition-all bg-white border border-slate-100 shadow-sm"
-            onClick={() => onAddUnit(floorNum)}
+            onClick={() => onAddUnit(floorNum, slots.length)}
            >
              <Plus className="w-3.5 h-3.5 text-slate-300" />
            </Button>

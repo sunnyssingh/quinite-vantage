@@ -8,6 +8,16 @@ import {
   SheetTitle,
   SheetFooter,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Building2, Save, Trash2, LayoutGrid, Layers } from 'lucide-react';
 import { autoNameTower } from '@/lib/inventory';
+import { cn } from '@/lib/utils';
 
 export default function TowerDrawer({
   open,
@@ -23,44 +34,55 @@ export default function TowerDrawer({
   tower,
   projectId,
   organizationId,
-  existingTowerCount = 0,
+  existingTowers = [],
   onSave,
   onDelete,
 }) {
   const [formData, setFormData] = useState({
     name: '',
-    total_floors: 10,
-    units_per_floor: 4,
+    total_floors: '',
+    units_per_floor: '',
     description: '',
-    order_index: existingTowerCount,
+    order_index: 0,
   });
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const nameExists = existingTowers.some(t => 
+    t.name?.toLowerCase().trim() === formData.name?.toLowerCase().trim() && 
+    t.id !== tower?.id
+  );
 
   useEffect(() => {
     if (mode === 'edit' && tower) {
       setFormData({
         name: tower.name || '',
-        total_floors: tower.total_floors || 10,
-        units_per_floor: tower.units_per_floor || 4,
+        total_floors: tower.total_floors || '',
+        units_per_floor: tower.units_per_floor || '',
         description: tower.description || '',
         order_index: tower.order_index || 0,
       });
     } else if (mode === 'add') {
-      const defaultName = autoNameTower(Array(existingTowerCount).fill({}));
+      const defaultName = autoNameTower(existingTowers || []);
       setFormData({
         name: defaultName,
         total_floors: 10,
         units_per_floor: 4,
         description: '',
-        order_index: existingTowerCount,
+        order_index: existingTowers.length,
       });
     }
-  }, [mode, tower, existingTowerCount, open]);
+  }, [mode, tower, existingTowers, open]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (nameExists) return;
+
     try {
       await onSave({
         ...formData,
+        total_floors: Number(formData.total_floors),
+        units_per_floor: Number(formData.units_per_floor),
         project_id: projectId,
         organization_id: organizationId
       });
@@ -69,6 +91,12 @@ export default function TowerDrawer({
       console.error('Error saving tower:', error);
     }
   };
+
+  const isValid = 
+     formData.name?.trim() && 
+     !nameExists &&
+     Number(formData.total_floors) > 0 && 
+     Number(formData.units_per_floor) > 0;
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -83,9 +111,7 @@ export default function TowerDrawer({
                 variant="ghost" 
                 size="icon" 
                 className="text-slate-400 hover:text-red-600 hover:bg-red-50" 
-                onClick={() => {
-                  if(confirm('Are you sure you want to delete this tower and all its units?')) onDelete(tower.id);
-                }}
+                onClick={() => setIsDeleteDialogOpen(true)}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -94,15 +120,23 @@ export default function TowerDrawer({
         </SheetHeader>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+          <div className="flex-1 p-6 space-y-4 overflow-y-auto">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="tower_name" className="text-xs font-bold text-slate-500 uppercase">Tower Name</Label>
+                <div className="flex justify-between items-center">
+                   <Label htmlFor="tower_name" className="text-xs font-bold text-slate-500 uppercase">Tower Name</Label>
+                   {nameExists && (
+                      <span className="text-[10px] font-bold text-red-500 animate-pulse">Name already exists</span>
+                   )}
+                </div>
                 <div className="relative">
-                  <Building2 className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                  <Building2 className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
                   <Input
                     id="tower_name"
-                    className="pl-9 h-11 bg-white rounded-lg border-slate-200 shadow-sm"
+                    className={cn(
+                       "pl-9 h-11 bg-white rounded-lg border-slate-200 shadow-sm",
+                       nameExists && "border-red-500 ring-1 ring-red-50"
+                    )}
                     value={formData.name}
                     onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
                     placeholder="e.g. Tower A, Block 1"
@@ -121,24 +155,26 @@ export default function TowerDrawer({
                     type="number"
                     min="1"
                     max="100"
+                    placeholder="10"
                     className="h-11 bg-white rounded-lg border-slate-200 shadow-sm"
                     value={formData.total_floors}
-                    onChange={(e) => setFormData(p => ({ ...p, total_floors: Number(e.target.value) }))}
+                    onChange={(e) => setFormData(p => ({ ...p, total_floors: e.target.value }))}
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="units_per_floor" className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
-                    <LayoutGrid className="w-4 h-4 text-slate-400" /> Units Per F
+                    <LayoutGrid className="w-4 h-4 text-slate-400" /> Units Per Floor
                   </Label>
                   <Input
                     id="units_per_floor"
                     type="number"
                     min="1"
                     max="20"
+                    placeholder="4"
                     className="h-11 bg-white rounded-lg border-slate-200 shadow-sm"
                     value={formData.units_per_floor}
-                    onChange={(e) => setFormData(p => ({ ...p, units_per_floor: Number(e.target.value) }))}
+                    onChange={(e) => setFormData(p => ({ ...p, units_per_floor: e.target.value }))}
                     required
                   />
                 </div>
@@ -164,8 +200,8 @@ export default function TowerDrawer({
                   <Layers className="w-5 h-5 text-blue-500" />
                </div>
                <div>
-                 <p className="font-bold text-blue-900 mb-1">Matrix Initialization Ready</p>
-                 <p className="opacity-80 text-xs leading-relaxed">Defining this tower will generate a coordinate mapping for {formData.total_floors * formData.units_per_floor} unique unit slots across {formData.total_floors} levels.</p>
+                 <p className="font-bold text-blue-900 mb-1">Tower Initialization Ready</p>
+                 <p className="opacity-80 text-xs leading-relaxed">Defining this structure will generate a mapping for {formData.total_floors * formData.units_per_floor} unique unit slots. <span className="font-bold text-blue-600">You can add units on any floor later.</span></p>
                </div>
             </div>
           </div>
@@ -174,13 +210,37 @@ export default function TowerDrawer({
             <Button type="button" variant="ghost" onClick={onClose} className="h-11 flex-1 rounded-lg font-bold text-slate-500">
               Cancel
             </Button>
-            <Button type="submit" className="h-11 flex-1 gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100">
+            <Button 
+              type="submit" 
+              disabled={!isValid}
+              className="h-11 flex-1 gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 font-bold shadow-lg shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Save className="w-4 h-4" />
               {mode === 'add' ? 'Create Tower' : 'Save'}
             </Button>
           </SheetFooter>
         </form>
       </SheetContent>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-3xl border-slate-100 shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900">Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500">
+              This will permanently delete <span className="font-bold text-slate-900">{tower?.name}</span> and all units associated with it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl border-slate-200 text-slate-500 font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => onDelete(tower.id)}
+              className="rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold"
+            >
+              Delete Tower
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }

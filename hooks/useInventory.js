@@ -27,7 +27,7 @@ export function useInventoryUnits(projectId = null) {
     return useQuery({
         queryKey: ['inventory-units', projectId],
         queryFn: async () => {
-            const url = projectId 
+            const url = projectId
                 ? `/api/inventory/units?project_id=${projectId}`
                 : '/api/inventory/units'
             const res = await fetch(url)
@@ -121,7 +121,7 @@ export function useInventory({ projectId, organizationId }) {
                 .eq('organization_id', organizationId)
                 .order('floor_number', { ascending: false })
             if (error) throw new Error(error.message)
-            
+
             // Return as object keyed by tower_id
             return (data || []).reduce((acc, unit) => {
                 const towerId = unit.tower_id || 'unassigned'
@@ -169,7 +169,7 @@ export function useInventory({ projectId, organizationId }) {
     const deleteTower = async (towerId) => {
         await supabase.from('units').delete().eq('tower_id', towerId).eq('organization_id', organizationId)
         const { error } = await supabase.from('towers').delete().eq('id', towerId).eq('organization_id', organizationId)
-        
+
         if (error) {
             toast.error('Failed to delete tower')
             throw new Error(error.message)
@@ -228,7 +228,7 @@ export function useInventory({ projectId, organizationId }) {
     const saveUnitConfig = async (configData) => {
         const method = configData.id ? 'PUT' : 'POST'
         const url = configData.id ? `/api/inventory/units/configs/${configData.id}` : '/api/inventory/units/configs'
-        
+
         const response = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
@@ -240,9 +240,8 @@ export function useInventory({ projectId, organizationId }) {
             toast.error(data.error || 'Failed to save configuration')
             throw new Error(data.error || 'Failed to save configuration')
         }
-        
+
         queryClient.invalidateQueries({ queryKey: ['unit-configs', projectId] })
-        toast.success('Unit configuration saved')
         return response.json()
     }
 

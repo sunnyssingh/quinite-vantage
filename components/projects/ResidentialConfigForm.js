@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Building2, Home, Store, ConciergeBell, Briefcase, ShoppingBag, Factory, IndianRupee } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { formatINR } from '@/lib/inventory'
 
 export default function ResidentialConfigForm({ onAdd, onCancel, category = 'residential', initialData = null }) {
     const [config, setConfig] = useState(initialData || {
@@ -64,12 +65,13 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
         onAdd(config)
     }
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-5 bg-[#f8fbff] p-5 rounded-2xl border border-blue-50/50">
-            <h2 className="text-lg font-bold text-slate-800 tracking-tight mb-1 px-1">
-                {initialData ? 'Edit Configuration' : 'New Configuration'}
-            </h2>
+    const isValid =
+        config.property_type &&
+        (isLand ? config.plot_area : config.carpet_area) &&
+        config.base_price;
 
+    return (
+        <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-blue-50/50">
             <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5">
                     <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Transaction Type</Label>
@@ -92,11 +94,11 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                     <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Category</Label>
                     <Select
                         value={config.category}
-                        onValueChange={(v) => setConfig(prev => ({ 
-                            ...prev, 
-                            category: v, 
-                            property_type: '', 
-                            config_name: v === 'residential' ? '3BHK' : '' 
+                        onValueChange={(v) => setConfig(prev => ({
+                            ...prev,
+                            category: v,
+                            property_type: '',
+                            config_name: v === 'residential' ? '3BHK' : ''
                         }))}
                     >
                         <SelectTrigger className="h-10 bg-white border-slate-200 shadow-sm focus:ring-1 focus:ring-blue-100">
@@ -124,13 +126,13 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                                 onClick={() => setConfig(prev => ({ ...prev, property_type: type.id }))}
                                 className={cn(
                                     "px-4 py-3 rounded-[14px] border-2 flex flex-col items-center justify-center gap-1.5 min-w-[110px] transition-all",
-                                    isSelected 
-                                        ? "border-blue-500 bg-white shadow-sm ring-2 ring-blue-50" 
+                                    isSelected
+                                        ? "border-blue-500 bg-white shadow-sm ring-2 ring-blue-50"
                                         : "border-slate-100 bg-white hover:border-slate-200 text-slate-400"
                                 )}
                             >
                                 <Icon className={cn("w-5 h-5", isSelected ? "text-blue-500" : "text-slate-300")} />
-                                <span className={cn("text-[10px] font-bold uppercase tracking-tight", isSelected ? "text-slate-900" : "text-slate-500")}>
+                                <span className={cn("text-xs font-bold", isSelected ? "text-slate-900" : "text-slate-500")}>
                                     {type.label}
                                 </span>
                             </button>
@@ -140,9 +142,9 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
             </div>
 
             <div className="grid grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Configuration</Label>
-                    {isResidential ? (
+                {isResidential && (
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Configuration</Label>
                         <Select
                             value={config.config_name}
                             onValueChange={(v) => setConfig(prev => ({ ...prev, config_name: v }))}
@@ -156,15 +158,8 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                                 ))}
                             </SelectContent>
                         </Select>
-                    ) : (
-                        <Input 
-                            value={config.config_name} 
-                            onChange={e => setConfig(p => ({ ...p, config_name: e.target.value }))}
-                            className="h-10 bg-white border-slate-200 shadow-sm"
-                            placeholder="Unit ID / Label"
-                        />
-                    )}
-                </div>
+                    </div>
+                )}
 
                 <div className="space-y-1.5">
                     <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
@@ -174,52 +169,59 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                         type="number"
                         placeholder="1200"
                         value={isLand ? (config.plot_area || '') : (config.carpet_area || '')}
-                        onChange={(e) => setConfig(prev => ({ 
-                            ...prev, 
-                            [isLand ? 'plot_area' : 'carpet_area']: e.target.value 
+                        onChange={(e) => setConfig(prev => ({
+                            ...prev,
+                            [isLand ? 'plot_area' : 'carpet_area']: e.target.value
                         }))}
-                        className="h-10 bg-white border-slate-200 shadow-sm"
+                        className="h-10 bg-white border-slate-200 shadow-sm placeholder:text-slate-400"
                         required
                     />
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-2 items-center gap-5">
                 <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Base Price *</Label>
+                    <div className="flex justify-between items-center px-0.5">
+                        <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Base Price *</Label>
+                        {Number(config.base_price) > 99999 && (
+                            <span className="text-[10px] font-black text-blue-600 animate-in fade-in slide-in-from-right-1">
+                                {formatINR(config.base_price)}
+                            </span>
+                        )}
+                    </div>
                     <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-xs">₹</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">₹</span>
                         <Input
                             type="number"
                             placeholder="7500000"
                             value={config.base_price || ''}
                             onChange={(e) => setConfig(prev => ({ ...prev, base_price: e.target.value }))}
-                            className="h-10 bg-white border-slate-200 pl-7 shadow-sm font-semibold"
+                            className="h-10 bg-white border-slate-200 pl-7 shadow-sm font-semibold placeholder:text-slate-400"
                             required
                         />
                     </div>
                 </div>
 
                 {isResidential && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 -mt-1 gap-3">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Built-Up</Label>
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Built-Up</Label>
                             <Input
                                 type="number"
                                 placeholder="1400"
                                 value={config.built_up_area || ''}
                                 onChange={(e) => setConfig(prev => ({ ...prev, built_up_area: e.target.value }))}
-                                className="h-10 bg-white border-slate-100 shadow-sm text-xs"
+                                className="h-10 bg-white border-slate-100 shadow-sm placeholder:text-slate-400"
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Super BU</Label>
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Super Built-Up</Label>
                             <Input
                                 type="number"
                                 placeholder="1650"
                                 value={config.super_built_up_area || ''}
                                 onChange={(e) => setConfig(prev => ({ ...prev, super_built_up_area: e.target.value }))}
-                                className="h-10 bg-white border-slate-100 shadow-sm text-xs"
+                                className="h-10 bg-white border-slate-200 shadow-sm placeholder:text-slate-400"
                             />
                         </div>
                     </div>
@@ -227,19 +229,20 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
             </div>
 
             <div className="flex justify-end gap-3 pt-4 px-1">
-                <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={onCancel} 
-                    className="h-9 px-6 rounded-lg text-slate-500 bg-white font-bold text-xs uppercase tracking-tight"
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCancel}
+                    className="h-9 px-5 rounded-lg text-slate-500 bg-white font-bold text-xs uppercase tracking-tight"
                 >
                     Cancel
                 </Button>
-                <Button 
-                    type="submit" 
-                    className="h-9 px-8 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-tight transition-all active:scale-95 shadow-md shadow-blue-100"
+                <Button
+                    type="submit"
+                    disabled={!isValid}
+                    className="h-9 px-6 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs uppercase tracking-tight transition-all active:scale-95 shadow-md shadow-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {initialData ? 'Update Prototype' : 'Add Configuration'}
+                    {initialData ? 'Update Configuration' : 'Add Configuration'}
                 </Button>
             </div>
         </form>
