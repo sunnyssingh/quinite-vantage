@@ -444,39 +444,7 @@ CREATE TABLE public.lead_interactions (
   CONSTRAINT lead_interactions_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
   CONSTRAINT lead_interactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
 );
-CREATE TABLE public.lead_profiles (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  lead_id uuid NOT NULL UNIQUE,
-  organization_id uuid NOT NULL,
-  company text,
-  job_title text,
-  location text,
-  industry text,
-  lead_score integer DEFAULT 0 CHECK (lead_score >= 0 AND lead_score <= 100),
-  engagement_level text DEFAULT 'cold'::text CHECK (engagement_level = ANY (ARRAY['hot'::text, 'warm'::text, 'cold'::text])),
-  budget_range text,
-  timeline text,
-  pain_points ARRAY,
-  competitor_mentions ARRAY,
-  preferred_contact_method text,
-  best_contact_time text,
-  preferences jsonb DEFAULT '{}'::jsonb,
-  custom_fields jsonb DEFAULT '{}'::jsonb,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  min_budget numeric,
-  max_budget numeric,
-  property_type_interest text,
-  sub_category_interest text,
-  mailing_street text,
-  mailing_city text,
-  mailing_state text,
-  mailing_zip text,
-  mailing_country text,
-  CONSTRAINT lead_profiles_pkey PRIMARY KEY (id),
-  CONSTRAINT lead_profiles_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id),
-  CONSTRAINT lead_profiles_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
-);
+-- lead_profiles table has been merged into leads (see latest_migartion.sql)
 CREATE TABLE public.lead_tags (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   lead_id uuid NOT NULL,
@@ -522,29 +490,58 @@ CREATE TABLE public.leads (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   metadata jsonb,
+  -- AI agent / call outcomes (written by vantage-webserver)
   transferred_to_human boolean DEFAULT false,
   rejection_reason text,
   abuse_flag boolean DEFAULT false,
   abuse_details text,
-  waiting_status text,
+  waiting_status text,            -- 'callback_scheduled' | null
   callback_time timestamp with time zone,
-  lead_source text DEFAULT 'Manual'::text,
+  -- Lead identity extras
+  mobile text,
+  avatar_url text,
   external_lead_id text,
   raw_data jsonb DEFAULT '{}'::jsonb,
+  -- Pipeline
   stage_id uuid NOT NULL,
   assigned_to uuid,
+  -- AI intelligence (updated after every call)
   score integer DEFAULT 0,
   last_contacted_at timestamp with time zone,
-  interest_level text,
-  purchase_readiness text,
-  budget_range text,
+  interest_level text,            -- 'high' | 'medium' | 'low' | 'none'
+  purchase_readiness text,        -- AI-assessed readiness
+  budget_range text,              -- AI-estimated budget from call transcript (free-text)
+  last_sentiment_score numeric,   -- -1.0 to 1.0
   total_calls integer DEFAULT 0,
-  last_sentiment_score numeric,
-  engagement_score integer DEFAULT 0,
-  mobile text,
-  title text,
+  -- Professional info (merged from lead_profiles)
+  company text,
+  job_title text,
+  industry text,
   department text,
-  avatar_url text,
+  -- Address (merged from lead_profiles)
+  mailing_street text,
+  mailing_city text,
+  mailing_state text,
+  mailing_zip text,
+  mailing_country text,
+  -- Client preferences (structured — matches inventory config form)
+  preferred_category text CHECK (preferred_category = ANY (ARRAY['residential'::text, 'commercial'::text, 'land'::text])),
+  preferred_property_type text,
+  preferred_configuration text,
+  preferred_transaction_type text CHECK (preferred_transaction_type = ANY (ARRAY['sell'::text, 'rent'::text, 'lease'::text])),
+  -- Purchase intent (structured)
+  preferred_location text,
+  preferred_timeline text,
+  min_budget numeric,
+  max_budget numeric,
+  -- Call context / behavioral (AI-written after calls)
+  pain_points text[],
+  competitor_mentions text[],
+  preferred_contact_method text,
+  best_contact_time text,
+  -- Extensibility
+  custom_fields jsonb DEFAULT '{}'::jsonb,
+  -- Archival
   archived_at timestamp with time zone,
   archived_by uuid,
   CONSTRAINT leads_pkey PRIMARY KEY (id),

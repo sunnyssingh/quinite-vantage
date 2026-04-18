@@ -12,22 +12,41 @@ import { LeadService } from '@/services/lead.service'
 export const GET = withAuth(async (request, { params, user, profile }) => {
     try {
         const { id } = await params
+        const supabase = createAdminClient()
 
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        const { data: lead, error } = await supabase
+            .from('leads')
+            .select(`
+                *,
+                project:projects(id, name, image_url, address),
+                stage:pipeline_stages(id, name, color, pipeline_id),
+                deals(id, name, amount, status, created_at, unit:units(id, unit_number, floor_number, carpet_area, built_up_area, base_price, total_price, status, bedrooms, facing, transaction_type), project:projects(id, name)),
+                unit:units!properties_lead_id_fkey(id, unit_number, base_price, total_price),
+                call_logs!call_logs_lead_id_fkey(id, duration, created_at, direction, notes, call_status, summary, recording_url, conversation_transcript, sentiment_score, interest_level, disconnect_reason),
+                assigned_to_user:profiles!leads_assigned_to_fkey(id, full_name, avatar_url)
+            `)
+            .eq('id', id)
+            .eq('organization_id', profile.organization_id)
+            .maybeSingle()
+
+        if (error) {
+            console.error('Lead fetch error:', error)
+            return NextResponse.json({ error: error.message }, { status: 500 })
         }
-
-        // Get lead using service
-        const lead = await LeadService.getLeadById(id, profile.organization_id)
 
         if (!lead) {
             return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
         }
 
+        // units FK is on units.lead_id (one-to-many) — normalise to single object
+        if (Array.isArray(lead.unit)) {
+            lead.unit = lead.unit[0] ?? null
+        }
+
         return NextResponse.json({ lead })
     } catch (error) {
         console.error('Error fetching lead:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 })
     }
 })
 
@@ -122,9 +141,18 @@ export async function PUT(request, { params }) {
         if (body.call_status !== undefined) updateData.call_status = body.call_status
         if (body.notes !== undefined) updateData.notes = body.notes
         if (body.mobile !== undefined) updateData.mobile = body.mobile
-        if (body.title !== undefined) updateData.title = body.title
-        if (body.department !== undefined) updateData.department = body.department
         if (body.avatar_url !== undefined) updateData.avatar_url = body.avatar_url
+
+        // Profile fields (formerly in lead_profiles, now on leads)
+        if (body.company !== undefined) updateData.company = body.company
+        if (body.job_title !== undefined) updateData.job_title = body.job_title
+        if (body.industry !== undefined) updateData.industry = body.industry
+        if (body.department !== undefined) updateData.department = body.department
+        if (body.mailing_street !== undefined) updateData.mailing_street = body.mailing_street
+        if (body.mailing_city !== undefined) updateData.mailing_city = body.mailing_city
+        if (body.mailing_state !== undefined) updateData.mailing_state = body.mailing_state
+        if (body.mailing_zip !== undefined) updateData.mailing_zip = body.mailing_zip
+        if (body.mailing_country !== undefined) updateData.mailing_country = body.mailing_country
 
         // Update lead
         const { data, error } = await supabase

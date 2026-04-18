@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, TrendingUp, DollarSign, Home, Trash2, ChevronDown, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
     DropdownMenu,
@@ -12,25 +11,34 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Plus, TrendingUp, Home, Trash2, ChevronDown, CheckCircle2, XCircle, Clock, Building2, ArrowRightLeft } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { formatCurrency } from '@/lib/utils/currency'
 import AddDealDialog from './AddDealDialog'
 
 const DEAL_STATUSES = [
-    { value: 'active', label: 'Active', icon: Clock, color: 'bg-blue-100 text-blue-700 border-blue-200' },
-    { value: 'negotiation', label: 'Negotiation', icon: Clock, color: 'bg-purple-100 text-purple-700 border-purple-200' },
-    { value: 'won', label: 'Closed Won ✓', icon: CheckCircle2, color: 'bg-green-100 text-green-700 border-green-200' },
-    { value: 'lost', label: 'Closed Lost ✗', icon: XCircle, color: 'bg-red-100 text-red-700 border-red-200' },
+    { value: 'active',      label: 'Active',        icon: Clock,         color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    { value: 'negotiation', label: 'Negotiation',   icon: Clock,         color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    { value: 'won',         label: 'Closed Won ✓',  icon: CheckCircle2,  color: 'bg-green-100 text-green-700 border-green-200' },
+    { value: 'lost',        label: 'Closed Lost ✗', icon: XCircle,       color: 'bg-red-100 text-red-700 border-red-200' },
 ]
 
 function getDealStatusConfig(status) {
     const s = (status || '').toLowerCase()
     if (s === 'won' || s === 'closed' || s === 'closed won')
-        return { label: 'Won', color: 'bg-green-100 text-green-700 border-green-200' }
+        return { label: 'Won',         color: 'bg-green-100 text-green-700 border-green-200' }
     if (s === 'lost')
-        return { label: 'Lost', color: 'bg-red-100 text-red-700 border-red-200' }
+        return { label: 'Lost',        color: 'bg-red-100 text-red-700 border-red-200' }
     if (s === 'negotiation')
         return { label: 'Negotiating', color: 'bg-purple-100 text-purple-700 border-purple-200' }
-    return { label: status || 'Active', color: 'bg-blue-100 text-blue-700 border-blue-200' }
+    return   { label: status || 'Active', color: 'bg-blue-100 text-blue-700 border-blue-200' }
+}
+
+function getUnitStatusConfig(status) {
+    const s = (status || '').toLowerCase()
+    if (s === 'sold')      return { label: 'Sold',     color: 'bg-red-100 text-red-600 border-red-200' }
+    if (s === 'reserved')  return { label: 'Reserved', color: 'bg-amber-100 text-amber-700 border-amber-200' }
+    return                        { label: 'Available', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
 }
 
 export default function UnitDealsCard({ deals = [], leadId, onUpdate, currency = 'INR', defaultUnit, defaultProject }) {
@@ -38,15 +46,14 @@ export default function UnitDealsCard({ deals = [], leadId, onUpdate, currency =
     const [updatingDealId, setUpdatingDealId] = useState(null)
 
     const handleDelete = async (dealId) => {
-        if (!confirm('Are you sure you want to delete this deal?')) return
+        if (!confirm('Remove this deal?')) return
         try {
             const res = await fetch(`/api/deals/${dealId}`, { method: 'DELETE' })
             if (!res.ok) throw new Error('Failed to delete deal')
-            toast.success('Deal deleted')
+            toast.success('Deal removed')
             if (onUpdate) onUpdate()
-        } catch (error) {
-            toast.error('Failed to delete deal')
-            console.error(error)
+        } catch {
+            toast.error('Failed to remove deal')
         }
     }
 
@@ -56,45 +63,35 @@ export default function UnitDealsCard({ deals = [], leadId, onUpdate, currency =
             const res = await fetch(`/api/deals/${dealId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus })
+                body: JSON.stringify({ status: newStatus }),
             })
             if (!res.ok) {
                 const err = await res.json()
-                throw new Error(err.error || 'Failed to update deal')
+                throw new Error(err.error || 'Failed to update')
             }
-
-            const statusLabel = DEAL_STATUSES.find(s => s.value === newStatus)?.label || newStatus
-            toast.success(`Deal marked as ${statusLabel}`)
-
-            // Also update inventory display
+            toast.success(`Marked as ${DEAL_STATUSES.find(s => s.value === newStatus)?.label || newStatus}`)
             if (onUpdate) onUpdate()
         } catch (error) {
-            toast.error(error.message || 'Failed to update deal status')
-            console.error(error)
+            toast.error(error.message || 'Failed to update deal')
         } finally {
             setUpdatingDealId(null)
         }
     }
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0
-        }).format(amount || 0)
-    }
-
-    const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0)
+    const totalValue = deals.reduce((sum, d) => sum + (d.amount || 0), 0)
 
     return (
         <>
             <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-gray-100 bg-gradient-to-r from-emerald-50/50 to-transparent">
                     <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-md">
-                            <TrendingUp className="w-4 h-4" />
+                        <div className="p-1.5 bg-emerald-100 text-emerald-600 rounded-md">
+                            <Home className="w-4 h-4" />
                         </div>
-                        <CardTitle className="text-sm font-semibold text-gray-900">Unit Deals</CardTitle>
+                        <div>
+                            <CardTitle className="text-sm font-bold text-gray-900">Linked Units</CardTitle>
+                            <p className="text-xs text-muted-foreground mt-0.5">Units & deals for this lead</p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="px-1.5 py-0 h-5 text-[10px] font-medium">
@@ -110,47 +107,83 @@ export default function UnitDealsCard({ deals = [], leadId, onUpdate, currency =
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent>
+
+                <CardContent className="pt-3 px-4 pb-4">
                     {deals.length > 0 ? (
                         <div className="space-y-3">
-                            {/* Total Value */}
-                            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-3 border border-emerald-100">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span className="text-xs font-medium text-emerald-700">Total Value</span>
+                            {/* Total pipeline value */}
+                            {totalValue > 0 && (
+                                <div className="flex items-center justify-between bg-emerald-50/70 rounded-lg px-3 py-2 border border-emerald-100">
+                                    <span className="text-xs text-emerald-700 font-medium">Total Deal Value</span>
+                                    <span className="text-sm font-bold text-emerald-900">{formatCurrency(totalValue)}</span>
                                 </div>
-                                <p className="text-lg font-bold text-emerald-900">{formatCurrency(totalValue)}</p>
-                            </div>
+                            )}
 
-                            {/* Deals List */}
-                            <div className="space-y-2 max-h-[240px] overflow-y-auto custom-scrollbar pr-1">
+                            {/* Deal rows */}
+                            <div className="space-y-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-0.5">
                                 {deals.map((deal, index) => {
-                                    const statusConfig = getDealStatusConfig(deal.status)
+                                    const unit = deal.unit
+                                    const project = deal.project
+                                    const dealStatus = getDealStatusConfig(deal.status)
+                                    const unitStatus = unit ? getUnitStatusConfig(unit.status) : null
                                     const isUpdating = updatingDealId === deal.id
+
+                                    // What to show as the title
+                                    const unitLabel = unit?.unit_number
+                                        || project?.name
+                                        || deal.name
+                                        || `Deal #${index + 1}`
+                                    const projectLabel = unit && project ? project.name : null
+
+                                    // Build detail chips
+                                    const chips = []
+                                    if (unit) {
+                                        if (unit.floor_number != null) chips.push(`Floor ${unit.floor_number}`)
+                                        if (unit.bedrooms)             chips.push(`${unit.bedrooms} BHK`)
+                                        const area = unit.carpet_area || unit.built_up_area
+                                        if (area)                      chips.push(`${area} sq.ft`)
+                                        if (unit.facing)               chips.push(`${unit.facing} facing`)
+                                    }
+
+                                    const dealAmount = deal.amount
+                                        ? formatCurrency(deal.amount)
+                                        : (unit?.total_price || unit?.base_price)
+                                            ? formatCurrency(unit.total_price || unit.base_price)
+                                            : null
+
                                     return (
                                         <div
                                             key={deal.id || index}
-                                            className="group p-2.5 rounded-lg border border-transparent hover:border-emerald-100 hover:shadow-sm transition-all"
+                                            className="group rounded-xl border border-gray-100 hover:border-emerald-200 hover:shadow-sm transition-all bg-white p-3"
                                         >
-                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                            {/* Row 1: unit name + deal status */}
+                                            <div className="flex items-start justify-between gap-2 mb-1.5">
                                                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                    <Home className="w-3.5 h-3.5 text-gray-400 shrink-0 group-hover:text-emerald-500 transition-colors" />
-                                                    <span className="text-sm font-medium text-gray-900 truncate group-hover:text-emerald-700 transition-colors">
-                                                        {deal.unit
-                                                            ? `${deal.unit.unit_number}${deal.unit.project ? ` (${deal.unit.project.name})` : ''}`
-                                                            : (deal.project?.name || deal.name || `Deal #${index + 1}`)
-                                                        }
-                                                    </span>
+                                                    <div className="p-1 bg-emerald-50 rounded-md shrink-0">
+                                                        {unit ? (
+                                                            <Home className="w-3 h-3 text-emerald-600" />
+                                                        ) : (
+                                                            <Building2 className="w-3 h-3 text-blue-500" />
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-semibold text-gray-900 truncate leading-tight">
+                                                            {unitLabel}
+                                                        </p>
+                                                        {projectLabel && (
+                                                            <p className="text-[10px] text-muted-foreground truncate">{projectLabel}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
 
-                                                {/* Status dropdown */}
+                                                {/* Deal status dropdown */}
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                         <button
                                                             disabled={isUpdating}
-                                                            className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold uppercase tracking-wide transition-all hover:opacity-80 ${statusConfig.color} ${isUpdating ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                            className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold uppercase tracking-wide transition-all hover:opacity-80 shrink-0 ${dealStatus.color} ${isUpdating ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                                         >
-                                                            {isUpdating ? '...' : statusConfig.label}
+                                                            {isUpdating ? '...' : dealStatus.label}
                                                             <ChevronDown className="w-2.5 h-2.5" />
                                                         </button>
                                                     </DropdownMenuTrigger>
@@ -176,26 +209,38 @@ export default function UnitDealsCard({ deals = [], leadId, onUpdate, currency =
                                                 </DropdownMenu>
                                             </div>
 
-                                            <div className="flex items-center justify-between pl-5">
-                                                <span className="text-xs font-semibold text-gray-900">
-                                                    {formatCurrency(deal.amount)}
-                                                </span>
+                                            {/* Row 2: unit detail chips */}
+                                            {chips.length > 0 && (
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-7 mb-2">
+                                                    {chips.map((chip, i) => (
+                                                        <span key={i} className="text-[10px] text-muted-foreground">{chip}</span>
+                                                    ))}
+                                                    {unitStatus && (
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-semibold ${unitStatus.color}`}>
+                                                            {unitStatus.label}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Row 3: deal amount + date + delete */}
+                                            <div className="flex items-center justify-between pl-7">
+                                                {dealAmount ? (
+                                                    <span className="text-xs font-bold text-gray-900">{dealAmount}</span>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground italic">No amount set</span>
+                                                )}
                                                 <div className="flex items-center gap-2">
                                                     {deal.created_at && (
                                                         <span className="text-[10px] text-gray-400">
-                                                            {new Date(deal.created_at).toLocaleDateString('en-IN', {
-                                                                month: 'short', day: 'numeric'
-                                                            })}
+                                                            {new Date(deal.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                                                         </span>
                                                     )}
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-5 w-5 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            handleDelete(deal.id)
-                                                        }}
+                                                        className="h-5 w-5 text-gray-300 hover:text-red-500 hover:bg-red-50"
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(deal.id) }}
                                                     >
                                                         <Trash2 className="w-3 h-3" />
                                                     </Button>
@@ -209,23 +254,23 @@ export default function UnitDealsCard({ deals = [], leadId, onUpdate, currency =
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="w-full text-xs h-8 border-dashed text-muted-foreground hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50"
+                                className="w-full text-xs h-8 border-dashed text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50"
                                 onClick={() => setIsAddDealOpen(true)}
                             >
                                 <Plus className="w-3.5 h-3.5 mr-1.5" />
-                                Add Another Deal
+                                Link Another Unit
                             </Button>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
-                                <TrendingUp className="w-5 h-5 text-gray-400" />
+                            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
+                                <Home className="w-5 h-5 text-emerald-400" />
                             </div>
-                            <p className="text-sm font-medium text-gray-900 mb-1">No deals yet</p>
-                            <p className="text-xs text-muted-foreground mb-4 max-w-[180px]">Creating a deal will automatically reserve the unit in inventory</p>
+                            <p className="text-sm font-medium text-gray-900 mb-1">No units linked</p>
+                            <p className="text-xs text-muted-foreground mb-4 max-w-[180px]">Link a unit from inventory to track this lead's interest</p>
                             <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setIsAddDealOpen(true)}>
                                 <Plus className="w-3 h-3 mr-1" />
-                                Add Deal
+                                Link Unit
                             </Button>
                         </div>
                     )}

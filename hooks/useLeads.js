@@ -52,23 +52,6 @@ export function useLead(leadId) {
 }
 
 /**
- * Custom hook for fetching a single lead's additional profile data
- */
-export function useLeadProfile(leadId) {
-    return useQuery({
-        queryKey: ['lead-profile', leadId],
-        queryFn: async () => {
-            const response = await fetch(`/api/leads/${leadId}/profile`)
-            if (!response.ok) throw new Error('Failed to fetch profile')
-            const data = await response.json()
-            return data.profile || null
-        },
-        enabled: !!leadId,
-    })
-}
-
-
-/**
  * Custom hook for creating a lead
  */
 export function useCreateLead() {

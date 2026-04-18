@@ -157,7 +157,7 @@ export default function FloorPlanLand({ projectId, project, units = [], organiza
         projectType="land"
         projectId={projectId}
         organizationId={organizationId}
-        unitConfigs={project?.unit_types || []}
+        unitConfigs={project?.unit_configs || []}
         onSave={async (data) => {
            try {
               if (selectedUnit) {

@@ -44,7 +44,7 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
                         price: uc.base_price,
                         type: uc.property_type
                     }))
-                    : (Array.isArray(project.unit_types) ? project.unit_types : [])
+                    : []
             })
         }
     }, [project])

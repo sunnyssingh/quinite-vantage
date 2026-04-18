@@ -1,19 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import {
     Dialog,
     DialogContent,
@@ -37,27 +26,25 @@ import {
     Calendar,
     CalendarClock,
     ChevronDown,
-    X,
-    Check,
-    User,
 } from 'lucide-react'
+
 import { toast } from 'react-hot-toast'
 import {
     format,
     isPast,
     isToday,
-    isFuture,
     parseISO,
     differenceInDays,
 } from 'date-fns'
 import { usePermissions } from '@/contexts/PermissionContext'
+import TaskFormFields, { taskToFormData, formDataToPayload, EMPTY_FORM } from '@/components/crm/TaskFormFields'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const PRIORITY_CONFIG = {
-    high:   { label: 'High',   dot: 'bg-red-500',     badge: 'bg-red-50 text-red-700 border-red-200' },
-    medium: { label: 'Medium', dot: 'bg-amber-500',   badge: 'bg-amber-50 text-amber-700 border-amber-200' },
-    low:    { label: 'Low',    dot: 'bg-emerald-500',  badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    high:   { label: 'High',   dot: 'bg-red-500',    text: 'text-red-600',    ring: 'ring-red-200' },
+    medium: { label: 'Medium', dot: 'bg-amber-400',  text: 'text-amber-600',  ring: 'ring-amber-200' },
+    low:    { label: 'Low',    dot: 'bg-blue-400',   text: 'text-blue-600',   ring: 'ring-blue-200' },
 }
 
 function getIsOverdue(task) {
@@ -69,308 +56,187 @@ function getIsOverdue(task) {
     )
 }
 
-function DueDateChip({ task }) {
+function DueDateBadge({ task }) {
     if (!task.due_date) return null
     const d = parseISO(task.due_date)
     const overdue = getIsOverdue(task)
-    const today = isToday(d)
+    const today   = isToday(d)
     const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0
-    const dateStr = hasTime ? format(d, 'MMM d, h:mm a') : format(d, 'MMM d, yyyy')
 
     if (overdue) {
         const daysAgo = Math.abs(differenceInDays(d, new Date()))
+        const fullDate = hasTime ? format(d, 'MMM d, h:mm a') : format(d, 'MMM d, yyyy')
         return (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600">
-                <AlertTriangle className="w-3 h-3" />
-                {daysAgo === 0 ? 'Overdue' : `${daysAgo}d overdue`}
-                <span className="text-red-400 font-normal">· {dateStr}</span>
-            </span>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5 cursor-default">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        {daysAgo === 0 ? 'Today' : `${daysAgo}d overdue`}
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">{fullDate}</TooltipContent>
+            </Tooltip>
         )
     }
     if (today) {
         return (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600">
-                <Clock className="w-3 h-3" /> Due today
-                {hasTime && <span className="text-blue-400 font-normal">· {format(d, 'h:mm a')}</span>}
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                <Clock className="w-3 h-3 shrink-0" />
+                {hasTime ? format(d, 'h:mm a') : 'Today'}
             </span>
         )
     }
     if (differenceInDays(d, new Date()) === 1) {
         return (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600">
-                <CalendarClock className="w-3 h-3" /> Tomorrow
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                <CalendarClock className="w-3 h-3 shrink-0" />
+                Tomorrow
             </span>
         )
     }
+    const label = hasTime ? format(d, 'MMM d · h:mm a') : format(d, 'MMM d')
     return (
-        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Calendar className="w-3 h-3" /> {dateStr}
+        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/60 border border-border rounded-full px-2 py-0.5">
+            <Calendar className="w-3 h-3 shrink-0" />
+            {label}
         </span>
     )
 }
 
-function AssigneeChip({ assignee }) {
+function AssigneeAvatar({ assignee }) {
     if (!assignee) return null
     const initials = (assignee.full_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <div className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 text-[8px] font-bold flex items-center justify-center overflow-hidden">
-                        {assignee.avatar_url
-                            ? <img src={assignee.avatar_url} alt="" className="w-full h-full object-cover" />
-                            : initials
-                        }
-                    </div>
-                    {assignee.full_name?.split(' ')[0]}
-                </span>
+                <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-600 text-[9px] font-bold flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-white cursor-default">
+                    {assignee.avatar_url
+                        ? <img src={assignee.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : initials
+                    }
+                </div>
             </TooltipTrigger>
             <TooltipContent className="text-xs">{assignee.full_name}</TooltipContent>
         </Tooltip>
     )
 }
 
-// ─── Edit Form (inline) ──────────────────────────────────────────────────────
-
-function TaskEditForm({ task, onSave, onCancel, teamMembers }) {
-    const [formData, setFormData] = useState({
-        title:       task.title || '',
-        description: task.description || '',
-        due_date:    task.due_date
-                        ? format(parseISO(task.due_date), "yyyy-MM-dd'T'HH:mm")
-                        : '',
-        priority:    task.priority || 'medium',
-        assigned_to: task.assigned_to || 'none',
-    })
-    const [saving, setSaving] = useState(false)
-
-    const handleSave = async () => {
-        if (!formData.title.trim()) { toast.error('Title is required'); return }
-        setSaving(true)
-        try {
-            const payload = {
-                title:       formData.title,
-                description: formData.description || null,
-                due_date:    formData.due_date || null,
-                priority:    formData.priority,
-                assigned_to: formData.assigned_to === 'none' ? null : formData.assigned_to,
-            }
-            const res = await fetch(`/api/leads/${task.lead_id}/tasks/${task.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            })
-            if (!res.ok) throw new Error()
-            toast.success('Task updated')
-            onSave()
-        } catch {
-            toast.error('Failed to update task')
-        } finally {
-            setSaving(false)
-        }
-    }
-
-    return (
-        <div className="mt-2 space-y-3 pb-1">
-            <Input
-                value={formData.title}
-                onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
-                placeholder="Task title"
-                className="h-8 text-sm"
-                autoFocus
-            />
-            <Textarea
-                value={formData.description}
-                onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
-                placeholder="Description (optional)"
-                rows={2}
-                className="text-sm resize-none"
-            />
-            <div className="grid grid-cols-2 gap-2">
-                <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">Due Date & Time</Label>
-                    <Input
-                        type="datetime-local"
-                        value={formData.due_date}
-                        onChange={e => setFormData(f => ({ ...f, due_date: e.target.value }))}
-                        className="h-8 text-xs"
-                    />
-                </div>
-                <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">Priority</Label>
-                    <Select
-                        value={formData.priority}
-                        onValueChange={v => setFormData(f => ({ ...f, priority: v }))}
-                    >
-                        <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
-            {teamMembers.length > 0 && (
-                <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">Assign To</Label>
-                    <Select
-                        value={formData.assigned_to}
-                        onValueChange={v => setFormData(f => ({ ...f, assigned_to: v }))}
-                    >
-                        <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Unassigned" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">Unassigned</SelectItem>
-                            {teamMembers.map(m => (
-                                <SelectItem key={m.id} value={m.id}>
-                                    {m.full_name || m.email}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-            )}
-            <div className="flex gap-2">
-                <Button size="sm" onClick={handleSave} disabled={saving} className="h-7 text-xs gap-1">
-                    <Check className="w-3 h-3" /> {saving ? 'Saving...' : 'Save'}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={onCancel} className="h-7 text-xs">
-                    Cancel
-                </Button>
-            </div>
-        </div>
-    )
-}
-
 // ─── Task Row ────────────────────────────────────────────────────────────────
 
-function TaskRow({ task, onToggle, onDelete, onEdit, teamMembers }) {
-    const [editing, setEditing]     = useState(false)
+function TaskRow({ task, onToggle, onDelete, onEditClick }) {
     const [confirmDel, setConfirmDel] = useState(false)
     const isCompleted = task.status === 'completed'
     const isOverdue   = getIsOverdue(task)
     const pCfg        = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium
 
     return (
-        <div
-            className={`
-                group rounded-xl border bg-background transition-all duration-150
-                ${isOverdue && !isCompleted
-                    ? 'border-l-2 border-l-red-500'
-                    : isCompleted
-                        ? 'border-border/40 opacity-55'
-                        : 'border-border hover:border-border/70 hover:shadow-sm'
-                }
-            `}
-        >
-            <div className="flex items-start gap-3 px-3.5 py-3">
-                <Checkbox
-                    checked={isCompleted}
-                    onCheckedChange={() => onToggle(task)}
-                    className="mt-0.5 shrink-0"
-                />
+        <div className={[
+            'group rounded-xl border bg-background transition-all duration-150',
+            isOverdue && !isCompleted
+                ? 'border-red-200 bg-red-50/20'
+                : isCompleted
+                    ? 'border-border/40 opacity-60'
+                    : 'border-border hover:border-border/80 hover:shadow-sm',
+        ].join(' ')}>
 
-                {/* Main content */}
-                <div className="flex-1 min-w-0">
-                    {editing ? (
-                        <TaskEditForm
-                            task={task}
-                            teamMembers={teamMembers}
-                            onSave={() => { setEditing(false); onEdit() }}
-                            onCancel={() => setEditing(false)}
-                        />
-                    ) : (
-                        <>
-                            <p className={`text-sm font-medium leading-snug ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                                {task.title}
-                            </p>
-                            {task.description && !isCompleted && (
-                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                    {task.description}
-                                </p>
-                            )}
-                            <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
-                                <Badge
-                                    variant="outline"
-                                    className={`text-[10px] h-4 px-1.5 py-0 font-medium ${pCfg.badge}`}
-                                >
-                                    {pCfg.label}
-                                </Badge>
-                                {!isCompleted && <DueDateChip task={task} />}
-                                {isCompleted && task.completed_at && (
-                                    <span className="text-[11px] text-muted-foreground">
-                                        Completed {format(parseISO(task.completed_at), 'MMM d')}
-                                    </span>
-                                )}
-                                <AssigneeChip assignee={task.assignee} />
-                            </div>
-                        </>
+            {/* Top row — checkbox · title · actions */}
+            <div className="flex items-start gap-2.5 px-3 pt-3 pb-1">
+                <button
+                    onClick={() => onToggle(task)}
+                    className={cn(
+                        "mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
+                        isCompleted
+                            ? "bg-indigo-600 border-indigo-600"
+                            : "border-gray-200 hover:border-indigo-500 text-transparent hover:text-indigo-500"
                     )}
-                </div>
+                >
+                    <CheckCircle2 className={cn("w-3.5 h-3.5", isCompleted ? "text-white" : "opacity-0 hover:opacity-100")} />
+                </button>
 
-                {/* Actions (show on hover, not during edit) */}
-                {!editing && !isCompleted && (
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <p className={`flex-1 min-w-0 text-sm font-medium leading-snug ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                    {task.title}
+                </p>
+
+                {/* Actions — visible on hover */}
+                <div className="flex items-center gap-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 -mt-0.5">
+                    {!isCompleted && !confirmDel && (
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost" size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setEditing(true)}
+                                <Button variant="ghost" size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                                    onClick={() => onEditClick(task)}
                                 >
-                                    <Pencil className="w-3.5 h-3.5" />
+                                    <Pencil className="w-3 h-3" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent className="text-xs">Edit</TooltipContent>
                         </Tooltip>
+                    )}
 
-                        {!confirmDel ? (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost" size="icon"
-                                        className="h-7 w-7 text-muted-foreground hover:text-red-600"
-                                        onClick={() => setConfirmDel(true)}
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent className="text-xs">Delete</TooltipContent>
-                            </Tooltip>
-                        ) : (
-                            <div className="flex items-center gap-1 bg-red-50 border border-red-200 rounded-md px-2 py-0.5">
-                                <span className="text-[11px] text-red-700 font-medium mr-0.5">Delete?</span>
-                                <button
-                                    onClick={() => onDelete(task.id)}
-                                    className="text-[11px] font-semibold text-red-600 hover:text-red-800"
-                                >Yes</button>
-                                <span className="text-red-300">·</span>
-                                <button
-                                    onClick={() => setConfirmDel(false)}
-                                    className="text-[11px] text-muted-foreground hover:text-foreground"
-                                >No</button>
-                            </div>
-                        )}
-                    </div>
-                )}
-                {!editing && isCompleted && (
+                    {!confirmDel ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-red-500"
+                                    onClick={() => setConfirmDel(true)}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="text-xs">{isCompleted ? 'Remove' : 'Delete'}</TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <div className="flex items-center gap-1 bg-red-50 border border-red-200 rounded-lg px-1.5 py-0.5">
+                            <span className="text-[10px] text-red-700 font-medium">Delete?</span>
+                            <button onClick={() => onDelete(task.id)} className="text-[10px] font-bold text-red-600 hover:text-red-800 ml-0.5">Yes</button>
+                            <span className="text-red-300 text-[10px]">·</span>
+                            <button onClick={() => setConfirmDel(false)} className="text-[10px] text-muted-foreground hover:text-foreground">No</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Description */}
+            {task.description && !isCompleted && (
+                <p className="text-xs text-muted-foreground px-3 pb-1 pl-[calc(0.75rem+1.25rem+0.625rem)] line-clamp-1">
+                    {task.description}
+                </p>
+            )}
+
+            {/* Footer — date · priority · assignee */}
+            <div className="flex items-center justify-between px-3 pb-2.5 pt-1 pl-[calc(0.75rem+1.25rem+0.625rem)]">
+                {/* Left: date or completed date */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                    {!isCompleted && <DueDateBadge task={task} />}
+                    {isCompleted && task.completed_at && (
+                        <span className="text-[11px] text-muted-foreground">
+                            Done {format(parseISO(task.completed_at), 'MMM d')}
+                        </span>
+                    )}
+                    {!isCompleted && !task.due_date && (
+                        <span className="text-[11px] text-muted-foreground/50">No due date</span>
+                    )}
+                </div>
+
+                {/* Right: priority pill + assignee avatar */}
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button
-                                variant="ghost" size="icon"
-                                className="h-7 w-7 text-muted-foreground hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                onClick={() => onDelete(task.id)}
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
+                            <span className="inline-flex items-center gap-1 cursor-default">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${pCfg.dot}`} />
+                                <span className={`text-[11px] font-medium ${pCfg.text}`}>{pCfg.label}</span>
+                            </span>
                         </TooltipTrigger>
-                        <TooltipContent className="text-xs">Remove</TooltipContent>
+                        <TooltipContent className="text-xs">Priority: {pCfg.label}</TooltipContent>
                     </Tooltip>
-                )}
+
+                    {task.assignee && (
+                        <>
+                            <span className="text-border text-[10px]">·</span>
+                            <AssigneeAvatar assignee={task.assignee} />
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     )
@@ -380,29 +246,35 @@ function TaskRow({ task, onToggle, onDelete, onEdit, teamMembers }) {
 
 export default function LeadTasksManager({ leadId }) {
     const { hasAnyPermission, loading: permLoading } = usePermissions()
-    const [tasks, setTasks]           = useState([])
-    const [loading, setLoading]       = useState(true)
-    const [dialogOpen, setDialogOpen] = useState(false)
-    const [submitting, setSubmitting] = useState(false)
+    const [tasks, setTasks]             = useState([])
+    const [loading, setLoading]         = useState(true)
+    const [createOpen, setCreateOpen]   = useState(false)
+    const [editTask, setEditTask]       = useState(null)   // task being edited
+    const [submitting, setSubmitting]   = useState(false)
     const [showCompleted, setShowCompleted] = useState(false)
-    const [teamMembers, setTeamMembers]     = useState([])
-    const [formData, setFormData] = useState({
-        title: '', description: '', due_date: '', priority: 'medium', assigned_to: 'none',
-    })
+    const [teamMembers, setTeamMembers] = useState([])
+    const [createForm, setCreateForm]   = useState(EMPTY_FORM)
+    const [editForm, setEditForm]       = useState(EMPTY_FORM)
 
     const canAssignOthers = !permLoading &&
         hasAnyPermission(['view_team_leads', 'view_all_leads', 'assign_leads'])
 
     useEffect(() => { fetchTasks() }, [leadId])
 
+    // Load team members when either dialog opens
     useEffect(() => {
-        if (dialogOpen && canAssignOthers && teamMembers.length === 0) {
+        if ((createOpen || editTask) && canAssignOthers && teamMembers.length === 0) {
             fetch('/api/admin/users')
                 .then(r => r.ok ? r.json() : null)
                 .then(d => { if (d?.users) setTeamMembers(d.users) })
                 .catch(() => {})
         }
-    }, [dialogOpen, canAssignOthers])
+    }, [createOpen, editTask, canAssignOthers])
+
+    // Populate edit form whenever a task is selected for editing
+    useEffect(() => {
+        if (editTask) setEditForm(taskToFormData(editTask))
+    }, [editTask?.id])
 
     const fetchTasks = async () => {
         try {
@@ -450,24 +322,18 @@ export default function LeadTasksManager({ leadId }) {
 
     const handleCreate = async (e) => {
         e.preventDefault()
+        if (!createForm.title.trim()) { toast.error('Title is required'); return }
         try {
             setSubmitting(true)
-            const payload = {
-                title:       formData.title,
-                description: formData.description || null,
-                due_date:    formData.due_date || null,
-                priority:    formData.priority,
-                assigned_to: formData.assigned_to === 'none' ? null : formData.assigned_to,
-            }
             const res = await fetch(`/api/leads/${leadId}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(formDataToPayload(createForm)),
             })
             if (!res.ok) throw new Error()
             toast.success('Task created')
-            setDialogOpen(false)
-            setFormData({ title: '', description: '', due_date: '', priority: 'medium', assigned_to: 'none' })
+            setCreateOpen(false)
+            setCreateForm(EMPTY_FORM)
             fetchTasks()
         } catch {
             toast.error('Failed to create task')
@@ -476,10 +342,30 @@ export default function LeadTasksManager({ leadId }) {
         }
     }
 
+    const handleEditSave = async (e) => {
+        e.preventDefault()
+        if (!editForm.title.trim()) { toast.error('Title is required'); return }
+        try {
+            setSubmitting(true)
+            const res = await fetch(`/api/leads/${leadId}/tasks/${editTask.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formDataToPayload(editForm)),
+            })
+            if (!res.ok) throw new Error()
+            toast.success('Task updated')
+            setEditTask(null)
+            fetchTasks()
+        } catch {
+            toast.error('Failed to update task')
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
     const pending   = tasks.filter(t => t.status !== 'completed')
     const completed = tasks.filter(t => t.status === 'completed')
 
-    // Sort pending: overdue first, then by due_date asc, then no date
     const sortedPending = [...pending].sort((a, b) => {
         const aOver = getIsOverdue(a)
         const bOver = getIsOverdue(b)
@@ -517,7 +403,7 @@ export default function LeadTasksManager({ leadId }) {
                     <Button
                         size="sm" variant="outline"
                         className="h-7 text-xs gap-1"
-                        onClick={() => setDialogOpen(true)}
+                        onClick={() => setCreateOpen(true)}
                     >
                         <Plus className="w-3.5 h-3.5" /> Add
                     </Button>
@@ -531,7 +417,7 @@ export default function LeadTasksManager({ leadId }) {
                         <p className="text-xs text-muted-foreground/70 mt-0.5">No pending tasks for this lead</p>
                         <Button
                             variant="ghost" size="sm" className="mt-3 h-7 text-xs gap-1"
-                            onClick={() => setDialogOpen(true)}
+                            onClick={() => setCreateOpen(true)}
                         >
                             <Plus className="w-3 h-3" /> Add a task
                         </Button>
@@ -544,8 +430,7 @@ export default function LeadTasksManager({ leadId }) {
                                 task={task}
                                 onToggle={handleToggle}
                                 onDelete={handleDelete}
-                                onEdit={fetchTasks}
-                                teamMembers={teamMembers}
+                                onEditClick={setEditTask}
                             />
                         ))}
                     </div>
@@ -569,8 +454,7 @@ export default function LeadTasksManager({ leadId }) {
                                         task={task}
                                         onToggle={handleToggle}
                                         onDelete={handleDelete}
-                                        onEdit={fetchTasks}
-                                        teamMembers={teamMembers}
+                                        onEditClick={setEditTask}
                                     />
                                 ))}
                             </div>
@@ -580,84 +464,50 @@ export default function LeadTasksManager({ leadId }) {
             </div>
 
             {/* ─── Create Task Dialog ──────────────────────────────────────── */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={createOpen} onOpenChange={open => { setCreateOpen(open); if (!open) setCreateForm(EMPTY_FORM) }}>
                 <DialogContent className="max-w-sm">
                     <DialogHeader>
                         <DialogTitle>Add Task</DialogTitle>
                         <DialogDescription>Create a follow-up for this lead.</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleCreate} className="space-y-3">
-                        <div className="space-y-1.5">
-                            <Label>Title <span className="text-red-500">*</span></Label>
-                            <Input
-                                value={formData.title}
-                                onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
-                                placeholder="What needs to be done?"
-                                required
-                                autoFocus
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-muted-foreground text-xs">Description <span className="font-normal">(optional)</span></Label>
-                            <Textarea
-                                value={formData.description}
-                                onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
-                                placeholder="Add details..."
-                                rows={2}
-                                className="resize-none text-sm"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label>Due Date & Time</Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={formData.due_date}
-                                    onChange={e => setFormData(f => ({ ...f, due_date: e.target.value }))}
-                                    className="text-xs"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label>Priority</Label>
-                                <Select
-                                    value={formData.priority}
-                                    onValueChange={v => setFormData(f => ({ ...f, priority: v }))}
-                                >
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="low">Low</SelectItem>
-                                        <SelectItem value="medium">Medium</SelectItem>
-                                        <SelectItem value="high">High</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        {canAssignOthers && teamMembers.length > 0 && (
-                            <div className="space-y-1.5">
-                                <Label>Assign To <span className="text-muted-foreground text-xs font-normal">(optional)</span></Label>
-                                <Select
-                                    value={formData.assigned_to}
-                                    onValueChange={v => setFormData(f => ({ ...f, assigned_to: v }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Unassigned" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Unassigned</SelectItem>
-                                        {teamMembers.map(m => (
-                                            <SelectItem key={m.id} value={m.id}>
-                                                {m.full_name || m.email}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
+                        <TaskFormFields
+                            formData={createForm}
+                            onChange={(field, value) => setCreateForm(f => ({ ...f, [field]: value }))}
+                            teamMembers={teamMembers}
+                            canAssignOthers={canAssignOthers}
+                        />
                         <div className="flex gap-2 pt-1">
                             <Button type="submit" disabled={submitting} className="flex-1">
                                 {submitting ? 'Creating...' : 'Create Task'}
                             </Button>
-                            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                                Cancel
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── Edit Task Dialog ────────────────────────────────────────── */}
+            <Dialog open={!!editTask} onOpenChange={open => { if (!open) setEditTask(null) }}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Edit Task</DialogTitle>
+                        <DialogDescription>Update the details for this task.</DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleEditSave} className="space-y-3">
+                        <TaskFormFields
+                            formData={editForm}
+                            onChange={(field, value) => setEditForm(f => ({ ...f, [field]: value }))}
+                            teamMembers={teamMembers}
+                            canAssignOthers={canAssignOthers}
+                        />
+                        <div className="flex gap-2 pt-1">
+                            <Button type="submit" disabled={submitting} className="flex-1">
+                                {submitting ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                            <Button type="button" variant="outline" onClick={() => setEditTask(null)}>
                                 Cancel
                             </Button>
                         </div>

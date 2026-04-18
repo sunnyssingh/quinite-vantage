@@ -5,14 +5,37 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Building2, Home, Store, ConciergeBell, Briefcase, ShoppingBag, Factory, IndianRupee } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Building2, Home, Store, ConciergeBell, Briefcase, ShoppingBag, Factory, IndianRupee, Sparkles, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatINR } from '@/lib/inventory'
+import {
+    PROPERTY_CATEGORIES,
+    PROPERTY_TYPES,
+    RESIDENTIAL_CONFIGURATIONS,
+    TRANSACTION_TYPES,
+} from '@/lib/property-constants'
+import AmenitiesPicker from '@/components/amenities/AmenitiesPicker'
+import { DynamicIcon } from '@/components/amenities/DynamicIcon'
+import { UNIT_AMENITY_MAP } from '@/lib/amenities-constants'
+
+const TYPE_ICONS = {
+    Apartment:  Building2,
+    Villa:      Home,
+    Penthouse:  ConciergeBell,
+    Office:     Briefcase,
+    Retail:     ShoppingBag,
+    Showroom:   Store,
+    Industrial: Factory,
+    Plot:       Home,
+    Land:       Building2,
+}
 
 export default function ResidentialConfigForm({ onAdd, onCancel, category = 'residential', initialData = null }) {
+    const [amenitiesOpen, setAmenitiesOpen] = useState(false)
     const [config, setConfig] = useState(initialData || {
         transaction_type: 'sell',
-        category: category,
+        category,
         property_type: '',
         config_name: category === 'residential' ? '3BHK' : '',
         carpet_area: '',
@@ -20,44 +43,20 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
         super_built_up_area: '',
         plot_area: '',
         base_price: '',
+        amenities: [],
     })
 
     useEffect(() => {
         if (!config.property_type) {
-            const types = getPropertyTypes(config.category)
+            const types = PROPERTY_TYPES[config.category] || []
             if (types.length > 0) {
                 setConfig(prev => ({ ...prev, property_type: types[0].id }))
             }
         }
     }, [config.category])
 
-    function getPropertyTypes(cat) {
-        const safeCat = (cat || 'residential').toLowerCase()
-        switch (safeCat) {
-            case 'commercial':
-                return [
-                    { id: 'Office', label: 'Office', icon: Briefcase },
-                    { id: 'Retail', label: 'Retail', icon: ShoppingBag },
-                    { id: 'Showroom', label: 'Showroom', icon: Store },
-                    { id: 'Industrial', label: 'Industrial', icon: Factory },
-                ]
-            case 'land':
-                return [
-                    { id: 'Plot', label: 'Plot', icon: Home },
-                    { id: 'Land', label: 'Land', icon: Building2 },
-                ]
-            default: // residential
-                return [
-                    { id: 'Apartment', label: 'Apartment', icon: Building2 },
-                    { id: 'Villa', label: 'Villa Bungalow', icon: Home },
-                    { id: 'Penthouse', label: 'Penthouse', icon: ConciergeBell },
-                ]
-        }
-    }
-
-    const propertyTypes = getPropertyTypes(config.category)
+    const propertyTypes = PROPERTY_TYPES[config.category] || []
     const isResidential = config.category === 'residential'
-    const isCommercial = config.category === 'commercial'
     const isLand = config.category === 'land'
 
     const handleSubmit = (e) => {
@@ -68,7 +67,7 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
     const isValid =
         config.property_type &&
         (isLand ? config.plot_area : config.carpet_area) &&
-        config.base_price;
+        config.base_price
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-blue-50/50">
@@ -83,9 +82,9 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="sell">Sell</SelectItem>
-                            <SelectItem value="rent">Rent</SelectItem>
-                            <SelectItem value="lease">Lease</SelectItem>
+                            {TRANSACTION_TYPES.map(tx => (
+                                <SelectItem key={tx.id} value={tx.id}>{tx.label}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -105,9 +104,9 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="residential">Residential</SelectItem>
-                            <SelectItem value="commercial">Commercial</SelectItem>
-                            <SelectItem value="land">Land</SelectItem>
+                            {PROPERTY_CATEGORIES.map(cat => (
+                                <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -117,7 +116,7 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                 <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Property Type</Label>
                 <div className="flex flex-wrap gap-3">
                     {propertyTypes.map((type) => {
-                        const Icon = type.icon
+                        const Icon = TYPE_ICONS[type.id] || Building2
                         const isSelected = config.property_type === type.id
                         return (
                             <button
@@ -153,7 +152,7 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                                 <SelectValue placeholder="Select BHK" />
                             </SelectTrigger>
                             <SelectContent>
-                                {['1RK', '1BHK', '1.5BHK', '2BHK', '2.5BHK', '3BHK', '3.5BHK', '4BHK', '5BHK', 'Penthouse'].map(opt => (
+                                {RESIDENTIAL_CONFIGURATIONS.map(opt => (
                                     <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -224,6 +223,71 @@ export default function ResidentialConfigForm({ onAdd, onCancel, category = 'res
                                 className="h-10 bg-white border-slate-200 shadow-sm placeholder:text-slate-400"
                             />
                         </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Unit Features (Amenities) — popover trigger */}
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+                <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <Sparkles className="w-3 h-3" />
+                        Unit Features
+                        {config.amenities?.length > 0 && (
+                            <span className="ml-1 bg-blue-100 text-blue-600 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                                {config.amenities.length}
+                            </span>
+                        )}
+                    </span>
+                    <Popover open={amenitiesOpen} onOpenChange={setAmenitiesOpen}>
+                        <PopoverTrigger asChild>
+                            <button
+                                type="button"
+                                className="flex items-center gap-0.5 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors"
+                            >
+                                {config.amenities?.length > 0 ? 'Edit' : 'Add'}
+                                <ChevronRight className="w-3 h-3" />
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            side="right"
+                            align="start"
+                            className="w-[420px] p-0 shadow-2xl rounded-2xl border-slate-100"
+                        >
+                            <AmenitiesPicker
+                                context="unit"
+                                value={config.amenities || []}
+                                onChange={(ids) => setConfig(prev => ({ ...prev, amenities: ids }))}
+                                variant="full"
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </div>
+
+                {/* Selected chips — compact, removable */}
+                {config.amenities?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {config.amenities.map(id => {
+                            const a = UNIT_AMENITY_MAP[id]
+                            if (!a) return null
+                            return (
+                                <span
+                                    key={id}
+                                    className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                >
+                                    <DynamicIcon name={a.icon} className="w-2.5 h-2.5 shrink-0" />
+                                    {a.label}
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfig(prev => ({ ...prev, amenities: prev.amenities.filter(x => x !== id) }))}
+                                        className="ml-0.5 text-slate-400 hover:text-red-500 transition-colors leading-none"
+                                        aria-label={`Remove ${a.label}`}
+                                    >
+                                        <X className="w-2.5 h-2.5" />
+                                    </button>
+                                </span>
+                            )
+                        })}
                     </div>
                 )}
             </div>

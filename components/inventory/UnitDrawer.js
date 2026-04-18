@@ -62,6 +62,8 @@ import { formatINR, calculateFinalPrice, generateUnitNumber, getStatusConfig } f
 import { useLeads } from '@/hooks/useLeads';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import AmenitiesDisplay from '@/components/amenities/AmenitiesDisplay';
+import AmenitiesPicker from '@/components/amenities/AmenitiesPicker';
 
 export default function UnitDrawer({
   open,
@@ -103,6 +105,7 @@ export default function UnitDrawer({
     completion_date: '',
     lead_id: null,
     metadata: {},
+    amenities: null,
   });
 
   const [openLeadPicker, setOpenLeadPicker] = useState(false);
@@ -135,6 +138,7 @@ export default function UnitDrawer({
         completion_date: unit.completion_date || '',
         lead_id: unit.lead_id || null,
         metadata: unit.metadata || {},
+        amenities: unit.amenities ?? null,
       });
     } else if (mode === 'add' && tower) {
       const normalizeProjectStatus = (status) => {
@@ -145,7 +149,7 @@ export default function UnitDrawer({
       };
       
       const generated = generateUnitNumber(tower.name, floorNumber, slotIndex || 0);
-      const projectStatus = normalizeProjectStatus(project?.status || project?.metadata?.real_estate?.project?.status);
+      const projectStatus = normalizeProjectStatus(project?.status);
       setFormData({
         unit_number: generated,
         config_id: '',
@@ -171,6 +175,7 @@ export default function UnitDrawer({
         metadata: {
            slot_index: slotIndex
         },
+        amenities: null,
       });
     }
   }, [mode, unit, tower, floorNumber, slotIndex, towerId, open, project]);
@@ -321,6 +326,56 @@ export default function UnitDrawer({
                     </Select>
                   </div>
                 </div>
+
+                {/* Unit features — inherit from config or override per-unit */}
+                {selectedConfig && (
+                  <div className="space-y-2 pt-0.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" /> Unit Features
+                      </Label>
+                      {formData.amenities === null ? (
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, amenities: selectedConfig?.amenities || [] }))}
+                          className="text-[10px] font-semibold text-blue-500 hover:text-blue-700 transition-colors flex items-center gap-0.5"
+                        >
+                          Override <ChevronRight className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, amenities: null }))}
+                          className="text-[10px] font-semibold text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                          ✕ Use config defaults
+                        </button>
+                      )}
+                    </div>
+
+                    {formData.amenities === null ? (
+                      // Inherit mode — show config amenities read-only
+                      selectedConfig.amenities?.length > 0 ? (
+                        <AmenitiesDisplay
+                          amenityIds={selectedConfig.amenities}
+                          context="unit"
+                          variant="tags"
+                          maxVisible={6}
+                        />
+                      ) : (
+                        <p className="text-[10px] text-slate-400 italic">No features set on this config.</p>
+                      )
+                    ) : (
+                      // Override mode — editable picker
+                      <AmenitiesPicker
+                        context="unit"
+                        value={formData.amenities}
+                        onChange={(ids) => setFormData(p => ({ ...p, amenities: ids }))}
+                        variant="compact"
+                      />
+                    )}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
                   <div className="space-y-1">

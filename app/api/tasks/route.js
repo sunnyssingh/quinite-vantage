@@ -70,7 +70,6 @@ export const GET = withAuth(async (request, context) => {
                     mobile,
                     score,
                     interest_level,
-                    budget_range,
                     assigned_to,
                     stage:pipeline_stages!leads_stage_id_fkey(id, name, color)
                 )

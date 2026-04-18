@@ -97,6 +97,7 @@ export async function POST(request, { params }) {
                 title:           body.title,
                 description:     body.description || null,
                 due_date:        body.due_date    || null,
+                due_time:        body.due_time    || null,
                 priority:        body.priority    || 'medium',
                 status:          'pending',
                 assigned_to:     body.assigned_to || null,

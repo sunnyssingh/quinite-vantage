@@ -52,7 +52,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 export default function VisualUnitGrid({ projectId, project, organizationId, readOnly = false }) {
-  const projectType = project?.metadata?.real_estate?.property?.category || project?.category || 'residential';
+  // Only treat as land if every unit config is land category.
+  // A single non-land config (or any existing towers) means tower/floor view.
+  const allConfigsAreLand =
+    project?.unit_configs?.length > 0 &&
+    project.unit_configs.every(c => c.category === 'land');
+  const projectType = allConfigsAreLand ? 'land' : 'residential';
   
   const { 
     towers = [], 
@@ -139,7 +144,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
         unit_number: generateUnitNumber(activeTower?.name, floorNum, nextIndex),
         status: 'available',
         transaction_type: selectedConfig.transaction_type || 'sell',
-        construction_status: normalizeProjectStatus(project?.status || project?.metadata?.real_estate?.project?.status),
+        construction_status: normalizeProjectStatus(project?.status),
         bedrooms: selectedConfig.config_name?.match(/\d+/) ? parseInt(selectedConfig.config_name.match(/\d+/)[0]) : null,
         metadata: {
            slot_index: nextIndex
@@ -213,12 +218,13 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
     );
   }
 
-  if (projectType === 'land') {
-     return <FloorPlanLand 
-        projectId={projectId} 
-        project={project} 
-        units={Object.values(units).flat()} 
-        organizationId={organizationId} 
+  // Show land plot view only when: explicitly land project, loading done, and no towers have been created
+  if (projectType === 'land' && !isLoading && towers.length === 0) {
+     return <FloorPlanLand
+        projectId={projectId}
+        project={project}
+        units={Object.values(units).flat()}
+        organizationId={organizationId}
         onAddUnit={addUnit}
         onUpdateUnit={updateUnit}
         onDeleteUnit={deleteUnit}
@@ -314,7 +320,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-slate-100/50">
+      <div className="flex-1 flex flex-col bg-slate-100/50 min-w-0">
         <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between">
           <div className="flex gap-1 overflow-x-auto no-scrollbar">
             {towers.map(tower => (
@@ -354,7 +360,7 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
         </div>
 
         <div className="flex-1 overflow-auto p-4 md:p-8 overflow-x-auto">
-          <div className="max-w-[1400px] mx-auto space-y-12 pb-20 overflow-x-auto">
+          <div className="max-w-[1400px] mx-auto space-y-12 pb-20">
             {selectedConfig && (
               <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in slide-in-from-top-3 sticky top-0 z-50">
                 <div className="flex items-center gap-4">
@@ -370,29 +376,31 @@ export default function VisualUnitGrid({ projectId, project, organizationId, rea
               </div>
             )}
 
-            <div className="space-y-4">
-              {activeTower ? (
-                Array.from({ length: activeTower.total_floors + 1 }, (_, i) => activeTower.total_floors - i).map(floorNum => (
-                  <FloorRow 
-                    key={floorNum}
-                    floorNum={floorNum}
-                    tower={activeTower}
-                    units={towerUnits}
-                    onUnitClick={handleEditUnit}
-                    onAddUnit={handleOpenAddUnit}
-                    onStatusChange={updateUnitStatus}
-                    onDeleteUnit={deleteUnit}
-                    onFillFloor={() => handleFillFloor(floorNum)}
-                    paintingActive={!!selectedConfig}
-                  />
-                ))
-              ) : (
-                <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white/50">
-                  <Building2 className="w-16 h-16 mb-4 opacity-10" />
-                  <p className="text-lg font-black uppercase tracking-wider text-slate-300">No towers defined</p>
-                  <Button onClick={() => { setDrawerMode('add_tower'); setDrawerOpen(true); }} className="mt-6 bg-slate-900 text-white rounded-xl h-12 px-8 font-bold">Create Tower</Button>
-                </div>
-              )}
+            <div className="overflow-x-auto">
+              <div className="w-max min-w-full space-y-4">
+                {activeTower ? (
+                  Array.from({ length: activeTower.total_floors + 1 }, (_, i) => activeTower.total_floors - i).map(floorNum => (
+                    <FloorRow
+                      key={floorNum}
+                      floorNum={floorNum}
+                      tower={activeTower}
+                      units={towerUnits}
+                      onUnitClick={handleEditUnit}
+                      onAddUnit={handleOpenAddUnit}
+                      onStatusChange={updateUnitStatus}
+                      onDeleteUnit={deleteUnit}
+                      onFillFloor={() => handleFillFloor(floorNum)}
+                      paintingActive={!!selectedConfig}
+                    />
+                  ))
+                ) : (
+                  <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 rounded-3xl bg-white/50">
+                    <Building2 className="w-16 h-16 mb-4 opacity-10" />
+                    <p className="text-lg font-black uppercase tracking-wider text-slate-300">No towers defined</p>
+                    <Button onClick={() => { setDrawerMode('add_tower'); setDrawerOpen(true); }} className="mt-6 bg-slate-900 text-white rounded-xl h-12 px-8 font-bold">Create Tower</Button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Unassigned Section */}
@@ -465,7 +473,7 @@ function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChan
   const isGround = floorNum === 0;
 
   return (
-    <div className="flex items-start gap-3 group/row max-w-full !mt-2">
+    <div className="flex items-start gap-3 group/row !mt-2">
       <div className="w-14 pt-1.5 shrink-0 flex flex-col items-end gap-1.5">
         <span className={cn(
           "text-[10px] font-black px-2 py-0.5 rounded-lg border-2 shadow-sm transition-all group-hover/row:bg-blue-500 group-hover/row:text-white",
@@ -497,7 +505,7 @@ function FloorRow({ floorNum, tower, units, onUnitClick, onAddUnit, onStatusChan
         )}
       </div>
 
-      <div className="flex gap-2 pb-2 flex-1 overflow-x-auto pt-0.5 select-none scroll-smooth">
+      <div className="flex gap-2 pb-2 pt-0.5 select-none">
         {slots.map((unit, idx) => (
           <div key={idx} className="shrink-0 min-w-[110px] max-w-[110px]">
             {unit ? (

@@ -290,7 +290,7 @@ export default function UnitTypesTab({ projectId, project }) {
                                 setEditingConfig(null)
                             }}
                             onAdd={handleSave}
-                            category={project?.metadata?.real_estate?.property?.category || project?.category || 'residential'}
+                            category={(project?.unit_configs?.[0]?.category) || 'residential'}
                             initialData={editingConfig}
                         />
                     </div>

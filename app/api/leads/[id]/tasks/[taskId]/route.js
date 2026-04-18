@@ -16,6 +16,7 @@ export async function PUT(request, { params }) {
             title:       body.title,
             description: body.description ?? null,
             due_date:    body.due_date    ?? null,
+            due_time:    body.due_time    ?? null,
             priority:    body.priority,
             status:      body.status,
             assigned_to: body.assigned_to ?? null,
@@ -62,6 +63,7 @@ export async function PATCH(request, { params }) {
         if (body.title       !== undefined) updateData.title       = body.title
         if (body.description !== undefined) updateData.description = body.description
         if (body.due_date    !== undefined) updateData.due_date    = body.due_date
+        if (body.due_time    !== undefined) updateData.due_time    = body.due_time
         if (body.priority    !== undefined) updateData.priority    = body.priority
         if (body.assigned_to !== undefined) updateData.assigned_to = body.assigned_to
 

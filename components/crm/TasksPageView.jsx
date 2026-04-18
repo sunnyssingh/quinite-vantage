@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
     Dialog,
@@ -71,13 +71,14 @@ import {
 } from 'date-fns'
 import { usePermissions } from '@/contexts/PermissionContext'
 import { useRouter } from 'next/navigation'
+import TaskFormFields, { taskToFormData, formDataToPayload, EMPTY_FORM } from '@/components/crm/TaskFormFields'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const PRIORITY_CONFIG = {
-    high:   { label: 'High',   dot: 'bg-red-500',     badge: 'bg-red-50 text-red-700 border-red-200' },
-    medium: { label: 'Medium', dot: 'bg-amber-500',   badge: 'bg-amber-50 text-amber-700 border-amber-200' },
-    low:    { label: 'Low',    dot: 'bg-emerald-500',  badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    high:   { label: 'High',   dot: 'bg-red-500',    text: 'text-red-600',   badge: 'bg-red-50 text-red-700 border-red-200' },
+    medium: { label: 'Medium', dot: 'bg-amber-400',  text: 'text-amber-600', badge: 'bg-amber-50 text-amber-700 border-amber-200' },
+    low:    { label: 'Low',    dot: 'bg-blue-400',   text: 'text-blue-600',  badge: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -143,14 +144,62 @@ function DueDateLabel({ task, compact = false }) {
     )
 }
 
+// Compact pill badge for due dates — same design as LeadTasksManager
+function DueDateBadge({ task }) {
+    if (!task.due_date) return null
+    const d = parseISO(task.due_date)
+    const overdue = getIsOverdue(task)
+    const today   = isToday(d)
+    const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0
+
+    if (overdue) {
+        const daysAgo = Math.abs(differenceInDays(d, new Date()))
+        const fullDate = hasTime ? format(d, 'MMM d, h:mm a') : format(d, 'MMM d, yyyy')
+        return (
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5 cursor-default">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        {daysAgo === 0 ? 'Today' : `${daysAgo}d overdue`}
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">{fullDate}</TooltipContent>
+            </Tooltip>
+        )
+    }
+    if (today) {
+        return (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                <Clock className="w-3 h-3 shrink-0" />
+                {hasTime ? format(d, 'h:mm a') : 'Today'}
+            </span>
+        )
+    }
+    if (differenceInDays(d, new Date()) === 1) {
+        return (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                <CalendarClock className="w-3 h-3 shrink-0" />
+                Tomorrow
+            </span>
+        )
+    }
+    const label = hasTime ? format(d, 'MMM d · h:mm a') : format(d, 'MMM d')
+    return (
+        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/60 border border-border rounded-full px-2 py-0.5">
+            <Calendar className="w-3 h-3 shrink-0" />
+            {label}
+        </span>
+    )
+}
+
 function AssigneeAvatar({ assignee, size = 'sm' }) {
     if (!assignee) return null
     const initials = (assignee.full_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    const cls = size === 'sm' ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'
+    const cls = size === 'sm' ? 'w-5 h-5 text-[9px]' : 'w-8 h-8 text-xs'
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <div className={`${cls} rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center shrink-0 overflow-hidden`}>
+                <div className={`${cls} rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-white cursor-default`}>
                     {assignee.avatar_url
                         ? <img src={assignee.avatar_url} alt={assignee.full_name} className="w-full h-full object-cover" />
                         : initials
@@ -231,43 +280,26 @@ function LeadHoverCard({ lead, leadId, children }) {
 function TaskDetailSheet({ task, open, onClose, onToggle, onUpdated, teamMembers, canAssignOthers }) {
     const [editing, setEditing] = useState(false)
     const [saving, setSaving]   = useState(false)
-    const [form, setForm] = useState({
-        title:       task?.title || '',
-        description: task?.description || '',
-        due_date:    task?.due_date ? format(parseISO(task.due_date), "yyyy-MM-dd'T'HH:mm") : '',
-        priority:    task?.priority || 'medium',
-        assigned_to: task?.assigned_to || 'none',
-    })
+    const [form, setForm] = useState(() => taskToFormData(task))
 
     // Reset form when task changes
     useEffect(() => {
         if (task) {
-            setForm({
-                title:       task.title || '',
-                description: task.description || '',
-                due_date:    task.due_date ? format(parseISO(task.due_date), "yyyy-MM-dd'T'HH:mm") : '',
-                priority:    task.priority || 'medium',
-                assigned_to: task.assigned_to || 'none',
-            })
+            setForm(taskToFormData(task))
             setEditing(false)
         }
     }, [task?.id])
+
+    const handleChange = (field, value) => setForm(f => ({ ...f, [field]: value }))
 
     const handleSave = async () => {
         if (!form.title.trim()) { toast.error('Title is required'); return }
         setSaving(true)
         try {
-            const payload = {
-                title:       form.title,
-                description: form.description || null,
-                due_date:    form.due_date || null,
-                priority:    form.priority,
-                assigned_to: form.assigned_to === 'none' ? null : form.assigned_to,
-            }
             const res = await fetch(`/api/leads/${task.lead_id}/tasks/${task.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(formDataToPayload(form)),
             })
             if (!res.ok) throw new Error()
             toast.success('Task updated')
@@ -365,80 +397,57 @@ function TaskDetailSheet({ task, open, onClose, onToggle, onUpdated, teamMembers
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
 
-                    {/* Description */}
-                    <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Description</p>
-                        {editing ? (
-                            <Textarea
-                                value={form.description}
-                                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                                placeholder="Add a description..."
-                                rows={4}
-                                className="resize-none text-sm"
-                            />
-                        ) : task.description ? (
-                            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{task.description}</p>
-                        ) : (
-                            <p className="text-sm text-muted-foreground italic">No description</p>
-                        )}
-                    </div>
-
-                    {/* Due date + Priority row */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Due Date</p>
-                            {editing ? (
-                                <Input
-                                    type="datetime-local"
-                                    value={form.due_date}
-                                    onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
-                                    className="h-8 text-xs"
-                                />
-                            ) : task.due_date ? (
-                                <DueDateLabel task={task} />
-                            ) : (
-                                <span className="text-sm text-muted-foreground">Not set</span>
-                            )}
-                        </div>
-                        <div>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Priority</p>
-                            {editing ? (
-                                <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v }))}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="low">Low</SelectItem>
-                                        <SelectItem value="medium">Medium</SelectItem>
-                                        <SelectItem value="high">High</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            ) : (
-                                <Badge variant="outline" className={`text-xs ${pCfg.badge}`}>{pCfg.label}</Badge>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Assignee */}
-                    <div>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Assigned To</p>
-                        {editing && canAssignOthers && teamMembers.length > 0 ? (
-                            <Select value={form.assigned_to} onValueChange={v => setForm(f => ({ ...f, assigned_to: v }))}>
-                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">Unassigned</SelectItem>
-                                    {teamMembers.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.full_name || m.email}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        ) : task.assignee ? (
-                            <div className="flex items-center gap-2">
-                                <AssigneeAvatar assignee={task.assignee} />
-                                <span className="text-sm">{task.assignee.full_name}</span>
+                    {editing ? (
+                        /* ── Edit mode: render shared form fields ── */
+                        <TaskFormFields
+                            formData={form}
+                            onChange={handleChange}
+                            teamMembers={teamMembers}
+                            canAssignOthers={canAssignOthers}
+                            compact
+                        />
+                    ) : (
+                        <>
+                            {/* Description (read) */}
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Description</p>
+                                {task.description ? (
+                                    <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{task.description}</p>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">No description</p>
+                                )}
                             </div>
-                        ) : (
-                            <span className="text-sm text-muted-foreground">Unassigned</span>
-                        )}
-                    </div>
+
+                            {/* Due Date + Priority (read) */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Due Date</p>
+                                    {task.due_date ? (
+                                        <DueDateLabel task={task} />
+                                    ) : (
+                                        <span className="text-sm text-muted-foreground">Not set</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Priority</p>
+                                    <Badge variant="outline" className={`text-xs ${pCfg.badge}`}>{pCfg.label}</Badge>
+                                </div>
+                            </div>
+
+                            {/* Assignee (read) */}
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Assigned To</p>
+                                {task.assignee ? (
+                                    <div className="flex items-center gap-2">
+                                        <AssigneeAvatar assignee={task.assignee} />
+                                        <span className="text-sm">{task.assignee.full_name}</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-muted-foreground">Unassigned</span>
+                                )}
+                            </div>
+                        </>
+                    )}
 
                     {/* Lead */}
                     {task.lead && (
@@ -498,9 +507,7 @@ export default function TasksPageView() {
     const [leadResults, setLeadResults] = useState([])
     const [selectedLead, setSelectedLead] = useState(null)
     const [teamMembers, setTeamMembers] = useState([])
-    const [formData, setFormData] = useState({
-        title: '', description: '', due_date: '', priority: 'medium', assigned_to: 'none',
-    })
+    const [formData, setFormData] = useState(EMPTY_FORM)
 
     const canViewLeads = !permLoading &&
         hasAnyPermission(['view_own_leads', 'view_team_leads', 'view_all_leads'])
@@ -596,17 +603,10 @@ export default function TasksPageView() {
         if (!selectedLead) { toast.error('Select a lead first'); return }
         try {
             setSubmitting(true)
-            const payload = {
-                title:       formData.title,
-                description: formData.description || null,
-                due_date:    formData.due_date || null,
-                priority:    formData.priority,
-                assigned_to: formData.assigned_to === 'none' ? null : formData.assigned_to,
-            }
             const res = await fetch(`/api/leads/${selectedLead.id}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(formDataToPayload(formData)),
             })
             if (!res.ok) throw new Error()
             toast.success('Task created')
@@ -624,7 +624,7 @@ export default function TasksPageView() {
         setSelectedLead(null)
         setLeadSearch('')
         setLeadResults([])
-        setFormData({ title: '', description: '', due_date: '', priority: 'medium', assigned_to: 'none' })
+        setFormData(EMPTY_FORM)
     }
 
     const overdueCount = tasks.filter(t =>
@@ -745,72 +745,100 @@ export default function TasksPageView() {
                             const isOverdue   = getIsOverdue(task)
                             const isCompleted = task.status === 'completed'
                             const pCfg        = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium
+                            const stageColor  = task.lead?.stage?.color || '#94a3b8'
+                            const leadInitial = (task.lead?.name || '?')[0].toUpperCase()
 
                             return (
                                 <div
                                     key={task.id}
-                                    className={`
-                                        group flex items-start gap-3 px-4 py-3.5 rounded-xl border bg-white
-                                        transition-all duration-150 cursor-pointer hover:shadow-sm
-                                        ${isOverdue
-                                            ? 'border-l-2 border-l-red-500 border-t-border border-r-border border-b-border'
+                                    className={[
+                                        'group rounded-xl border bg-background transition-all duration-150 cursor-pointer',
+                                        isOverdue && !isCompleted
+                                            ? 'border-red-200 bg-red-50/20'
                                             : isCompleted
-                                                ? 'opacity-50 border-border/40'
-                                                : 'border-border hover:border-border/60'
-                                        }
-                                    `}
+                                                ? 'border-border/40 opacity-60'
+                                                : 'border-border hover:border-border/80 hover:shadow-sm',
+                                    ].join(' ')}
                                     onClick={() => setDetailTask(task)}
                                 >
-                                    {/* Checkbox — stop propagation so click doesn't open sheet */}
-                                    <div onClick={e => e.stopPropagation()}>
-                                        <Checkbox
-                                            checked={isCompleted}
-                                            onCheckedChange={() => handleToggle(task)}
-                                            className="mt-0.5 shrink-0"
-                                        />
+                                    {/* Top row — checkbox · title */}
+                                    <div className="flex items-start gap-2.5 px-3 pt-3 pb-1">
+                                        <div onClick={e => e.stopPropagation()}>
+                                            <button
+                                                onClick={() => handleToggle(task)}
+                                                className={cn(
+                                                    "mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
+                                                    isCompleted
+                                                        ? "bg-indigo-600 border-indigo-600"
+                                                        : "border-gray-200 hover:border-indigo-500 text-transparent hover:text-indigo-500"
+                                                )}
+                                            >
+                                                <CheckCircle2 className={cn("w-3.5 h-3.5", isCompleted ? "text-white" : "opacity-0 hover:opacity-100")} />
+                                            </button>
+                                        </div>
+                                        <p className={`flex-1 min-w-0 text-sm font-medium leading-snug ${isCompleted ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                            {task.title}
+                                        </p>
                                     </div>
 
-                                    {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        {/* Row 1: title + assignee */}
-                                        <div className="flex items-start justify-between gap-3">
-                                            <p className={`text-sm font-medium leading-snug ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                                                {task.title}
-                                            </p>
-                                            <AssigneeAvatar assignee={task.assignee} />
-                                        </div>
+                                    {/* Description */}
+                                    {task.description && !isCompleted && (
+                                        <p className="text-xs text-muted-foreground px-3 pb-1 pl-[calc(0.75rem+1.25rem+0.625rem)] line-clamp-1">
+                                            {task.description}
+                                        </p>
+                                    )}
 
-                                        {/* Row 2: description */}
-                                        {task.description && (
-                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                                                {task.description}
-                                            </p>
-                                        )}
-
-                                        {/* Row 3: tags */}
-                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                            <Badge variant="outline" className={`text-[10px] h-4 px-1.5 font-medium ${pCfg.badge}`}>
-                                                {pCfg.label}
-                                            </Badge>
-
-                                            {!isCompleted && task.due_date && (
-                                                <DueDateLabel task={task} />
-                                            )}
+                                    {/* Footer — left: date  ·  right: lead + priority + assignee */}
+                                    <div className="flex items-center justify-between px-3 pb-2.5 pt-1 pl-[calc(0.75rem+1.25rem+0.625rem)]">
+                                        {/* Left: date */}
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            {!isCompleted && <DueDateBadge task={task} />}
                                             {isCompleted && task.completed_at && (
-                                                <span className="text-xs text-muted-foreground">
-                                                    Completed {format(parseISO(task.completed_at), 'MMM d')}
+                                                <span className="text-[11px] text-muted-foreground">
+                                                    Done {format(parseISO(task.completed_at), 'MMM d')}
                                                 </span>
                                             )}
+                                            {!isCompleted && !task.due_date && (
+                                                <span className="text-[11px] text-muted-foreground/50">No due date</span>
+                                            )}
+                                        </div>
 
+                                        {/* Right: lead · priority · assignee */}
+                                        <div className="flex items-center gap-1.5 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                                            {/* Lead pill */}
                                             {task.lead && (
-                                                <div onClick={e => e.stopPropagation()}>
-                                                    <LeadHoverCard lead={task.lead} leadId={task.lead_id}>
-                                                        <button className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                                                            <ExternalLink className="w-2.5 h-2.5" />
-                                                            {task.lead.name}
-                                                        </button>
-                                                    </LeadHoverCard>
-                                                </div>
+                                                <LeadHoverCard lead={task.lead} leadId={task.lead_id}>
+                                                    <button className="inline-flex items-center gap-1 max-w-[120px] rounded-full border border-border bg-muted/50 px-1.5 py-0.5 hover:bg-muted transition-colors">
+                                                        <span
+                                                            className="w-3 h-3 rounded-full shrink-0 flex items-center justify-center text-white text-[7px] font-bold"
+                                                            style={{ background: stageColor }}
+                                                        >
+                                                            {leadInitial}
+                                                        </span>
+                                                        <span className="text-[11px] font-medium text-foreground truncate">{task.lead.name}</span>
+                                                    </button>
+                                                </LeadHoverCard>
+                                            )}
+
+                                            <span className="text-border text-[10px]">·</span>
+
+                                            {/* Priority dot + label */}
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span className="inline-flex items-center gap-1 cursor-default">
+                                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${pCfg.dot}`} />
+                                                        <span className={`text-[11px] font-medium ${pCfg.text}`}>{pCfg.label}</span>
+                                                    </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent className="text-xs">Priority: {pCfg.label}</TooltipContent>
+                                            </Tooltip>
+
+                                            {/* Assignee avatar */}
+                                            {task.assignee && (
+                                                <>
+                                                    <span className="text-border text-[10px]">·</span>
+                                                    <AssigneeAvatar assignee={task.assignee} />
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -879,63 +907,12 @@ export default function TasksPageView() {
                             )}
                         </div>
 
-                        {/* Title */}
-                        <div className="space-y-1.5">
-                            <Label>Title <span className="text-red-500">*</span></Label>
-                            <Input
-                                value={formData.title}
-                                onChange={e => setFormData(f => ({ ...f, title: e.target.value }))}
-                                placeholder="What needs to be done?"
-                                required
-                            />
-                        </div>
-
-                        {/* Description */}
-                        <div className="space-y-1.5">
-                            <Label>Description <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
-                            <Textarea
-                                value={formData.description}
-                                onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
-                                rows={2} placeholder="Add details..." className="resize-none"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label>Due Date & Time</Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={formData.due_date}
-                                    onChange={e => setFormData(f => ({ ...f, due_date: e.target.value }))}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label>Priority</Label>
-                                <Select value={formData.priority} onValueChange={v => setFormData(f => ({ ...f, priority: v }))}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="low">Low</SelectItem>
-                                        <SelectItem value="medium">Medium</SelectItem>
-                                        <SelectItem value="high">High</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {canAssignOthers && teamMembers.length > 0 && (
-                            <div className="space-y-1.5">
-                                <Label>Assign To <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
-                                <Select value={formData.assigned_to} onValueChange={v => setFormData(f => ({ ...f, assigned_to: v }))}>
-                                    <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Unassigned</SelectItem>
-                                        {teamMembers.map(m => (
-                                            <SelectItem key={m.id} value={m.id}>{m.full_name || m.email}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
+                        <TaskFormFields
+                            formData={formData}
+                            onChange={(field, value) => setFormData(f => ({ ...f, [field]: value }))}
+                            teamMembers={teamMembers}
+                            canAssignOthers={canAssignOthers}
+                        />
 
                         <div className="flex gap-2 pt-1">
                             <Button type="submit" disabled={submitting || !selectedLead} className="flex-1">

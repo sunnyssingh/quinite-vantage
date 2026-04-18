@@ -65,16 +65,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { 
-    PROJECT_STATUS_CONFIG, 
-    PROJECT_STATUS_OPTIONS 
+import {
+    PROJECT_STATUS_CONFIG,
+    PROJECT_STATUS_OPTIONS
 } from '@/lib/inventory'
+import AmenitiesPicker from '@/components/amenities/AmenitiesPicker'
+import AmenitiesDisplay from '@/components/amenities/AmenitiesDisplay'
+import { Sparkles } from 'lucide-react'
 
 const STEPS = [
-    { id: 'basic', title: 'Basic Info', icon: Building2, description: 'Project identity & Type' },
-    { id: 'location', title: 'Location', icon: MapPin, description: 'Address details' },
-    { id: 'inventory', title: 'Inventory', icon: Store, description: 'Configs & Status' },
-    { id: 'review', title: 'Review', icon: CheckCircle2, description: 'Review & Submit' }
+    { id: 'basic',     title: 'Basic Info', icon: Building2,    description: 'Project identity & Type' },
+    { id: 'location',  title: 'Location',   icon: MapPin,       description: 'Address details' },
+    { id: 'inventory', title: 'Inventory',  icon: Store,        description: 'Configs & Status' },
+    { id: 'amenities', title: 'Amenities',  icon: Sparkles,     description: 'Society features' },
+    { id: 'review',    title: 'Review',     icon: CheckCircle2, description: 'Review & Submit' },
 ]
 
 export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitting }) {
@@ -126,7 +130,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
         showInInventory: initialData?.show_in_inventory ?? true,
         publicVisibility: initialData?.public_visibility ?? true,
         isDraft: initialData ? (initialData.is_draft === true) : true,
-        showFullDescription: false
+        showFullDescription: false,
+        amenities: [],
     })
 
     const countries = Country.getAllCountries()
@@ -138,36 +143,31 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
     // Load initial data
     useEffect(() => {
         if (initialData) {
-            const re = initialData.metadata?.real_estate || initialData.real_estate || {}
-            const prop = re.property || {}
-            const loc = re.location || {}
-            const pricing = re.pricing || {}
-
             setFormData({
                 name: initialData.name || '',
                 description: initialData.description || '',
                 address: initialData.address || '',
                 imageUrl: initialData.image_url || '',
                 imagePath: initialData.image_path || null,
-                transaction: re.transaction || 'sell',
-                propertyCategory: prop.category || 'residential',
-                propertyUseCase: prop.use_case || 'apartment',
-                bhk: prop.residential?.bhk || '2bhk',
-                carpetArea: prop.residential?.carpet_area || '',
-                builtUpArea: prop.residential?.built_up_area || '',
-                superBuiltUpArea: prop.residential?.super_built_up_area || '',
-                configurations: prop.residential?.configurations || [],
-                commercialArea: prop.commercial?.area || '',
-                commercialBuiltUpArea: prop.commercial?.built_up_area || '',
-                groundFloor: prop.commercial?.ground_floor || false,
-                plotArea: prop.plot_area || prop.land?.plot_area || '',
-                reraNumber: re.rera_number || '',
-                locCity: loc.city || '',
-                locLocality: loc.locality || '',
-                locLandmark: loc.landmark || '',
-                locState: loc.state || '',
-                locCountry: loc.country || 'India',
-                locPincode: loc.pincode || '',
+                transaction: 'sell',
+                propertyCategory: 'residential',
+                propertyUseCase: 'apartment',
+                bhk: '2bhk',
+                carpetArea: '',
+                builtUpArea: '',
+                superBuiltUpArea: '',
+                configurations: [],
+                commercialArea: '',
+                commercialBuiltUpArea: '',
+                groundFloor: false,
+                plotArea: '',
+                reraNumber: initialData.rera_number || '',
+                locCity: initialData.city || '',
+                locLocality: initialData.locality || '',
+                locLandmark: initialData.landmark || '',
+                locState: initialData.state || '',
+                locCountry: initialData.country || 'India',
+                locPincode: initialData.pincode || '',
                 isDraft: !!(initialData.is_draft ?? (initialData.project_status === 'draft')),
                 // Inventory fields
                 totalUnits: initialData.total_units || '',
@@ -178,11 +178,12 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                         price: uc.base_price,
                         type: uc.property_type
                     }))
-                    : (Array.isArray(initialData.unit_types) ? initialData.unit_types : []),
+                    : [],
                 projectStatus: initialData.project_status === 'draft' ? 'planning' : (initialData.project_status || 'planning'),
-                possessionDate: initialData.metadata?.possession_date || initialData.possession_date || '',
-                completionDate: initialData.metadata?.completion_date || initialData.completion_date || '',
-                showInInventory: initialData.show_in_inventory !== false
+                possessionDate: initialData.possession_date || '',
+                completionDate: initialData.completion_date || '',
+                showInInventory: initialData.show_in_inventory !== false,
+                amenities: Array.isArray(initialData.amenities) ? initialData.amenities : [],
             })
 
             // Don't auto-mark all steps as completed, so users see their current progress
@@ -222,6 +223,8 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
             if (!data.locPincode.trim() || data.locPincode.length !== 6) newErrors.locPincode = 'Valid 6-digit Pincode is required'
             if (!data.locLocality.trim()) newErrors.locLocality = 'Locality is required'
         }
+
+        // stepIndex === 3 is Amenities — always valid (optional step)
 
         if (stepIndex === 2) { // Inventory
             if (!data.unitTypes || data.unitTypes.length === 0) {
@@ -396,11 +399,6 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                 ...formData,
                 isDraft: false,
                 totalUnits: calculatedTotalUnits,
-                metadata: {
-                    ...formData.metadata,
-                    possession_date: formData.possessionDate,
-                    completion_date: formData.completionDate
-                }
             }
 
             onSubmit(submitData)
@@ -1133,8 +1131,65 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                     )
                 }
 
+                {/* ─── Step 3: Amenities ──────────────────────────── */}
                 {
                     currentStep === 3 && (
+                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
+                            <div className="max-w-3xl mx-auto">
+                                <div className="mb-6">
+                                    <h3 className="text-lg font-bold text-slate-800">Society &amp; Community Amenities</h3>
+                                    <p className="text-sm text-slate-500 mt-1">Select the amenities available in the society / building. You can skip this step and add them later.</p>
+                                </div>
+                                <AmenitiesPicker
+                                    context="project"
+                                    value={formData.amenities}
+                                    onChange={(ids) => handleChange('amenities', ids)}
+                                    variant="full"
+                                />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-between gap-3 pt-4 border-t mt-6 max-w-3xl mx-auto">
+                                <Button
+                                    variant="ghost"
+                                    onClick={handleBack}
+                                    disabled={isSubmitting}
+                                    className="text-slate-500 hover:text-slate-800"
+                                >
+                                    <ChevronLeft className="w-4 h-4 mr-2" />
+                                    Back
+                                </Button>
+                                <div className="flex gap-3">
+                                    {formData.isDraft && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleSubmit(true)}
+                                            disabled={isSubmitting}
+                                            className="text-xs sm:text-sm w-full sm:w-auto"
+                                        >
+                                            Save as Draft
+                                        </Button>
+                                    )}
+                                    <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={handleNext}
+                                        disabled={isSubmitting}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
+                                        {formData.amenities.length > 0 ? 'Next' : 'Skip & Review'}
+                                        <ChevronRight className="w-4 h-4 ml-2" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {/* ─── Step 4: Review ─────────────────────────────── */}
+                {
+                    currentStep === 4 && (
                         <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
                             <div className="max-w-3xl mx-auto space-y-4">
                                 {/* Basic Info Summary */}
@@ -1309,6 +1364,30 @@ export default function ProjectForm({ initialData, onSubmit, onCancel, isSubmitt
                                         )}
                                     </CardContent>
                                 </Card>
+
+                                {/* Amenities Summary */}
+                                {formData.amenities.length > 0 && (
+                                    <Card>
+                                        <CardHeader className="flex flex-row items-center justify-between pb-3">
+                                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                                <Sparkles className="w-4 h-4 text-amber-500" />
+                                                Amenities
+                                                <span className="text-xs font-normal text-slate-400">({formData.amenities.length} selected)</span>
+                                            </CardTitle>
+                                            <Button variant="ghost" size="sm" onClick={() => setCurrentStep(3)} className="text-blue-600 hover:text-blue-700">
+                                                <Edit className="w-3 h-3 mr-1" />
+                                                Edit
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <AmenitiesDisplay
+                                                amenityIds={formData.amenities}
+                                                context="project"
+                                                variant="tags"
+                                            />
+                                        </CardContent>
+                                    </Card>
+                                )}
                             </div>
 
                             {/* Action Buttons */}

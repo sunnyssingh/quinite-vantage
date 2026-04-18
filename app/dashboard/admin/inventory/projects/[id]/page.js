@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { ArrowLeft, Building2, Package, BarChart3, Edit, Layers, Home, Store, Briefcase, ShoppingBag, Factory, ConciergeBell } from 'lucide-react'
+import { ArrowLeft, Building2, Package, BarChart3, Edit, Layers, Home, Store, Briefcase, ShoppingBag, Factory, ConciergeBell, Sparkles } from 'lucide-react'
+import AmenitiesDisplay from '@/components/amenities/AmenitiesDisplay'
 import { toast } from 'react-hot-toast'
 import ProjectMetrics from '@/components/projects/ProjectMetrics'
 import ProjectInventoryTab from '@/components/projects/ProjectInventoryTab'
@@ -166,21 +167,10 @@ export default function InventoryProjectDetailsPage() {
                                     </Badge>
                                 </div>
 
-                                {project.real_estate?.property?.category && (
-                                    <div>
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5">Property Category</p>
-                                        <Badge variant="secondary" className="capitalize text-xs px-2.5 py-0.5 bg-slate-100 font-medium text-slate-600 border-0">
-                                            {project.real_estate.property.category === 'residential' && '🏠 Residential'}
-                                            {project.real_estate.property.category === 'commercial' && '🏢 Commercial'}
-                                            {project.real_estate.property.category === 'land' && '🌳 Land'}
-                                        </Badge>
-                                    </div>
-                                )}
-
-                                {project.real_estate?.rera_number && (
+                                {project.rera_number && (
                                     <div className="col-span-2 md:col-span-1">
                                         <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1.5">RERA No.</p>
-                                        <p className="text-sm font-semibold text-slate-800">{project.real_estate.rera_number}</p>
+                                        <p className="text-sm font-semibold text-slate-800">{project.rera_number}</p>
                                     </div>
                                 )}
 
@@ -268,11 +258,11 @@ export default function InventoryProjectDetailsPage() {
                     </div>
 
                     {/* Unit Configurations */}
-                    {((project.unit_configs && project.unit_configs.length > 0) || (project.unit_types && project.unit_types.length > 0)) && (
+                    {project.unit_configs && project.unit_configs.length > 0 && (
                         <Card className="p-6 border-slate-200/60 shadow-sm mt-6">
                             <h3 className="text-lg font-bold text-slate-800 mb-5">Unit Configurations</h3>
                             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                {(project.unit_configs?.length > 0 ? project.unit_configs : project.unit_types).map((config, idx) => {
+                                {project.unit_configs.map((config, idx) => {
                                     const Icon = getIcon(config.property_type || config.type)
                                     return (
                                         <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-white hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col justify-between group">
@@ -343,11 +333,39 @@ export default function InventoryProjectDetailsPage() {
                                                         </div>
                                                     </div>
                                                 )}
+
+                                                {/* Unit config amenities */}
+                                                {config.amenities?.length > 0 && (
+                                                    <div className="pt-2 mt-1">
+                                                        <AmenitiesDisplay
+                                                            amenityIds={config.amenities}
+                                                            context="unit"
+                                                            variant="tags"
+                                                            maxVisible={4}
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )
                                 })}
                             </div>
+                        </Card>
+                    )}
+
+                    {/* Society Amenities */}
+                    {project.amenities?.length > 0 && (
+                        <Card className="p-6 border-slate-200/60 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-800 mb-5 flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-amber-500" />
+                                Society Amenities
+                                <span className="text-sm font-normal text-slate-400 ml-1">({project.amenities.length})</span>
+                            </h3>
+                            <AmenitiesDisplay
+                                amenityIds={project.amenities}
+                                context="project"
+                                variant="grid"
+                            />
                         </Card>
                     )}
                 </TabsContent>

@@ -3,9 +3,6 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
-import path from 'path'
-import fs from 'fs'
-import Ajv from 'ajv'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 
 function handleCORS(response) {
@@ -78,56 +75,36 @@ export const PUT = withAuth(async (request, { params, user, profile }) => {
         if (body.image_path !== undefined) updates.image_path = body.image_path
 
         if (body.total_units !== undefined) updates.total_units = body.total_units
-        if (body.unit_types !== undefined) updates.unit_types = body.unit_types
         if (body.project_status !== undefined) updates.project_status = body.project_status
         if (body.is_draft !== undefined) updates.is_draft = body.is_draft
-        
         if (body.show_in_inventory !== undefined) updates.show_in_inventory = body.show_in_inventory
         if (body.public_visibility !== undefined) updates.public_visibility = body.public_visibility
         if (body.possession_date !== undefined) updates.possession_date = body.possession_date || null
         if (body.completion_date !== undefined) updates.completion_date = body.completion_date || null
-        
-        // Validate optional real_estate payload (Skip if draft)
-        const realEstate = body.real_estate || (body.metadata && body.metadata.real_estate)
-        
-        if (realEstate?.location) {
-            if (realEstate.location.city !== undefined) updates.city = realEstate.location.city || null
-            if (realEstate.location.state !== undefined) updates.state = realEstate.location.state || null
-            if (realEstate.location.country !== undefined) updates.country = realEstate.location.country || 'India'
-            if (realEstate.location.pincode !== undefined) updates.pincode = realEstate.location.pincode || null
-            if (realEstate.location.locality !== undefined) updates.locality = realEstate.location.locality || null
-            if (realEstate.location.landmark !== undefined) updates.landmark = realEstate.location.landmark || null
-        }
+        if (body.rera_number !== undefined) updates.rera_number = body.rera_number || null
+        if (body.amenities !== undefined) updates.amenities = Array.isArray(body.amenities) ? body.amenities : []
 
-        // Add pricing calculations if unit_types changed
-        if (updates.unit_types) {
-            const min = Math.min(...updates.unit_types.map(u => Number(u.price)).filter(p => !isNaN(p) && p > 0))
-            const max = Math.max(...updates.unit_types.map(u => Number(u.price)).filter(p => !isNaN(p) && p > 0))
-            updates.min_price = min === Infinity ? null : min
-            updates.max_price = max === -Infinity ? null : max
-        }
-        
-        const isDraft = body.is_draft !== undefined ? body.is_draft : existing.is_draft === true
-        
-        if (realEstate && !isDraft) {
-            try {
-                const schemaPath = path.join(process.cwd(), 'lib', 'schemas', 'realEstateProperty.schema.json')
-                const schemaRaw = fs.readFileSync(schemaPath, 'utf8')
-                const schema = JSON.parse(schemaRaw)
-                const ajv = new Ajv({ allErrors: true, strict: false })
-                const validate = ajv.compile(schema)
-                const valid = validate(realEstate)
-                if (!valid) {
-                    return handleCORS(NextResponse.json({ error: 'Invalid real_estate payload', details: validate.errors }, { status: 400 }))
-                }
-                updates.metadata = { ...(body.metadata || {}), real_estate: realEstate }
-            } catch (err) {
-                console.error('Schema validation error:', err)
-                return handleCORS(NextResponse.json({ error: 'Schema validation failed' }, { status: 500 }))
-            }
-        } else if (realEstate && isDraft) {
-            // Still update the metadata if it's a draft, just skip validation
-            updates.metadata = { ...(body.metadata || {}), real_estate: realEstate }
+        // Location — support both flat and legacy real_estate nested shape
+        const re = body.real_estate || {}
+        const loc = re.location || {}
+        const city     = loc.city     ?? body.city
+        const state    = loc.state    ?? body.state
+        const country  = loc.country  ?? body.country
+        const pincode  = loc.pincode  ?? body.pincode
+        const locality = loc.locality ?? body.locality
+        const landmark = loc.landmark ?? body.landmark
+        if (city     !== undefined) updates.city     = city     || null
+        if (state    !== undefined) updates.state    = state    || null
+        if (country  !== undefined) updates.country  = country  || 'India'
+        if (pincode  !== undefined) updates.pincode  = pincode  || null
+        if (locality !== undefined) updates.locality = locality || null
+        if (landmark !== undefined) updates.landmark = landmark || null
+
+        // Recalculate pricing from unit_types if provided (for syncUnitConfigs)
+        if (Array.isArray(body.unit_types)) {
+            const prices = body.unit_types.map(u => Number(u.price || u.base_price)).filter(p => !isNaN(p) && p > 0)
+            updates.min_price = prices.length ? Math.min(...prices) : null
+            updates.max_price = prices.length ? Math.max(...prices) : null
         }
 
         // 6️⃣ Update project

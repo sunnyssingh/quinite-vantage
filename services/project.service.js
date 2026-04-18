@@ -190,9 +190,9 @@ export class ProjectService {
             plot_area: Number(ut.plot_area) || 0,
             transaction_type: ut.transaction_type || 'sell',
             base_price: Number(ut.price) || Number(ut.base_price) || 0,
+            amenities: Array.isArray(ut.amenities) ? ut.amenities : [],
             updated_at: new Date().toISOString(),
             updated_by: userId,
-            metadata: { legacy_id: ut.id }
         }))
 
         // 2. Perform upsert
@@ -200,7 +200,7 @@ export class ProjectService {
             if (config.id) {
                 await adminClient.from('unit_configs').upsert(config)
             } else {
-                // If no ID, check by legacy_id in metadata or config_name to avoid duplicates
+                // If no ID, check by config_name to avoid duplicates
                 const { data: existing } = await adminClient
                     .from('unit_configs')
                     .select('id')

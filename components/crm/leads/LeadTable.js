@@ -292,7 +292,7 @@ export function LeadTable({
                                             <div className="flex flex-col">
                                                 <span className="font-medium text-sm text-slate-700">{lead.project.name}</span>
                                                 <span className="text-xs text-muted-foreground capitalize">
-                                                    {lead.project.metadata?.real_estate?.property?.category || 'Project'}
+                                                    {'Project'}
                                                 </span>
                                             </div>
                                         ) : (

@@ -56,6 +56,9 @@ export async function PATCH(request, { params }) {
             if (body[field] !== undefined) allowedUpdates[field] = body[field]
         })
 
+        // amenities: null = inherit from config, [] = no features, array = override
+        if (body.amenities !== undefined) allowedUpdates.amenities = body.amenities
+
         // Recalculate total_price if prices changed
         if (allowedUpdates.base_price !== undefined || allowedUpdates.floor_rise_price !== undefined || allowedUpdates.plc_price !== undefined) {
             // Need current values if not provided
