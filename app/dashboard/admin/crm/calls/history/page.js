@@ -30,6 +30,7 @@ export default function CallHistory() {
     const [selectedCall, setSelectedCall] = useState(null)
     const [analyzing, setAnalyzing] = useState(null)
     const [user, setUser] = useState(null)
+    const [organizationId, setOrganizationId] = useState(null)
     const supabase = createClient()
 
     const hasAccess = usePermission('view_call_history')
@@ -38,35 +39,40 @@ export default function CallHistory() {
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             setUser(user)
+            if (user) {
+                const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
+                if (profile?.organization_id) setOrganizationId(profile.organization_id)
+            }
         }
         getUser()
     }, [])
 
     useEffect(() => {
-        if (user && hasAccess) {
+        if (user && hasAccess && organizationId) {
             fetchCallHistory()
         } else if (!loading && !hasAccess) {
             setLoading(false)
         }
-    }, [user, hasAccess, dateFrom, dateTo, interestFilter])
+    }, [user, hasAccess, organizationId, dateFrom, dateTo, interestFilter])
 
     useEffect(() => {
         filterCalls()
     }, [searchTerm, interestFilter, calls])
 
     const fetchCallHistory = async () => {
-        if (!user) return
+        if (!user || !organizationId) return
 
         let query = supabase
             .from('call_logs')
             .select(`
                 id, call_status, duration, call_cost, created_at,
-                conversation_transcript, sentiment_score, sentiment_label,
+                conversation_transcript, sentiment_score,
                 interest_level, summary, ai_metadata, transferred,
                 disconnect_reason, callee_number,
                 lead:leads(id, name, phone, email, assigned_to),
                 campaign:campaigns(id, name)
             `)
+            .eq('organization_id', organizationId)
             .order('created_at', { ascending: false })
             .limit(200)
 
@@ -76,6 +82,9 @@ export default function CallHistory() {
 
         const { data, error } = await query
 
+        if (error) {
+            console.error('Call history fetch error:', error)
+        }
         if (!error && data) {
             setCalls(data)
             setFilteredCalls(data)
@@ -311,11 +320,11 @@ function CallRow({ call, getStatusColor, getSentimentColor, formatDuration, isSe
                             </div>
                         </div>
 
-                        {(call.sentiment_label || call.interest_level) ? (
+                        {(call.sentiment_score != null || call.interest_level) ? (
                             <div className="flex items-center gap-4 text-sm flex-wrap">
                                 <div className="flex items-center gap-1">
                                     <Activity className={`h-4 w-4 ${getSentimentColor(call.sentiment_score)}`} />
-                                    <span className="font-medium">Sentiment: {call.sentiment_label || (call.sentiment_score != null ? call.sentiment_score.toFixed(2) : '—')}</span>
+                                    <span className="font-medium">Sentiment: {call.sentiment_score != null ? (call.sentiment_score > 0.3 ? 'Positive' : call.sentiment_score < -0.3 ? 'Negative' : 'Neutral') + ` (${call.sentiment_score.toFixed(2)})` : '—'}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <User className="h-4 w-4 text-gray-400" />
@@ -329,7 +338,7 @@ function CallRow({ call, getStatusColor, getSentimentColor, formatDuration, isSe
                                 )}
                             </div>
                         ) : (
-                            <div className="text-sm text-gray-400 italic">No AI insights yet</div>
+                            <div className="text-sm text-gray-400 italic">Pending analysis</div>
                         )}
                     </div>
 
@@ -338,7 +347,7 @@ function CallRow({ call, getStatusColor, getSentimentColor, formatDuration, isSe
                             <MessageSquare className="h-4 w-4 mr-1" />
                             {isSelected ? 'Hide' : 'View'} Transcript
                         </Button>
-                        {(!call.sentiment_label && !call.summary) && call.conversation_transcript && (
+                        {(call.sentiment_score == null && !call.summary) && call.conversation_transcript && (
                             <Button size="sm" onClick={onAnalyze} disabled={analyzing === call.id}>
                                 <Activity className="h-4 w-4 mr-1" />
                                 {analyzing === call.id ? 'Analyzing...' : 'Analyze'}

@@ -24,6 +24,7 @@ export default function LiveCallMonitor() {
     const [refreshing, setRefreshing] = useState(false)
     const [user, setUser] = useState(null)
     const [failedCallsOpen, setFailedCallsOpen] = useState(false)
+    const [organizationId, setOrganizationId] = useState(null)
     const supabase = createClient()
 
     // Permissions
@@ -36,17 +37,21 @@ export default function LiveCallMonitor() {
         const getUser = async () => {
             const { data: { user } } = await supabase.auth.getUser()
             setUser(user)
+            if (user) {
+                const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
+                if (profile?.organization_id) setOrganizationId(profile.organization_id)
+            }
         }
         getUser()
     }, [])
 
     useEffect(() => {
-        if (user && hasAccess) {
+        if (user && hasAccess && organizationId) {
             handleRefresh()
         } else if (!loading && (!hasAccess || !user)) {
             setLoading(false)
         }
-    }, [user, hasAccess])
+    }, [user, hasAccess, organizationId])
 
     const handleRefresh = async () => {
         setRefreshing(true)
@@ -116,7 +121,7 @@ export default function LiveCallMonitor() {
     }, [user, hasAccess])
 
     const fetchActiveCalls = async () => {
-        if (!user) return
+        if (!user || !organizationId) return
 
         let query = supabase
             .from('call_logs')
@@ -125,22 +130,26 @@ export default function LiveCallMonitor() {
                 lead:leads(id, name, phone, email, mailing_city),
                 campaign:campaigns(id, name)
             `)
+            .eq('organization_id', organizationId)
             .in('call_status', ['in_progress', 'ringing'])
             .order('created_at', { ascending: false })
 
-
-
         const { data, error } = await query
 
+        if (error) {
+            console.error('Active calls fetch error:', error)
+        }
         if (!error && data) {
             setActiveCalls(data)
         }
     }
 
     const fetchQueueStats = async () => {
+        if (!organizationId) return
         const { data, error } = await supabase
             .from('call_queue')
             .select('status')
+            .eq('organization_id', organizationId)
 
         if (!error && data) {
             const stats = data.reduce((acc, item) => {
