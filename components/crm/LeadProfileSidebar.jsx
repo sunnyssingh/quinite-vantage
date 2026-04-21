@@ -14,12 +14,12 @@ function relativeTime(ts) {
     if (!ts) return null
     const diff = Date.now() - new Date(ts).getTime()
     const m = Math.floor(diff / 60000)
-    if (m < 1)   return 'Just now'
-    if (m < 60)  return `${m}m ago`
+    if (m < 1) return 'Just now'
+    if (m < 60) return `${m}m ago`
     const h = Math.floor(m / 60)
-    if (h < 24)  return `${h}h ago`
+    if (h < 24) return `${h}h ago`
     const d = Math.floor(h / 24)
-    if (d < 30)  return `${d}d ago`
+    if (d < 30) return `${d}d ago`
     return new Date(ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
@@ -39,16 +39,16 @@ function scoreColor(score) {
 function interestConfig(level) {
     if (!level || level === 'none') return null
     const map = {
-        high:   { label: '🔥 High',   cls: 'bg-rose-50 text-rose-600 ring-rose-200' },
+        high: { label: '🔥 High', cls: 'bg-rose-50 text-rose-600 ring-rose-200' },
         medium: { label: '⚡ Medium', cls: 'bg-amber-50 text-amber-600 ring-amber-200' },
-        low:    { label: '💤 Low',    cls: 'bg-slate-50 text-slate-500 ring-slate-200' },
+        low: { label: '💤 Low', cls: 'bg-slate-50 text-slate-500 ring-slate-200' },
     }
     return map[level] ?? null
 }
 
 function sentimentConfig(score) {
     if (score == null) return null
-    if (score >= 0.3)  return { label: '😊 Positive', cls: 'bg-emerald-50 text-emerald-600 ring-emerald-200' }
+    if (score >= 0.3) return { label: '😊 Positive', cls: 'bg-emerald-50 text-emerald-600 ring-emerald-200' }
     if (score <= -0.3) return { label: '😞 Negative', cls: 'bg-rose-50 text-rose-600 ring-rose-200' }
     return { label: '😐 Neutral', cls: 'bg-slate-50 text-slate-500 ring-slate-200' }
 }
@@ -56,10 +56,10 @@ function sentimentConfig(score) {
 function readinessConfig(val) {
     if (!val) return null
     const map = {
-        high:      { label: '✅ Ready',      cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-        medium:    { label: '🤔 Considering', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
-        low:       { label: '🔍 Exploring',  cls: 'bg-blue-50 text-blue-600 ring-blue-200' },
-        not_ready: { label: '⏳ Not Ready',  cls: 'bg-slate-50 text-slate-500 ring-slate-200' },
+        high: { label: '✅ Ready', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+        medium: { label: '🤔 Considering', cls: 'bg-amber-50 text-amber-700 ring-amber-200' },
+        low: { label: '🔍 Exploring', cls: 'bg-blue-50 text-blue-600 ring-blue-200' },
+        not_ready: { label: '⏳ Not Ready', cls: 'bg-slate-50 text-slate-500 ring-slate-200' },
     }
     return map[val.toLowerCase()] ?? { label: val, cls: 'bg-slate-50 text-slate-500 ring-slate-200' }
 }
@@ -75,15 +75,15 @@ function IntelPill({ label, cls }) {
 export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar }) {
     if (!lead) return null
 
-    const interest   = interestConfig(lead.interest_level)
-    const sentiment  = sentimentConfig(lead.last_sentiment_score)
-    const readiness  = readinessConfig(lead.purchase_readiness)
+    const interest = interestConfig(lead.interest_level)
+    const sentiment = sentimentConfig(lead.last_sentiment_score)
+    const readiness = readinessConfig(lead.purchase_readiness)
     const lastCalled = relativeTime(lead.last_contacted_at)
 
     const hasIntelligence = lead.score > 0 || interest || sentiment || readiness || lead.budget_range || lead.total_calls > 0
 
     return (
-        <div className="bg-white border rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
+        <div className="bg-card border rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
             {/* Banner */}
             <div
                 className="relative h-28 w-full"
@@ -144,7 +144,7 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar }
                             }}
                             className="text-[11px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap"
                         >
-                            {'Stage: ' + lead.stage.name}
+                            {lead.stage.name}
                         </span>
                     )}
                     <div className="flex items-center gap-1.5 min-w-0">
