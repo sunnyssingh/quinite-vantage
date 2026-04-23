@@ -67,16 +67,16 @@ export const GET = withAuth(async (request, { profile }) => {
     const byLead = {}
     for (const t of (allTransitions ?? [])) {
         if (!byLead[t.lead_id]) byLead[t.lead_id] = []
-        byLead[t.lead_id]!.push(t)
+        byLead[t.lead_id].push(t)
     }
 
     for (const transitions of Object.values(byLead)) {
-        const sorted = transitions!.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        const sorted = transitions.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         for (let i = 0; i < sorted.length - 1; i++) {
-            const stageId = sorted[i]!.to_stage_id
-            const daysInStage = (new Date(sorted[i + 1]!.created_at).getTime() - new Date(sorted[i]!.created_at).getTime()) / (1000 * 60 * 60 * 24)
+            const stageId = sorted[i].to_stage_id
+            const daysInStage = (new Date(sorted[i + 1].created_at).getTime() - new Date(sorted[i].created_at).getTime()) / (1000 * 60 * 60 * 24)
             if (!stageTimeMap[stageId]) stageTimeMap[stageId] = []
-            stageTimeMap[stageId]!.push(daysInStage)
+            stageTimeMap[stageId].push(daysInStage)
         }
     }
 
