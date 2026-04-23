@@ -8,6 +8,8 @@ import { getDefaultAvatar } from '@/lib/avatar-utils'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 import { withAuth } from '@/lib/middleware/withAuth'
 import { LeadService } from '@/services/lead.service'
+import { checkLeadLimit } from '@/lib/middleware/feature-limits'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 console.log('[Leads API] Avatar utility loaded:', typeof getDefaultAvatar)
 
@@ -139,6 +141,26 @@ export async function POST(request) {
         }
 
         console.log('✅ [Leads POST] Organization ID:', profile.organization_id)
+
+        // Check subscription is active
+        if (profile.organization_id) {
+            const subError = await requireActiveSubscription(profile.organization_id)
+            if (subError) return corsJSON(subError, { status: 402 })
+        }
+
+        // Check lead limit
+        if (profile.organization_id) {
+            const limitCheck = await checkLeadLimit(profile.organization_id)
+            if (!limitCheck.allowed) {
+                return corsJSON({
+                    error: 'limit_reached',
+                    resource: 'leads',
+                    current: limitCheck.current,
+                    limit: limitCheck.limit,
+                    message: 'You have reached your lead limit. Contact us to upgrade.'
+                }, { status: 403 })
+            }
+        }
 
         const body = await request.json()
         const { name, email, phone, projectId, notes, stageId, dealValue, assignedTo } = body

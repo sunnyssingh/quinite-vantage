@@ -37,6 +37,7 @@ import dynamic from 'next/dynamic'
 import ProjectCard from '@/components/projects/ProjectCard'
 import ProjectList from '@/components/projects/ProjectList'
 import { usePermission } from '@/contexts/PermissionContext'
+import { useSubscription } from '@/contexts/SubscriptionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
 import { useProjects } from '@/hooks/useProjects'
 import { formatCurrency } from '@/lib/utils/currency'
@@ -133,6 +134,7 @@ export default function ProjectsPage() {
   const canCreate = usePermission('create_projects')
   const canEdit = usePermission('edit_projects')
   const canDelete = usePermission('delete_projects')
+  const { isExpired: subExpired } = useSubscription()
 
   // Delete State
   const [deletingId, setDeletingId] = useState(null)
@@ -463,15 +465,15 @@ export default function ProjectsPage() {
           </Button>
 
           <PermissionTooltip
-            hasPermission={canCreate}
-            message="You need 'Create Projects' permission to add new projects. Contact your administrator."
+            hasPermission={canCreate && !subExpired}
+            message={subExpired ? 'Subscription expired. Renew to create projects.' : "You need 'Create Projects' permission to add new projects. Contact your administrator."}
           >
             <Button
               onClick={() => setCreateOpen(true)}
-              disabled={!canCreate}
+              disabled={!canCreate || subExpired}
               className="h-9 shrink-0"
             >
-              {!canCreate ? <Lock className="w-3.5 h-3.5 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+              {(!canCreate || subExpired) ? <Lock className="w-3.5 h-3.5 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
               New Project
             </Button>
           </PermissionTooltip>

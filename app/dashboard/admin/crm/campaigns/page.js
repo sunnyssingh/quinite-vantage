@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useSubscription } from '@/contexts/SubscriptionContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -112,7 +113,8 @@ function CampaignCard({
   onStart,
   onPause,
   onCancel,
-  onOpenPipeline
+  onOpenPipeline,
+  subExpired
 }) {
   const withinWindow = isWithinCampaignWindow(campaign)
   const s = campaign.status || 'scheduled'
@@ -249,13 +251,16 @@ function CampaignCard({
           {/* Row 1: Start/Resume (manual only) + Pipeline */}
           <div className="flex gap-2">
             {showStartBtn && (
-              <PermissionTooltip hasPermission={canRun} message="You need 'Run Campaigns' permission.">
+              <PermissionTooltip
+                hasPermission={canRun && !subExpired}
+                message={subExpired ? 'Subscription expired. Renew to run campaigns.' : "You need 'Run Campaigns' permission."}
+              >
                 <Button
-                  onClick={() => { if (!canClickStart || isStarting) return; onStart(campaign) }}
-                  disabled={!canClickStart || isStarting}
+                  onClick={() => { if (!canClickStart || isStarting || subExpired) return; onStart(campaign) }}
+                  disabled={!canClickStart || isStarting || subExpired}
                   className="flex-1 text-xs h-8 disabled:opacity-50"
                   size="sm"
-                  title={!canRun ? 'No permission' : (!withinWindow && !isResume) ? 'Outside schedule window' : undefined}
+                  title={subExpired ? 'Subscription expired' : !canRun ? 'No permission' : (!withinWindow && !isResume) ? 'Outside schedule window' : undefined}
                 >
                   {isStarting ? (
                     <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Starting...</>
@@ -729,6 +734,7 @@ export default function CampaignsPage() {
   const canEdit = usePermission('edit_campaigns')
   const canDelete = usePermission('delete_campaigns')
   const canRun = usePermission('run_campaigns')
+  const { isExpired: subExpired } = useSubscription()
 
   const [page, setPage] = useState(1)
   const [statusTab, setStatusTab] = useState('active')
@@ -1049,13 +1055,16 @@ export default function CampaignsPage() {
             </div>
 
             {/* New Campaign Action */}
-            <PermissionTooltip hasPermission={canCreate} message="You need 'Create Campaigns' permission.">
+            <PermissionTooltip
+              hasPermission={canCreate && !subExpired}
+              message={subExpired ? 'Subscription expired. Renew to create campaigns.' : "You need 'Create Campaigns' permission."}
+            >
               <Button
-                onClick={() => { if (!canCreate) return; setShowCreateDialog(true) }}
-                disabled={!canCreate}
+                onClick={() => { if (!canCreate || subExpired) return; setShowCreateDialog(true) }}
+                disabled={!canCreate || subExpired}
                 className="h-9 shadow-sm shrink-0"
               >
-                {!canCreate ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                {(!canCreate || subExpired) ? <Lock className="w-4 h-4 mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
                 <span className="hidden sm:inline">New Campaign</span>
                 <span className="sm:hidden">New</span>
               </Button>
@@ -1110,7 +1119,7 @@ export default function CampaignsPage() {
                 getProjectName={getProjectName}
                 canEdit={canEdit}
                 canDelete={canDelete}
-                canRun={canRun}
+                canRun={canRun && !subExpired}
                 starting={starting}
                 startingCampaignId={startingCampaignId}
                 pausingCampaignId={pausingCampaignId}
@@ -1121,6 +1130,7 @@ export default function CampaignsPage() {
                 onPause={handlePauseCampaign}
                 onCancel={handleCancelCampaign}
                 onOpenPipeline={(c) => router.push(`/dashboard/admin/crm/campaigns/${c.id}`)}
+                subExpired={subExpired}
               />
             ))}
           </div>

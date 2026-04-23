@@ -4,6 +4,7 @@ import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { CampaignService } from '@/services/campaign.service'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 function getISTDateTime() {
     const now = new Date()
@@ -26,6 +27,9 @@ export async function POST(request, { params }) {
 
         const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', user.id).single()
         if (!profile?.organization_id) return corsJSON({ error: 'No organization' }, { status: 403 })
+
+        const subError = await requireActiveSubscription(profile.organization_id)
+        if (subError) return corsJSON(subError, { status: 402 })
 
         const { data: campaign } = await admin.from('campaigns')
             .select('id, status, start_date, end_date, time_start, time_end, dnd_compliance, credit_cap, credit_spent')

@@ -6,9 +6,12 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import AdminHeader from '@/components/admin/AdminHeader'
+import { AlertTriangle } from 'lucide-react'
+import { SubscriptionProvider, useSubscription } from '@/contexts/SubscriptionContext'
 
-export default function AdminLayout({ children }) {
+function AdminLayoutInner({ children }) {
     const { user, profile, loading: authLoading, profileLoading } = useAuth()
+    const { isExpired: subscriptionExpired } = useSubscription()
     const router = useRouter()
     const pathname = usePathname()
     const [authorized, setAuthorized] = useState(false)
@@ -85,12 +88,30 @@ export default function AdminLayout({ children }) {
         pathname?.startsWith('/dashboard/admin/inventory') ||
         pathname?.startsWith('/dashboard/admin/settings')
 
+    const isOnBillingPage = pathname?.startsWith('/dashboard/admin/settings/subscription') || pathname?.startsWith('/dashboard/admin/billing')
+
     return (
         <div className="h-screen bg-secondary/20 flex flex-col overflow-hidden">
             {/* Header - Fixed at top */}
             <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md shadow-sm border-b border-border/40 shrink-0">
                 <AdminHeader user={user} profile={profile} />
             </div>
+
+            {/* Subscription expired banner */}
+            {subscriptionExpired && !isOnBillingPage && (
+                <div className="shrink-0 bg-red-600 text-white text-sm px-4 py-2.5 flex items-center justify-between gap-4 z-30">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>Your subscription has expired. Calls, campaigns, and new data creation are paused.</span>
+                    </div>
+                    <button
+                        onClick={() => router.push('/dashboard/admin/settings/subscription')}
+                        className="shrink-0 bg-white text-red-600 text-xs font-semibold px-3 py-1 rounded-full hover:bg-red-50 transition-colors"
+                    >
+                        Renew Now
+                    </button>
+                </div>
+            )}
 
             {/* Main Content */}
             <main className="flex-1 w-full bg-background/50 relative flex flex-col min-h-0 overflow-hidden">
@@ -107,5 +128,13 @@ export default function AdminLayout({ children }) {
                 )}
             </main>
         </div>
+    )
+}
+
+export default function AdminLayout({ children }) {
+    return (
+        <SubscriptionProvider>
+            <AdminLayoutInner>{children}</AdminLayoutInner>
+        </SubscriptionProvider>
     )
 }

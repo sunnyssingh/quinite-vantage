@@ -5,6 +5,7 @@ import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { withAuth } from '@/lib/middleware/withAuth'
 import { UnitService } from '@/services/unit.service'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 /**
  * GET /api/inventory/units
@@ -71,6 +72,9 @@ export async function POST(request) {
             .single()
 
         if (!profile?.organization_id) return corsJSON({ error: 'Organization not found' }, { status: 400 })
+
+        const subError = await requireActiveSubscription(profile.organization_id)
+        if (subError) return corsJSON(subError, { status: 402 })
 
         const body = await request.json()
         const {

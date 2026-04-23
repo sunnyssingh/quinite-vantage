@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSubscription } from '@/contexts/SubscriptionContext'
 import {
     Dialog,
     DialogContent,
@@ -25,6 +26,7 @@ const FormBuilder = dynamic(() => import('./FormBuilder'), {
 })
 
 export default function LeadSourceDialog({ open, onOpenChange, projectId, projects, users = [], onSuccess }) {
+    const { isExpired: subExpired } = useSubscription()
     const [activeTab, setActiveTab] = useState('manual')
     const [importProjectId, setImportProjectId] = useState(projectId || 'none')
     const [previewData, setPreviewData] = useState(null) // [NEW] Preview State
@@ -178,7 +180,9 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                             </TabsTrigger>
                             <TabsTrigger
                                 value="import"
-                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md py-2 px-3 transition-all duration-200 text-xs font-medium"
+                                disabled={subExpired}
+                                className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md py-2 px-3 transition-all duration-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={subExpired ? 'Subscription expired — renew to import leads' : undefined}
                             >
                                 <Upload className="w-4 h-4 mr-1.5" />
                                 CSV Import
@@ -305,7 +309,7 @@ export default function LeadSourceDialog({ open, onOpenChange, projectId, projec
                                             <Button variant="ghost" size="sm" onClick={() => setPreviewData(null)}>
                                                 Cancel
                                             </Button>
-                                            <Button size="sm" onClick={handleFinalImport}>
+                                            <Button size="sm" onClick={handleFinalImport} disabled={subExpired}>
                                                 Import Leads
                                             </Button>
                                         </div>

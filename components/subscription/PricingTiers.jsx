@@ -1,409 +1,337 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Check, X, Sparkles, Building2, Rocket, Globe, IndianRupee, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { PhoneInput } from '@/components/ui/phone-input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+    Check,
+    X,
+    Sparkles,
+    Rocket,
+    Building2,
+    Zap,
+    Loader2,
+    Users,
+    FolderKanban,
+    Megaphone,
+    UserCheck,
+    Clock,
+    PlusCircle,
+    FileDown,
+    Globe,
+    Plug,
+    ScrollText,
+    GitBranch,
+} from 'lucide-react';
 
-export default function PricingTiers({ currentPlan, onUpgrade, organizationCurrency, organizationCurrencySymbol }) {
-    // Auto-select currency based on organization settings, default to INR
-    const defaultCurrency = organizationCurrency === 'USD' ? 'USD' : 'INR'
-    const [currency, setCurrency] = useState(defaultCurrency)
-    const [showContactDialog, setShowContactDialog] = useState(false)
-    const [contactForm, setContactForm] = useState({
-        name: '',
-        email: '',
-        company: '',
-        phone: '',
-        message: '',
-        user_count: ''
-    })
-    const [submitting, setSubmitting] = useState(false)
-    const [plans, setPlans] = useState([])
-    const [loading, setLoading] = useState(true)
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-    // Fetch plans from API
-    useEffect(() => {
-        const fetchPlans = async () => {
-            try {
-                const response = await fetch('/api/platform/plans')
-                const data = await response.json()
-                if (response.ok && data.plans) {
-                    setPlans(data.plans)
-                }
-            } catch (error) {
-                console.error('Error fetching plans:', error)
-            } finally {
-                setLoading(false)
-            }
-        }
-        fetchPlans()
-    }, [])
+const fmt = (n) => (n === -1 ? 'Unlimited' : n?.toLocaleString('en-IN') ?? '0');
 
-    // Helper function to format features from database
-    const formatFeatures = (features) => {
-        const featureList = []
+function buildFeatureList(f = {}) {
+    return [
+        {
+            icon: Users,
+            text:
+                f.max_users === -1
+                    ? 'Unlimited users'
+                    : `Up to ${fmt(f.max_users)} user${f.max_users !== 1 ? 's' : ''}`,
+            included: true,
+        },
+        {
+            icon: FolderKanban,
+            text: f.max_projects === -1 ? 'Unlimited projects' : `${fmt(f.max_projects)} project${f.max_projects !== 1 ? 's' : ''}`,
+            included: true,
+        },
+        {
+            icon: Megaphone,
+            text:
+                f.max_campaigns === -1
+                    ? 'Unlimited campaigns'
+                    : `${fmt(f.max_campaigns)} campaign${f.max_campaigns !== 1 ? 's' : ''}`,
+            included: true,
+        },
+        {
+            icon: UserCheck,
+            text: f.max_leads === -1 ? 'Unlimited leads' : `${fmt(f.max_leads)} leads`,
+            included: true,
+        },
+        {
+            icon: Clock,
+            text:
+                f.monthly_minutes_included === -1
+                    ? 'Unlimited AI min/month'
+                    : `${fmt(f.monthly_minutes_included)} AI min/month`,
+            included: true,
+        },
+        {
+            icon: PlusCircle,
+            text: f.topup_allowed
+                ? `Top-up @ ₹${f.topup_rate_per_minute ?? 6}/min`
+                : 'No top-up',
+            included: !!f.topup_allowed,
+        },
+        {
+            icon: FileDown,
+            text: 'CSV export',
+            included: !!f.csv_export,
+        },
+        {
+            icon: Globe,
+            text: 'Custom domain',
+            included: !!f.custom_domain,
+        },
+        {
+            icon: Plug,
+            text:
+                f.lead_source_integrations === -1
+                    ? 'All integrations'
+                    : f.lead_source_integrations === 0
+                    ? 'No integrations'
+                    : `${f.lead_source_integrations} integration${f.lead_source_integrations !== 1 ? 's' : ''}`,
+            included: (f.lead_source_integrations ?? 0) > 0,
+        },
+        {
+            icon: GitBranch,
+            text: 'Pipeline automation',
+            included: true,
+        },
+        {
+            icon: ScrollText,
+            text:
+                f.audit_log_days === -1
+                    ? 'Full audit history'
+                    : f.audit_log_days === 0
+                    ? 'No audit logs'
+                    : `Audit logs — ${f.audit_log_days} days`,
+            included: (f.audit_log_days ?? 0) !== 0,
+        },
+    ];
+}
 
-        // Usage limits
-        if (features.max_users !== undefined) {
-            featureList.push({
-                text: features.max_users === -1 ? 'Unlimited users' : `Up to ${features.max_users} user${features.max_users !== 1 ? 's' : ''}`,
-                included: true
-            })
-        }
+const PLAN_ICONS = {
+    free: Sparkles,
+    starter: Zap,
+    pro: Rocket,
+    enterprise: Building2,
+};
 
-        if (features.max_projects !== undefined) {
-            featureList.push({
-                text: features.max_projects === -1 ? 'Unlimited projects' : `Up to ${features.max_projects} project${features.max_projects !== 1 ? 's' : ''}`,
-                included: true
-            })
-        }
+// ─── sub-components ──────────────────────────────────────────────────────────
 
-        if (features.max_campaigns !== undefined) {
-            featureList.push({
-                text: features.max_campaigns === -1 ? 'Unlimited campaigns' : `Up to ${features.max_campaigns} campaign${features.max_campaigns !== 1 ? 's' : ''}`,
-                included: true
-            })
-        }
-
-        if (features.max_leads !== undefined) {
-            featureList.push({
-                text: features.max_leads === -1 ? 'Unlimited leads' : `Manage up to ${features.max_leads.toLocaleString()} leads`,
-                included: true
-            })
-        }
-
-        if (features.ai_calls_per_month !== undefined) {
-            featureList.push({
-                text: features.ai_calls_per_month === -1 ? 'Unlimited AI calls' : `${features.ai_calls_per_month.toLocaleString()} AI calls/month`,
-                included: true
-            })
-        }
-
-        if (features.max_storage_gb !== undefined) {
-            featureList.push({
-                text: features.max_storage_gb === -1 ? 'Unlimited storage' : `${features.max_storage_gb}GB storage`,
-                included: true
-            })
-        }
-
-        // Support tier
-        if (features.support) {
-            const supportText = {
-                'community': 'Community support',
-                'email': 'Email support',
-                'priority': 'Priority support (24/7)'
-            }
-            featureList.push({
-                text: supportText[features.support] || 'Support included',
-                included: true,
-                highlight: features.support === 'priority'
-            })
-        }
-
-        // Feature flags
-        if (features.custom_branding) {
-            featureList.push({ text: 'Custom branding', included: true })
-        }
-
-        if (features.advanced_analytics) {
-            featureList.push({ text: 'Advanced analytics', included: true })
-        }
-
-        if (features.dedicated_account_manager) {
-            featureList.push({ text: 'Dedicated account manager', included: true, highlight: true })
-        }
-
-        if (features.sla) {
-            featureList.push({ text: 'SLA guarantees', included: true })
-        }
-
-        if (features.custom_integrations) {
-            featureList.push({ text: 'Custom integrations', included: true })
-        }
-
-        if (features.custom_pricing) {
-            featureList.push({ text: 'Custom pricing available', included: true })
-        }
-
-        return featureList
-    }
-
-    // Map plan icons
-    const getPlanIcon = (slug) => {
-        const iconMap = {
-            'free': Sparkles,
-            'pro': Rocket,
-            'enterprise': Building2
-        }
-        return iconMap[slug] || Rocket
-    }
-
-    const handleContactSales = async (e) => {
-        e.preventDefault()
-        setSubmitting(true)
-
-        try {
-            const response = await fetch('/api/contact/sales', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(contactForm)
-            })
-
-            if (response.ok) {
-                alert('Thank you! Our sales team will contact you within 24 hours.')
-                setShowContactDialog(false)
-                setContactForm({ name: '', email: '', company: '', phone: '', message: '', user_count: '' })
-            } else {
-                alert('Failed to submit inquiry. Please try again.')
-            }
-        } catch (error) {
-            console.error('Error submitting contact form:', error)
-            alert('An error occurred. Please try again.')
-        } finally {
-            setSubmitting(false)
-        }
-    }
-
-    if (loading) {
+function PriceDisplay({ plan }) {
+    if (plan.slug === 'enterprise') {
         return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                <span className="ml-3 text-gray-600">Loading pricing plans...</span>
+            <div className="mt-4 mb-2">
+                <p className="text-3xl font-bold text-gray-900">Custom</p>
+                <p className="text-sm text-gray-500 mt-1">Tailored to your scale</p>
             </div>
-        )
+        );
+    }
+
+    if (!plan.price_monthly || plan.price_monthly === 0) {
+        return (
+            <div className="mt-4 mb-2">
+                <p className="text-3xl font-bold text-gray-900">Free</p>
+                <p className="text-sm text-gray-500 mt-1">Free forever</p>
+            </div>
+        );
+    }
+
+    const yearly = plan.price_yearly ?? Math.round(plan.price_monthly * 12 * 0.8);
+
+    return (
+        <div className="mt-4 mb-2">
+            <p className="text-3xl font-bold text-gray-900">
+                ₹{plan.price_monthly.toLocaleString('en-IN')}
+                <span className="text-base font-normal text-gray-500">/mo</span>
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+                ₹{yearly.toLocaleString('en-IN')}/yr{' '}
+                <span className="text-green-600 font-medium">(save 20%)</span>
+            </p>
+        </div>
+    );
+}
+
+function FeatureRow({ icon: Icon, text, included }) {
+    return (
+        <div className="flex items-start gap-2.5">
+            {included ? (
+                <Check className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+            ) : (
+                <X className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
+            )}
+            <span className={`text-sm leading-snug ${included ? 'text-gray-700' : 'text-gray-400'}`}>
+                {text}
+            </span>
+        </div>
+    );
+}
+
+function PlanCTA({ plan, isCurrentPlan }) {
+    if (isCurrentPlan) {
+        return (
+            <Button className="w-full" variant="secondary" disabled>
+                Current Plan
+            </Button>
+        );
+    }
+
+    if (plan.slug === 'enterprise') {
+        return (
+            <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => {
+                    window.location.href =
+                        'mailto:sales@quinite.in?subject=Enterprise%20Plan%20Inquiry';
+                }}
+            >
+                Contact Sales
+            </Button>
+        );
     }
 
     return (
-        <div className="space-y-8">
-            {/* Currency Toggle */}
-            <div className="flex justify-center">
-                <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
-                    <button
-                        onClick={() => setCurrency('INR')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${currency === 'INR'
-                            ? 'bg-white text-blue-600 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        <IndianRupee className="w-4 h-4" />
-                        India (₹)
-                    </button>
-                    <button
-                        onClick={() => setCurrency('USD')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${currency === 'USD'
-                            ? 'bg-white text-blue-600 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        <Globe className="w-4 h-4" />
-                        International ($)
-                    </button>
-                </div>
+        <Button
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => {
+                window.location.href =
+                    `mailto:support@quinite.in?subject=Upgrade%20to%20${encodeURIComponent(plan.name)}%20Plan`;
+            }}
+        >
+            Contact us to upgrade
+        </Button>
+    );
+}
+
+// ─── main component ──────────────────────────────────────────────────────────
+
+export default function PricingTiers({ currentPlanSlug }) {
+    const [plans, setPlans] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchPlans = async () => {
+            try {
+                const res = await fetch('/api/platform/plans');
+                const data = await res.json();
+                if (res.ok && Array.isArray(data.plans)) {
+                    setPlans(data.plans);
+                } else if (res.ok && Array.isArray(data)) {
+                    setPlans(data);
+                } else {
+                    setError('Failed to load plans.');
+                }
+            } catch (err) {
+                console.error('Error fetching plans:', err);
+                setError('Failed to load plans.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchPlans();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                <span className="ml-3 text-gray-500 text-sm">Loading plans…</span>
             </div>
+        );
+    }
 
-            {/* Pricing Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {plans.map((plan, index) => {
-                    const Icon = getPlanIcon(plan.slug)
-                    const isCurrentPlan = currentPlan?.toLowerCase() === plan.slug
-                    const isHighlighted = plan.slug === 'pro' // Highlight Pro plan by default
-                    const features = formatFeatures(plan.features || {})
+    if (error) {
+        return (
+            <div className="flex items-center justify-center py-16 text-sm text-red-500">
+                {error}
+            </div>
+        );
+    }
 
-                    // Determine price display
-                    const priceMonthly = currency === 'INR' ? plan.price_monthly : (plan.price_monthly / 80) // Rough conversion
-                    const displayPrice = plan.slug === 'enterprise' || plan.features?.custom_pricing ? 'Custom' : priceMonthly
+    return (
+        <div className="w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
+                {plans.map((plan) => {
+                    const isHighlighted = plan.slug === 'pro';
+                    const isCurrentPlan =
+                        currentPlanSlug?.toLowerCase() === plan.slug?.toLowerCase();
+                    const Icon = PLAN_ICONS[plan.slug] ?? Rocket;
+                    const features = buildFeatureList(plan.features ?? {});
 
                     return (
                         <Card
                             key={plan.id}
-                            className={`relative ${isHighlighted
-                                ? 'border-2 border-blue-500 shadow-xl scale-105'
-                                : 'border border-gray-200'
-                                }`}
+                            className={`relative flex flex-col rounded-2xl shadow-sm transition-shadow hover:shadow-md ${
+                                isHighlighted
+                                    ? 'border-2 border-blue-500 shadow-blue-100 shadow-lg'
+                                    : 'border border-gray-200'
+                            }`}
                         >
+                            {/* Most Popular badge */}
                             {isHighlighted && (
-                                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                                    <Badge className="bg-blue-600 text-white px-4 py-1">
+                                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                                        <Sparkles className="w-3 h-3" />
                                         Most Popular
-                                    </Badge>
+                                    </span>
                                 </div>
                             )}
 
-                            <CardHeader>
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className={`p-2 rounded-lg ${isHighlighted ? 'bg-blue-100' : 'bg-gray-100'
-                                        }`}>
-                                        <Icon className={`w-6 h-6 ${isHighlighted ? 'text-blue-600' : 'text-gray-600'
-                                            }`} />
+                            <CardHeader className="pb-0 pt-6 px-5">
+                                {/* Icon + name */}
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className={`p-2 rounded-xl ${
+                                            isHighlighted
+                                                ? 'bg-blue-100 text-blue-600'
+                                                : 'bg-gray-100 text-gray-500'
+                                        }`}
+                                    >
+                                        <Icon className="w-5 h-5" />
                                     </div>
-                                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                                    <CardTitle className="text-lg font-semibold text-gray-900">
+                                        {plan.name}
+                                    </CardTitle>
                                 </div>
-                                <CardDescription className="text-base">
-                                    {plan.description || 'Flexible plan for your needs'}
+
+                                {/* Description */}
+                                <CardDescription className="mt-2 text-sm text-gray-500 leading-relaxed">
+                                    {plan.description ?? 'Flexible plan for your needs'}
                                 </CardDescription>
+
+                                {/* Price */}
+                                <PriceDisplay plan={plan} />
+
+                                {/* Current plan badge */}
+                                {isCurrentPlan && (
+                                    <Badge className="w-fit bg-green-100 text-green-700 border-0 text-xs font-medium mb-1">
+                                        Your current plan
+                                    </Badge>
+                                )}
                             </CardHeader>
 
-                            <CardContent className="space-y-6">
-                                {/* Pricing */}
-                                <div className="text-center py-4">
-                                    <div className="text-4xl font-bold text-gray-900">
-                                        {typeof displayPrice === 'number' ? (
-                                            <>
-                                                {currency === 'INR' ? '₹' : '$'}
-                                                {Math.round(displayPrice)}
-                                            </>
-                                        ) : (
-                                            displayPrice
-                                        )}
-                                    </div>
-                                    <div className="text-sm text-gray-500 mt-1">
-                                        {plan.slug === 'enterprise' || plan.features?.custom_pricing
-                                            ? 'Contact sales'
-                                            : 'per month'}
-                                    </div>
-                                </div>
+                            <CardContent className="flex flex-col flex-1 px-5 pb-6 pt-4 gap-5">
+                                {/* Divider */}
+                                <div className="border-t border-gray-100" />
 
                                 {/* Features */}
-                                <div className="space-y-3">
-                                    {features.map((feature, idx) => (
-                                        <div key={idx} className="flex items-start gap-2">
-                                            {feature.included ? (
-                                                <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                                            ) : (
-                                                <X className="w-5 h-5 text-gray-300 flex-shrink-0 mt-0.5" />
-                                            )}
-                                            <div className="flex-1">
-                                                <span className={`text-sm ${feature.included ? 'text-gray-700' : 'text-gray-400'
-                                                    } ${feature.highlight ? 'font-semibold' : ''}`}>
-                                                    {feature.text}
-                                                </span>
-                                            </div>
-                                        </div>
+                                <div className="space-y-2.5 flex-1">
+                                    {features.map((feat, idx) => (
+                                        <FeatureRow key={idx} {...feat} />
                                     ))}
                                 </div>
 
-                                {/* CTA Button */}
-                                <Button
-                                    className="w-full"
-                                    variant={isHighlighted ? 'default' : 'outline'}
-                                    disabled={isCurrentPlan}
-                                    onClick={() => {
-                                        if (plan.slug === 'enterprise' || plan.features?.custom_pricing) {
-                                            setShowContactDialog(true)
-                                        } else {
-                                            onUpgrade?.(plan.slug)
-                                        }
-                                    }}
-                                >
-                                    {isCurrentPlan ? 'Current Plan' : plan.slug === 'enterprise' ? 'Contact Sales' : `Upgrade to ${plan.name}`}
-                                </Button>
+                                {/* CTA */}
+                                <PlanCTA plan={plan} isCurrentPlan={isCurrentPlan} />
                             </CardContent>
                         </Card>
-                    )
+                    );
                 })}
             </div>
-
-            {/* Enterprise Contact Dialog */}
-            <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Contact Sales</DialogTitle>
-                        <DialogDescription>
-                            Tell us about your needs and our team will get back to you within 24 hours.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <form onSubmit={handleContactSales} className="space-y-4">
-                        <div>
-                            <Label htmlFor="name">Name *</Label>
-                            <Input
-                                id="name"
-                                required
-                                value={contactForm.name}
-                                onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="email">Email *</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                required
-                                value={contactForm.email}
-                                onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="company">Company *</Label>
-                            <Input
-                                id="company"
-                                required
-                                value={contactForm.company}
-                                onChange={(e) => setContactForm({ ...contactForm, company: e.target.value })}
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="phone">Phone</Label>
-                            <PhoneInput
-                                id="phone"
-                                value={contactForm.phone}
-                                onChange={(value) => setContactForm({ ...contactForm, phone: value })}
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="user_count">Expected Number of Users</Label>
-                            <Input
-                                id="user_count"
-                                type="number"
-                                value={contactForm.user_count}
-                                onChange={(e) => setContactForm({ ...contactForm, user_count: e.target.value })}
-                            />
-                        </div>
-
-                        <div>
-                            <Label htmlFor="message">Message</Label>
-                            <Textarea
-                                id="message"
-                                rows={3}
-                                value={contactForm.message}
-                                onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                                placeholder="Tell us about your requirements..."
-                            />
-                        </div>
-
-                        <div className="flex gap-3">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setShowContactDialog(false)}
-                                className="flex-1"
-                            >
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={submitting} className="flex-1">
-                                {submitting ? 'Submitting...' : 'Submit'}
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
         </div>
-    )
+    );
 }

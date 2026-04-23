@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { checkAuditLogAccess } from '@/lib/middleware/feature-limits'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,14 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Forbidden - Missing "view_audit_logs" permission' }, { status: 403 })
     }
 
+    // Check audit log access for regular org users (platform admins bypass)
+    if (!isPlatformAdmin && profile?.organization_id) {
+      const auditAccess = await checkAuditLogAccess(profile.organization_id)
+      if (!auditAccess.allowed) {
+        return NextResponse.json({ error: 'not_available', message: 'Audit logs not available on your plan' }, { status: 403 })
+      }
+    }
+
     const { searchParams } = new URL(request.url)
     const page = Math.max(parseInt(searchParams.get('page') || '1'), 1)
     const pageSize = Math.min(parseInt(searchParams.get('page_size') || '50'), 200)
@@ -61,6 +70,12 @@ export async function GET(request) {
     if (!isPlatformAdmin) {
       console.log(`🔒 [Audit API] Filtering to organization: ${profile.organization_id}`);
       query = query.eq('organization_id', profile.organization_id)
+
+      // Apply audit log day-window restriction from plan
+      const auditAccess = await checkAuditLogAccess(profile.organization_id)
+      if (auditAccess.allowed && auditAccess.days !== -1) {
+        query = query.gte('created_at', new Date(Date.now() - auditAccess.days * 86400000).toISOString())
+      }
 
       // [User Request Fix] Users should not see other users' logs unless they are Admins/Owners
       // We check the role name. Ideally this should be a permission like 'view_all_audit_logs'.

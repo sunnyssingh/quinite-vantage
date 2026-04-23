@@ -6,6 +6,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/permissions'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { checkProjectLimit } from '@/lib/middleware/feature-limits'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 /**
  * GET /api/projects
@@ -141,6 +143,22 @@ export async function POST(request) {
         success: false,
         message: 'You don\'t have permission to create projects'
       }, { status: 200 })
+    }
+
+    // Subscription gate
+    const subError = await requireActiveSubscription(profile.organization_id)
+    if (subError) return corsJSON(subError, { status: 402 })
+
+    // Check project limit
+    const limitCheck = await checkProjectLimit(profile.organization_id)
+    if (!limitCheck.allowed) {
+      return corsJSON({
+        error: 'limit_reached',
+        resource: 'projects',
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        message: 'You have reached your project limit. Contact us to upgrade.'
+      }, { status: 403 })
     }
 
     const { name, description, address, image_url, image_path } = body

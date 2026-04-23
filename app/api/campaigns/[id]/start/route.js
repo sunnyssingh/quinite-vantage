@@ -5,6 +5,7 @@ import { logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 import { CampaignService } from '@/services/campaign.service'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 // IST helpers
 function getISTDateTime() {
@@ -28,6 +29,10 @@ export async function POST(request, { params }) {
 
         const { data: profile } = await adminClient.from('profiles').select('organization_id, full_name').eq('id', user.id).single()
         if (!profile?.organization_id) return corsJSON({ error: 'Organization not found' }, { status: 400 })
+
+        // ── Subscription guard ────────────────────────────────────────────────
+        const subError = await requireActiveSubscription(profile.organization_id)
+        if (subError) return corsJSON(subError, { status: 402 })
 
         // ── Fetch campaign ────────────────────────────────────────────────────
         const { data: campaign, error: campaignError } = await adminClient

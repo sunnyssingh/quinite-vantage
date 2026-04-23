@@ -5,6 +5,8 @@ import { corsJSON } from '@/lib/cors'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { withPermission } from '@/lib/middleware/withAuth'
 import { CampaignService } from '@/services/campaign.service'
+import { checkCampaignLimit } from '@/lib/middleware/feature-limits'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 /**
  * GET /api/campaigns
@@ -43,6 +45,22 @@ export const POST = withPermission('create_campaigns', async (request, context) 
 
     if (!profile?.organization_id) {
       return corsJSON({ error: 'Organization not found' }, { status: 400 })
+    }
+
+    // Subscription gate
+    const subError = await requireActiveSubscription(profile.organization_id)
+    if (subError) return corsJSON(subError, { status: 402 })
+
+    // Check campaign limit
+    const limitCheck = await checkCampaignLimit(profile.organization_id)
+    if (!limitCheck.allowed) {
+      return corsJSON({
+        error: 'limit_reached',
+        resource: 'campaigns',
+        current: limitCheck.current,
+        limit: limitCheck.limit,
+        message: 'You have reached your campaign limit. Contact us to upgrade.'
+      }, { status: 403 })
     }
 
     const { project_id, name, description, start_date, end_date, time_start, time_end, metadata, ai_script, call_settings, credit_cap, auto_enroll, lead_ids } = body

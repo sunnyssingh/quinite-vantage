@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { hasPermission, logAudit } from '@/lib/permissions'
 import { corsJSON } from '@/lib/cors'
 import { makeCall, isPlivoConfigured, validateIndianPhone } from '@/lib/plivo-service'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 /**
  * POST /api/leads/[id]/call
@@ -34,6 +35,9 @@ export async function POST(request, { params }) {
         if (!profile?.organization_id) {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
+
+        const subError = await requireActiveSubscription(profile.organization_id)
+        if (subError) return corsJSON(subError, { status: 402 })
 
         const { id } = await params
         const adminClient = createAdminClient()

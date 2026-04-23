@@ -6,9 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CreditCard, Users, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
-import CreditPurchase from './CreditPurchase'
-import InvoiceList from './InvoiceList'
-import PaymentMethods from './PaymentMethods'
 
 export default function BillingDashboard() {
     const [subscription, setSubscription] = useState(null)
@@ -170,16 +167,9 @@ export default function BillingDashboard() {
             )}
 
             {/* Credit Purchase */}
-            <CreditPurchase
-                currentBalance={credits?.balance}
-                onPurchaseComplete={fetchBillingData}
-            />
-
-            {/* Invoice History */}
-            <InvoiceList invoices={invoices} onRefresh={fetchBillingData} />
-
-            {/* Payment Methods */}
-            <PaymentMethods />
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+                Contact support to purchase additional AI call minutes.
+            </div>
 
             {/* Next Billing Date */}
             {subscription?.subscription?.next_billing_date && (

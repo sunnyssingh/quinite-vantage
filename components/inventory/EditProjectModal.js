@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSubscription } from '@/contexts/SubscriptionContext'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +24,7 @@ import {
 import GenerateInventoryModal from './GenerateInventoryModal'
 
 export default function EditProjectModal({ project, isOpen, onClose, onProjectUpdated }) {
+    const { isExpired: subExpired } = useSubscription()
     const [loading, setLoading] = useState(false)
     const [showAddConfig, setShowAddConfig] = useState(false)
     const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -135,7 +137,8 @@ export default function EditProjectModal({ project, isOpen, onClose, onProjectUp
                                         size="sm"
                                         onClick={() => setShowGenerateModal(true)}
                                         className="text-blue-600 bg-blue-50 border-blue-100 hover:bg-blue-100"
-                                        disabled={formData.unitTypes.length === 0}
+                                        disabled={formData.unitTypes.length === 0 || subExpired}
+                                        title={subExpired ? 'Subscription expired — renew to generate inventory' : undefined}
                                     >
                                         <Loader2 className="w-3 h-3 mr-1" /> Auto-Generate
                                     </Button>

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { corsJSON } from '@/lib/cors'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +27,11 @@ export async function POST(req, { params }) {
             return corsJSON({ error: 'Missing required project, tower, or configuration ID' }, { status: 400 })
         }
 
+        // Auth guard
+        const supabase = await createServerSupabaseClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) return corsJSON({ error: 'Unauthorized' }, { status: 401 })
+
         const adminClient = createAdminClient()
 
         // 1. Fetch Project & Tower validation
@@ -37,6 +44,9 @@ export async function POST(req, { params }) {
         if (projectError || !projectData) {
             return corsJSON({ error: 'Project not found' }, { status: 404 })
         }
+
+        const subError = await requireActiveSubscription(projectData.organization_id)
+        if (subError) return corsJSON(subError, { status: 402 })
 
         const { data: towerData, error: towerError } = await adminClient
             .from('towers')

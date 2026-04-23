@@ -80,7 +80,6 @@ export async function POST(request) {
                 billing_cycle: billing_cycle || 'monthly',
                 current_period_start: now.toISOString(),
                 current_period_end: periodEnd.toISOString(),
-                cancel_at_period_end: false,
                 updated_at: now.toISOString()
             }, { onConflict: 'organization_id' })
             .select('*, plan:subscription_plans(*)')
@@ -126,7 +125,6 @@ export async function PATCH(request) {
         const updateData = {}
         if (body.plan_id !== undefined) updateData.plan_id = body.plan_id
         if (body.billing_cycle !== undefined) updateData.billing_cycle = body.billing_cycle
-        if (body.cancel_at_period_end !== undefined) updateData.cancel_at_period_end = body.cancel_at_period_end
         updateData.updated_at = new Date().toISOString()
 
         const { data: subscription, error } = await supabase

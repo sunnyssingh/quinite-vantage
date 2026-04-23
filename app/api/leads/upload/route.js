@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { checkLeadLimit } from '@/lib/middleware/feature-limits'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 export async function POST(request) {
     try {
@@ -44,6 +46,24 @@ export async function POST(request) {
 
         if (!targetOrgId) {
             return NextResponse.json({ error: 'Target Organization not found. Please select a project.' }, { status: 400 })
+        }
+
+        // Subscription gate (platform admins bypass)
+        if (!isPlatformAdmin) {
+            const subError = await requireActiveSubscription(targetOrgId)
+            if (subError) return NextResponse.json(subError, { status: 402 })
+        }
+
+        // Check lead limit before processing
+        const limitCheck = await checkLeadLimit(targetOrgId)
+        if (!limitCheck.allowed) {
+            return NextResponse.json({
+                error: 'limit_reached',
+                resource: 'leads',
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+                message: 'Lead limit reached. Contact us to upgrade.'
+            }, { status: 403 })
         }
 
         // Fetch default stage for the project
@@ -113,6 +133,16 @@ export async function POST(request) {
             return NextResponse.json({ error: 'No valid leads with phone numbers found' }, { status: 400 })
         }
 
+        // Trim to remaining capacity if plan has a finite limit
+        let trimmedCount = null
+        if (limitCheck.limit !== -1 && limitCheck.limit !== null) {
+            const remaining = limitCheck.limit - limitCheck.current
+            if (leadsToInsert.length > remaining) {
+                trimmedCount = leadsToInsert.length - remaining
+                leadsToInsert.splice(remaining)
+            }
+        }
+
         const { data, error } = await adminClient
             .from('leads')
             .insert(leadsToInsert)
@@ -124,7 +154,14 @@ export async function POST(request) {
             throw error
         }
 
-        return NextResponse.json({ success: true, count: data.length })
+        return NextResponse.json({
+            success: true,
+            count: data.length,
+            ...(trimmedCount !== null && trimmedCount > 0 && {
+                warning: `${trimmedCount} lead(s) were not imported because your plan limit was reached.`,
+                skipped: trimmedCount
+            })
+        })
 
     } catch (error) {
         console.error('Error uploading leads:', error)

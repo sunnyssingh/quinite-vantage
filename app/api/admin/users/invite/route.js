@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 import { corsJSON } from '@/lib/cors'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkUserLimit } from '@/lib/middleware/feature-limits'
 
 export async function POST(request) {
     try {
@@ -26,6 +27,18 @@ export async function POST(request) {
         if (!profile?.organization_id) {
             return corsJSON({ error: 'Organization not found' }, { status: 404 })
         }
+        // Check user limit
+        const limitCheck = await checkUserLimit(profile.organization_id)
+        if (!limitCheck.allowed) {
+            return corsJSON({
+                error: 'limit_reached',
+                resource: 'users',
+                current: limitCheck.current,
+                limit: limitCheck.limit,
+                message: 'You have reached your user limit. Contact us to upgrade.'
+            }, { status: 403 })
+        }
+
         const body = await request.json()
         const { email, phone, fullName, role = 'employee' } = body
 

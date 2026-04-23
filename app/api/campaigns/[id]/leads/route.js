@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
 import { logAudit } from '@/lib/permissions'
 import { CampaignService } from '@/services/campaign.service'
+import { requireActiveSubscription } from '@/lib/middleware/subscription'
 
 function handleCORS(response) {
     response.headers.set('Access-Control-Allow-Origin', '*')
@@ -63,6 +64,9 @@ export async function POST(request, { params }) {
         const admin = createAdminClient()
         const { data: profile } = await admin.from('profiles').select('organization_id').eq('id', user.id).single()
         if (!profile?.organization_id) return handleCORS(NextResponse.json({ error: 'No organization' }, { status: 403 }))
+
+        const subError = await requireActiveSubscription(profile.organization_id)
+        if (subError) return handleCORS(NextResponse.json(subError, { status: 402 }))
 
         const { id: campaignId } = await params
         const body = await request.json()

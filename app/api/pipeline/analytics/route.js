@@ -52,7 +52,7 @@ export const GET = withAuth(async (request, { profile }) => {
         .gte('created_at', monthAgo)
 
     // Build per-stage metrics
-    const activeCountMap: Record<string, number> = {}
+    const activeCountMap = {}
     for (const lead of (activeLeads ?? [])) {
         if (lead.stage_id) activeCountMap[lead.stage_id] = (activeCountMap[lead.stage_id] ?? 0) + 1
     }

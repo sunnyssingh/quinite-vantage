@@ -25,6 +25,7 @@ import {
     Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription
 } from '@/components/ui/sheet'
 import { usePermission } from '@/contexts/PermissionContext'
+import { useSubscription } from '@/contexts/SubscriptionContext'
 import {
     useCampaign, useCampaignLeads, useCampaignProgress,
     useStartCampaign, usePauseCampaign, useResumeCampaign,
@@ -778,6 +779,7 @@ export default function CampaignDetailPage() {
 
     const canRun = usePermission('run_campaigns')
     const canEdit = usePermission('edit_campaigns')
+    const { isExpired: subExpired } = useSubscription()
 
     const { data, isLoading, error } = useCampaign(id)
     const campaign = data?.campaign
@@ -849,7 +851,12 @@ export default function CampaignDetailPage() {
                         {canRun && (
                             <>
                                 {['draft', 'scheduled'].includes(s) && (
-                                    <Button size="sm" onClick={() => setConfirmAction('start')} disabled={anyPending}>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setConfirmAction('start')}
+                                        disabled={anyPending || subExpired}
+                                        title={subExpired ? 'Subscription expired — renew to start campaigns' : undefined}
+                                    >
                                         <Play className="w-3.5 h-3.5 mr-1.5" /> Start
                                     </Button>
                                 )}
@@ -868,7 +875,12 @@ export default function CampaignDetailPage() {
                                 )}
                                 {s === 'paused' && (
                                     <>
-                                        <Button size="sm" onClick={() => setConfirmAction('resume')} disabled={anyPending}>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => setConfirmAction('resume')}
+                                            disabled={anyPending || subExpired}
+                                            title={subExpired ? 'Subscription expired — renew to resume campaigns' : undefined}
+                                        >
                                             <Play className="w-3.5 h-3.5 mr-1.5" /> Resume
                                         </Button>
                                         <Button variant="outline" size="sm" onClick={() => setConfirmAction('cancel')} disabled={anyPending} className="border-red-300 text-red-600 hover:bg-red-50">

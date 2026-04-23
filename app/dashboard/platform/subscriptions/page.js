@@ -1,21 +1,545 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DollarSign, TrendingUp, Users, CreditCard, MoreHorizontal, CheckCircle, XCircle, Clock, Plus, Edit, Archive, IndianRupee } from 'lucide-react'
-import { toast } from 'react-hot-toast'
+import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+    DollarSign, TrendingUp, Users, CreditCard, MoreHorizontal,
+    CheckCircle, XCircle, Clock, Plus, Edit, Archive, IndianRupee,
+    AlertTriangle, Zap, ChevronRight, RotateCcw, PauseCircle,
+    PlayCircle, Coins, History, BarChart2, Settings
+} from 'lucide-react'
+import { toast } from 'react-hot-toast'
+
+// ─── Utility helpers ──────────────────────────────────────────────────────────
+
+const formatCurrency = (amount) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0 }).format(amount || 0)
+
+const formatDate = (date) => {
+    if (!date) return '—'
+    return new Date(date).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function StatusBadge({ status }) {
+    const variants = {
+        active: 'bg-green-100 text-green-800',
+        trialing: 'bg-blue-100 text-blue-800',
+        cancelled: 'bg-red-100 text-red-800',
+        past_due: 'bg-yellow-100 text-yellow-800',
+        suspended: 'bg-orange-100 text-orange-800',
+        inactive: 'bg-gray-100 text-gray-800',
+    }
+    return <Badge className={`${variants[status] || variants.inactive} hover:opacity-80`}>{status}</Badge>
+}
+
+function UtilizationBadge({ pct }) {
+    if (pct == null) return <span className="text-gray-400 text-xs">—</span>
+    const color = pct >= 90 ? 'bg-red-100 text-red-800' : pct >= 70 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+    return <Badge className={`${color} hover:opacity-80`}>{pct}%</Badge>
+}
+
+function ResourceBar({ label, active = 0, archived = 0, limit = 0, isOverLimit }) {
+    const total = active + archived
+    const pct = limit > 0 ? Math.min(Math.round((total / limit) * 100), 100) : 0
+    const barColor = isOverLimit ? 'bg-red-500' : pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-green-500'
+    return (
+        <div className="space-y-1">
+            <div className="flex justify-between text-xs text-gray-600">
+                <span className="font-medium">{label}</span>
+                <span>{active} active{archived > 0 ? ` + ${archived} archived` : ''} = {total} / {limit === -1 ? '∞' : limit}</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-2">
+                <div className={`h-2 rounded-full transition-all ${barColor}`} style={{ width: `${limit === -1 ? 10 : pct}%` }} />
+            </div>
+            {isOverLimit && (
+                <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Over limit
+                </p>
+            )}
+        </div>
+    )
+}
+
+// ─── Org Detail Drawer ────────────────────────────────────────────────────────
+
+function OrgDetailDrawer({ sub, open, onClose, plans, onRefresh }) {
+    const [drawerTab, setDrawerTab] = useState('subscription')
+    const [actionLoading, setActionLoading] = useState(false)
+    const [selectedPlan, setSelectedPlan] = useState(sub?.plan?.id || '')
+    const [confirmDialog, setConfirmDialog] = useState(null) // { type, message, onConfirm }
+    const [customLimits, setCustomLimits] = useState({
+        max_users: '',
+        max_projects: '',
+        max_campaigns: '',
+        max_leads: '',
+        monthly_minutes_included: '',
+    })
+    const [creditsForm, setCreditsForm] = useState({ minutes: '', reason: '' })
+    const [creditsLoading, setCreditsLoading] = useState(false)
+    const [limitsLoading, setLimitsLoading] = useState(false)
+
+    useEffect(() => {
+        if (sub) {
+            setSelectedPlan(sub.plan?.id || '')
+            const cl = sub.custom_limits || {}
+            setCustomLimits({
+                max_users: cl.max_users ?? '',
+                max_projects: cl.max_projects ?? '',
+                max_campaigns: cl.max_campaigns ?? '',
+                max_leads: cl.max_leads ?? '',
+                monthly_minutes_included: cl.monthly_minutes_included ?? '',
+            })
+        }
+    }, [sub])
+
+    if (!sub) return null
+
+    const orgName = sub.organization?.company_name || sub.organization?.name || 'Unknown'
+    const credits = sub.credits || {}
+    const usage = sub.usage || {}
+    const txns = credits.transactions || []
+
+    const postAction = async (body, successMsg) => {
+        setActionLoading(true)
+        const t = toast.loading('Processing...')
+        try {
+            const res = await fetch('/api/platform/subscriptions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast.success(successMsg, { id: t })
+                onRefresh()
+            } else {
+                toast.error(data.error || 'Action failed', { id: t })
+            }
+        } catch {
+            toast.error('Action failed', { id: t })
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleChangePlan = () =>
+        postAction({ action: 'change_plan', id: sub.id, plan_id: selectedPlan }, 'Plan changed successfully')
+
+    const handleStatusAction = (action) => {
+        const destructive = action === 'cancel'
+        if (destructive) {
+            setConfirmDialog({
+                type: 'cancel',
+                message: `This will cancel ${orgName}'s subscription. Are you sure?`,
+                onConfirm: () => {
+                    setConfirmDialog(null)
+                    postAction({ action: 'cancel', id: sub.id }, 'Subscription cancelled')
+                },
+            })
+        } else {
+            postAction({ action, id: sub.id }, `Subscription ${action}d successfully`)
+        }
+    }
+
+    const handleSaveLimits = async () => {
+        setLimitsLoading(true)
+        const t = toast.loading('Saving overrides...')
+        const parsed = {}
+        Object.entries(customLimits).forEach(([k, v]) => {
+            if (v !== '') parsed[k] = Number(v)
+        })
+        try {
+            const res = await fetch('/api/platform/subscriptions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update_org_limits', org_id: sub.organization?.id, custom_limits: parsed }),
+            })
+            const data = await res.json()
+            if (res.ok) { toast.success('Overrides saved', { id: t }); onRefresh() }
+            else toast.error(data.error || 'Failed', { id: t })
+        } catch { toast.error('Failed', { id: t }) }
+        finally { setLimitsLoading(false) }
+    }
+
+    const handleClearLimits = () =>
+        postAction({ action: 'update_org_limits', org_id: sub.organization?.id, custom_limits: null }, 'Overrides cleared')
+
+    const handleResetMonthly = () => {
+        setConfirmDialog({
+            type: 'reset',
+            message: `This will reset ${orgName}'s monthly AI minutes to their plan's included amount. Are you sure?`,
+            onConfirm: () => {
+                setConfirmDialog(null)
+                postAction({ action: 'reset_monthly_minutes', org_id: sub.organization?.id }, 'Monthly minutes reset')
+            },
+        })
+    }
+
+    const handleAddCredits = async () => {
+        if (!creditsForm.minutes || !creditsForm.reason) {
+            toast.error('Minutes and reason are required')
+            return
+        }
+        setCreditsLoading(true)
+        const t = toast.loading('Adding credits...')
+        try {
+            const res = await fetch('/api/platform/subscriptions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'add_credits',
+                    org_id: sub.organization?.id,
+                    minutes: Number(creditsForm.minutes),
+                    reason: creditsForm.reason,
+                }),
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast.success('Credits added', { id: t })
+                setCreditsForm({ minutes: '', reason: '' })
+                onRefresh()
+            } else {
+                toast.error(data.error || 'Failed', { id: t })
+            }
+        } catch { toast.error('Failed', { id: t }) }
+        finally { setCreditsLoading(false) }
+    }
+
+    const historyEntries = sub.metadata?.history || []
+
+    return (
+        <>
+            {/* Backdrop */}
+            {open && (
+                <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+            )}
+
+            {/* Slide-over panel */}
+            <div
+                className={`fixed top-0 right-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl transform transition-transform duration-300 flex flex-col ${open ? 'translate-x-0' : 'translate-x-full'}`}
+            >
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900">{orgName}</h2>
+                        <div className="flex items-center gap-2 mt-1">
+                            <StatusBadge status={sub.status} />
+                            <Badge variant="outline">{sub.plan?.name || 'No Plan'}</Badge>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={onClose}>
+                        <XCircle className="w-5 h-5" />
+                    </Button>
+                </div>
+
+                {/* Drawer Body */}
+                <div className="flex-1 overflow-y-auto">
+                    <Tabs value={drawerTab} onValueChange={setDrawerTab} className="h-full flex flex-col">
+                        <TabsList className="grid grid-cols-4 mx-6 mt-4">
+                            <TabsTrigger value="subscription" className="text-xs"><Settings className="w-3 h-3 mr-1" />Subscription</TabsTrigger>
+                            <TabsTrigger value="usage" className="text-xs"><BarChart2 className="w-3 h-3 mr-1" />Usage</TabsTrigger>
+                            <TabsTrigger value="credits" className="text-xs"><Coins className="w-3 h-3 mr-1" />AI Credits</TabsTrigger>
+                            <TabsTrigger value="history" className="text-xs"><History className="w-3 h-3 mr-1" />History</TabsTrigger>
+                        </TabsList>
+
+                        {/* Tab 1: Subscription */}
+                        <TabsContent value="subscription" className="px-6 py-4 space-y-6">
+                            {/* Plan info */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Plan Details</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                    <div className="flex justify-between"><span className="text-gray-500">Plan</span><span className="font-medium">{sub.plan?.name || '—'}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Status</span><StatusBadge status={sub.status} /></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Billing Cycle</span><span className="capitalize">{sub.billing_cycle || '—'}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Period Start</span><span>{formatDate(sub.current_period_start)}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Period End</span><span>{formatDate(sub.current_period_end)}</span></div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Change Plan */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Change Plan</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a plan" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {plans.map(p => (
+                                                <SelectItem key={p.id} value={p.id}>
+                                                    {p.name} ({formatCurrency(p.price_monthly)}/mo)
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button onClick={handleChangePlan} disabled={actionLoading || !selectedPlan} className="w-full">
+                                        Apply Plan
+                                    </Button>
+                                </CardContent>
+                            </Card>
+
+                            {/* Status Actions */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Status Actions</CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex flex-wrap gap-2">
+                                    {sub.status !== 'active' && (
+                                        <Button variant="outline" size="sm" onClick={() => handleStatusAction('activate')} disabled={actionLoading}>
+                                            <PlayCircle className="w-4 h-4 mr-1" /> Activate
+                                        </Button>
+                                    )}
+                                    {sub.status === 'active' && (
+                                        <Button variant="outline" size="sm" onClick={() => handleStatusAction('suspend')} disabled={actionLoading}>
+                                            <PauseCircle className="w-4 h-4 mr-1" /> Suspend
+                                        </Button>
+                                    )}
+                                    {sub.status !== 'cancelled' && (
+                                        <Button variant="destructive" size="sm" onClick={() => handleStatusAction('cancel')} disabled={actionLoading}>
+                                            <XCircle className="w-4 h-4 mr-1" /> Cancel
+                                        </Button>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Custom Limit Overrides */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Custom Limit Overrides</CardTitle>
+                                    <CardDescription className="text-xs">Leave blank to use plan defaults. Use -1 for unlimited.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {[
+                                        { key: 'max_users', label: 'Max Users', placeholder: sub.plan?.features?.max_users ?? '—' },
+                                        { key: 'max_projects', label: 'Max Projects', placeholder: sub.plan?.features?.max_projects ?? '—' },
+                                        { key: 'max_campaigns', label: 'Max Campaigns', placeholder: sub.plan?.features?.max_campaigns ?? '—' },
+                                        { key: 'max_leads', label: 'Max Leads', placeholder: sub.plan?.features?.max_leads ?? '—' },
+                                        { key: 'monthly_minutes_included', label: 'Monthly AI Minutes', placeholder: sub.plan?.features?.monthly_minutes_included ?? '—' },
+                                    ].map(({ key, label, placeholder }) => (
+                                        <div key={key} className="grid grid-cols-2 gap-2 items-center">
+                                            <Label className="text-xs">{label}</Label>
+                                            <Input
+                                                type="number"
+                                                value={customLimits[key]}
+                                                onChange={e => setCustomLimits(prev => ({ ...prev, [key]: e.target.value }))}
+                                                placeholder={String(placeholder)}
+                                                className="h-8 text-sm"
+                                            />
+                                        </div>
+                                    ))}
+                                    <div className="flex gap-2 pt-2">
+                                        <Button onClick={handleSaveLimits} disabled={limitsLoading} size="sm" className="flex-1">
+                                            Save Overrides
+                                        </Button>
+                                        <Button onClick={handleClearLimits} disabled={actionLoading} size="sm" variant="outline">
+                                            Clear Overrides
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Tab 2: Usage */}
+                        <TabsContent value="usage" className="px-6 py-4 space-y-4">
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Resource Usage</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-5">
+                                    {[
+                                        { label: 'Projects', key: 'projects' },
+                                        { label: 'Leads', key: 'leads' },
+                                        { label: 'Campaigns', key: 'campaigns' },
+                                        { label: 'Users', key: 'users' },
+                                    ].map(({ label, key }) => {
+                                        const r = usage[key] || {}
+                                        return (
+                                            <ResourceBar
+                                                key={key}
+                                                label={label}
+                                                active={r.active || 0}
+                                                archived={r.archived || 0}
+                                                limit={r.limit ?? 0}
+                                                isOverLimit={r.over_limit}
+                                            />
+                                        )
+                                    })}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Tab 3: AI Credits */}
+                        <TabsContent value="credits" className="px-6 py-4 space-y-4">
+                            {/* Credit Summary */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Credit Summary</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm">
+                                    <div className="flex justify-between"><span className="text-gray-500">Monthly Included</span><span>{credits.monthly_included ?? '—'} min</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Monthly Balance</span><span>{credits.monthly_balance ?? '—'} min</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Monthly Used</span><span>{credits.monthly_used ?? '—'} min</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500">Reset Date</span><span>{formatDate(credits.reset_date)}</span></div>
+                                    <hr />
+                                    <div className="flex justify-between"><span className="text-gray-500">Purchased Balance</span><span>{credits.purchased_balance ?? '—'} min</span></div>
+                                    <div className="flex justify-between font-medium"><span>Total Available</span><span>{((credits.monthly_balance || 0) + (credits.purchased_balance || 0))} min</span></div>
+                                    {credits.low_balance && (
+                                        <div className="mt-2 flex items-center gap-1 text-amber-700 bg-amber-50 rounded px-2 py-1 text-xs">
+                                            <AlertTriangle className="w-3 h-3" /> Low balance
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Reset Monthly */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Reset Monthly Minutes</CardTitle>
+                                    <CardDescription className="text-xs">Resets to plan's included amount immediately.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleResetMonthly}
+                                        disabled={actionLoading}
+                                        className="w-full"
+                                    >
+                                        <RotateCcw className="w-4 h-4 mr-2" /> Reset Monthly Minutes
+                                    </Button>
+                                </CardContent>
+                            </Card>
+
+                            {/* Add Credits */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Add Credits</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs">Minutes to Add *</Label>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            value={creditsForm.minutes}
+                                            onChange={e => setCreditsForm(p => ({ ...p, minutes: e.target.value }))}
+                                            placeholder="e.g. 60"
+                                            className="h-8 text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs">Reason / Note *</Label>
+                                        <Input
+                                            value={creditsForm.reason}
+                                            onChange={e => setCreditsForm(p => ({ ...p, reason: e.target.value }))}
+                                            placeholder="e.g. Goodwill addition"
+                                            className="h-8 text-sm"
+                                        />
+                                    </div>
+                                    <Button onClick={handleAddCredits} disabled={creditsLoading} size="sm" className="w-full">
+                                        <Plus className="w-4 h-4 mr-1" /> Add Credits
+                                    </Button>
+                                </CardContent>
+                            </Card>
+
+                            {/* Transaction History */}
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Transaction History (Last 20)</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {txns.length === 0 ? (
+                                        <p className="text-xs text-gray-400 text-center py-4">No transactions</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {txns.slice(0, 20).map((tx, i) => (
+                                                <div key={i} className="flex items-center justify-between text-xs border-b pb-2 last:border-0 last:pb-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className={tx.amount > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                                            {tx.type || (tx.amount > 0 ? 'credit' : 'debit')}
+                                                        </Badge>
+                                                        <span className="text-gray-600">{tx.description || '—'}</span>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className={`font-medium ${tx.amount > 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                                            {tx.amount > 0 ? '+' : ''}{tx.amount} min
+                                                        </div>
+                                                        <div className="text-gray-400">{formatDate(tx.created_at)}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Tab 4: History */}
+                        <TabsContent value="history" className="px-6 py-4">
+                            <Card>
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm">Subscription History</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    {historyEntries.length === 0 ? (
+                                        <p className="text-xs text-gray-400 text-center py-8">No history available</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {historyEntries.map((entry, i) => (
+                                                <div key={i} className="flex items-start gap-3 text-xs border-b pb-3 last:border-0">
+                                                    <div className="mt-0.5">
+                                                        <div className="w-2 h-2 rounded-full bg-blue-400 mt-1" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="font-medium text-gray-800">{entry.event || entry.action}</div>
+                                                        {entry.details && <div className="text-gray-500 mt-0.5">{entry.details}</div>}
+                                                    </div>
+                                                    <div className="text-gray-400 whitespace-nowrap">{formatDate(entry.created_at || entry.timestamp)}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
+                </div>
+            </div>
+
+            {/* Confirm Dialog */}
+            <Dialog open={!!confirmDialog} onOpenChange={() => setConfirmDialog(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Action</DialogTitle>
+                        <DialogDescription>{confirmDialog?.message}</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmDialog?.onConfirm}>Confirm</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PlatformSubscriptionsPage() {
     const [activeTab, setActiveTab] = useState('subscriptions')
@@ -25,277 +549,120 @@ export default function PlatformSubscriptionsPage() {
     const [statusFilter, setStatusFilter] = useState('all')
     const [planFilter, setPlanFilter] = useState('all')
 
-    // Plans State
+    // Drawer state
+    const [drawerSub, setDrawerSub] = useState(null)
+    const [drawerOpen, setDrawerOpen] = useState(false)
+
+    // Plans state
     const [plans, setPlans] = useState([])
     const [plansLoading, setPlansLoading] = useState(false)
     const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
     const [editingPlan, setEditingPlan] = useState(null)
-    const [planFormData, setPlanFormData] = useState({
+
+    const defaultPlanForm = {
         name: '',
         slug: '',
         description: '',
         price_monthly: 0,
         price_yearly: 0,
         features: {
-            // User & Team Limits
             max_users: 5,
-
-            // CRM Limits
             max_projects: 2,
             max_campaigns: 5,
             max_leads: 500,
-
-            // AI Calling Limits
-            ai_calls_per_month: 50,
-
-            // Storage
-            max_storage_gb: 1,
-
-            // Support Tier
-            support: 'community',
-
-            // Feature Flags
-            custom_branding: false,
+            monthly_minutes_included: 60,
+            topup_allowed: false,
+            topup_rate_per_minute: 0,
+            csv_export: false,
+            custom_domain: false,
+            lead_source_integrations: 0,
+            audit_log_days: 0,
             advanced_analytics: false,
-            dedicated_account_manager: false,
-            sla: false,
-            custom_integrations: false,
-            custom_pricing: false
         },
         sort_order: 0,
-        is_active: true
-    })
+        is_active: true,
+    }
+    const [planFormData, setPlanFormData] = useState(defaultPlanForm)
 
-    // Change Plan State
-    const [isChangePlanDialogOpen, setIsChangePlanDialogOpen] = useState(false)
-    const [changePlanData, setChangePlanData] = useState({
-        subscriptionId: null,
-        planId: '',
-        billingCycle: 'monthly'
-    })
-
-    useEffect(() => {
-        fetchSubscriptions()
-        fetchPlans()
+    const fetchSubscriptions = useCallback(async () => {
+        try {
+            const params = new URLSearchParams()
+            if (statusFilter !== 'all') params.append('status', statusFilter)
+            if (planFilter !== 'all') params.append('plan', planFilter)
+            const res = await fetch(`/api/platform/subscriptions?${params}`)
+            const data = await res.json()
+            if (res.ok) {
+                setSubscriptions(data.subscriptions || [])
+                setMetrics(data.metrics || {})
+            } else {
+                toast.error(data.error || 'Failed to fetch subscriptions')
+            }
+        } catch {
+            toast.error('Failed to fetch subscriptions')
+        } finally {
+            setLoading(false)
+        }
     }, [statusFilter, planFilter])
 
-    const fetchPlans = async () => {
+    const fetchPlans = useCallback(async () => {
         setPlansLoading(true)
         try {
-            const response = await fetch('/api/platform/plans')
-            const data = await response.json()
-            if (response.ok) {
-                setPlans(data.plans || [])
-            } else {
-                toast.error('Failed to fetch plans')
-            }
-        } catch (error) {
-            console.error('Error fetching plans:', error)
-        } finally {
-            setPlansLoading(false)
-        }
-    }
+            const res = await fetch('/api/platform/plans')
+            const data = await res.json()
+            if (res.ok) setPlans(data.plans || [])
+            else toast.error('Failed to fetch plans')
+        } catch { /* silent */ }
+        finally { setPlansLoading(false) }
+    }, [])
 
-    const handleSavePlan = async () => {
-        const loadingToast = toast.loading(editingPlan ? 'Updating plan...' : 'Creating plan...')
-        try {
-            const url = editingPlan
-                ? `/api/platform/plans?id=${editingPlan.id}`
-                : '/api/platform/plans'
+    useEffect(() => { fetchSubscriptions(); fetchPlans() }, [fetchSubscriptions, fetchPlans])
 
-            const method = editingPlan ? 'PUT' : 'POST'
-
-            const response = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(planFormData)
-            })
-
-            const data = await response.json()
-
-            if (response.ok) {
-                toast.success(`Plan ${editingPlan ? 'updated' : 'created'} successfully`, { id: loadingToast })
-                setIsPlanDialogOpen(false)
-                fetchPlans()
-                setEditingPlan(null)
-                resetPlanForm()
-            } else {
-                toast.error(data.error || 'Operation failed', { id: loadingToast })
-            }
-        } catch (error) {
-            console.error('Error saving plan:', error)
-            toast.error('Operation failed', { id: loadingToast })
-        }
-    }
-
-    const resetPlanForm = () => {
-        setPlanFormData({
-            name: '',
-            slug: '',
-            description: '',
-            price_monthly: 0,
-            price_yearly: 0,
-            features: {
-                max_users: 5,
-                max_projects: 2,
-                max_campaigns: 5,
-                max_leads: 500,
-                ai_calls_per_month: 50,
-                max_storage_gb: 1,
-                support: 'community',
-                custom_branding: false,
-                advanced_analytics: false,
-                dedicated_account_manager: false,
-                sla: false,
-                custom_integrations: false,
-                custom_pricing: false
-            },
-            sort_order: 0,
-            is_active: true
-        })
-    }
+    const resetPlanForm = () => setPlanFormData(defaultPlanForm)
 
     const openEditPlan = (plan) => {
         setEditingPlan(plan)
-        const defaultFeatures = {
-            max_users: 5,
-            max_projects: 2,
-            max_campaigns: 5,
-            max_leads: 500,
-            ai_calls_per_month: 50,
-            max_storage_gb: 1,
-            support: 'community',
-            custom_branding: false,
-            advanced_analytics: false,
-            dedicated_account_manager: false,
-            sla: false,
-            custom_integrations: false,
-            custom_pricing: false
-        }
         setPlanFormData({
             name: plan.name,
             slug: plan.slug,
             description: plan.description || '',
             price_monthly: plan.price_monthly,
             price_yearly: plan.price_yearly,
-            features: { ...defaultFeatures, ...plan.features },
+            features: { ...defaultPlanForm.features, ...plan.features },
             sort_order: plan.sort_order,
-            is_active: plan.is_active
+            is_active: plan.is_active,
         })
         setIsPlanDialogOpen(true)
     }
 
-    const fetchSubscriptions = async () => {
+    const handleSavePlan = async () => {
+        const t = toast.loading(editingPlan ? 'Updating plan...' : 'Creating plan...')
         try {
-            const params = new URLSearchParams()
-            if (statusFilter !== 'all') params.append('status', statusFilter)
-            if (planFilter !== 'all') params.append('plan', planFilter)
-
-            const response = await fetch(`/api/platform/subscriptions?${params}`)
-            const data = await response.json()
-
-            if (response.ok) {
-                setSubscriptions(data.subscriptions || [])
-                setMetrics(data.metrics || {})
-            } else {
-                toast.error(data.error || 'Failed to fetch subscriptions')
-            }
-        } catch (error) {
-            console.error('Error fetching subscriptions:', error)
-            toast.error('Failed to fetch subscriptions')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleAction = async (subscriptionId, action) => {
-        const loadingToast = toast.loading(`${action === 'cancel' ? 'Cancelling' : action === 'activate' ? 'Activating' : 'Extending trial for'} subscription...`)
-
-        try {
-            const response = await fetch(`/api/platform/subscriptions?action=${action}&id=${subscriptionId}`, {
-                method: 'POST',
+            const url = editingPlan ? `/api/platform/plans?id=${editingPlan.id}` : '/api/platform/plans'
+            const res = await fetch(url, {
+                method: editingPlan ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: action === 'extend_trial' ? JSON.stringify({ days: 7 }) : undefined
+                body: JSON.stringify(planFormData),
             })
-
-            const data = await response.json()
-
-            if (response.ok) {
-                toast.success(`Subscription ${action}d successfully`, { id: loadingToast })
-                fetchSubscriptions()
+            const data = await res.json()
+            if (res.ok) {
+                toast.success(`Plan ${editingPlan ? 'updated' : 'created'}`, { id: t })
+                setIsPlanDialogOpen(false)
+                setEditingPlan(null)
+                resetPlanForm()
+                fetchPlans()
             } else {
-                toast.error(data.error || 'Action failed', { id: loadingToast })
+                toast.error(data.error || 'Failed', { id: t })
             }
-        } catch (error) {
-            console.error('Error performing action:', error)
-            toast.error('Action failed', { id: loadingToast })
-        }
+        } catch { toast.error('Failed', { id: t }) }
     }
 
-    const openChangePlan = (sub) => {
-        setChangePlanData({
-            subscriptionId: sub.id,
-            planId: sub.plan?.id || '',
-            billingCycle: sub.billing_cycle || 'monthly'
-        })
-        setIsChangePlanDialogOpen(true)
+    const openDrawer = (sub) => {
+        setDrawerSub(sub)
+        setDrawerOpen(true)
     }
 
-    const handleConfirmChangePlan = async () => {
-        if (!changePlanData.planId || !changePlanData.subscriptionId) return
-
-        const loadingToast = toast.loading('Assigning plan...')
-        try {
-            const response = await fetch(`/api/platform/subscriptions?action=change_plan&id=${changePlanData.subscriptionId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    planId: changePlanData.planId,
-                    billingCycle: changePlanData.billingCycle
-                })
-            })
-
-            const data = await response.json()
-
-            if (response.ok) {
-                toast.success('Plan assigned successfully', { id: loadingToast })
-                setIsChangePlanDialogOpen(false)
-                fetchSubscriptions()
-            } else {
-                toast.error(data.error || 'Failed to assign plan', { id: loadingToast })
-            }
-        } catch (error) {
-            console.error('Error assigning plan:', error)
-            toast.error('Failed to assign plan', { id: loadingToast })
-        }
-    }
-
-    const getStatusBadge = (status) => {
-        const variants = {
-            active: 'bg-green-100 text-green-800 hover:bg-green-100',
-            trialing: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
-            cancelled: 'bg-red-100 text-red-800 hover:bg-red-100',
-            past_due: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100',
-            inactive: 'bg-gray-100 text-gray-800 hover:bg-gray-100'
-        }
-        return <Badge className={variants[status] || variants.inactive}>{status}</Badge>
-    }
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            minimumFractionDigits: 0
-        }).format(amount)
-    }
-
-    const formatDate = (date) => {
-        return new Date(date).toLocaleDateString('en-IN', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        })
-    }
+    const featF = (key) => planFormData.features[key]
+    const setFeat = (key, val) => setPlanFormData(p => ({ ...p, features: { ...p.features, [key]: val } }))
 
     return (
         <div className="p-6 space-y-6">
@@ -307,8 +674,7 @@ export default function PlatformSubscriptionsPage() {
                 </div>
                 {activeTab === 'plans' && (
                     <Button onClick={() => { setEditingPlan(null); resetPlanForm(); setIsPlanDialogOpen(true) }}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create New Plan
+                        <Plus className="w-4 h-4 mr-2" /> Create New Plan
                     </Button>
                 )}
             </div>
@@ -319,90 +685,112 @@ export default function PlatformSubscriptionsPage() {
                     <TabsTrigger value="plans">Plans & Packages</TabsTrigger>
                 </TabsList>
 
+                {/* ── Subscriptions Tab ── */}
                 <TabsContent value="subscriptions" className="space-y-6">
-                    {/* Metrics Cards */}
+                    {/* Metrics Row 1 */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {loading ? [1, 2, 3, 4].map(i => (
                             <Card key={i} className="border-l-4 border-l-slate-200">
+                                <CardHeader className="pb-3"><Skeleton className="h-4 w-32" /></CardHeader>
+                                <CardContent><Skeleton className="h-8 w-16 mb-2" /><Skeleton className="h-3 w-24" /></CardContent>
+                            </Card>
+                        )) : (<>
+                            <Card className="border-l-4 border-l-blue-500">
                                 <CardHeader className="pb-3">
-                                    <Skeleton className="h-4 w-32" />
+                                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                        <Users className="w-4 h-4" /> Total Subscriptions
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <Skeleton className="h-8 w-16 mb-2" />
-                                    <Skeleton className="h-3 w-24" />
+                                    <div className="text-3xl font-bold text-gray-900">{metrics.total || 0}</div>
+                                    <p className="text-xs text-gray-500 mt-1">{metrics.active || 0} active, {metrics.trialing || 0} trialing</p>
                                 </CardContent>
                             </Card>
-                        )) : (
-                            <>
-                                <Card className="border-l-4 border-l-blue-500">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                            <Users className="w-4 h-4" />
-                                            Total Subscriptions
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-3xl font-bold text-gray-900">{metrics.total || 0}</div>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            {metrics.active || 0} active, {metrics.trialing || 0} trialing
-                                        </p>
-                                    </CardContent>
-                                </Card>
 
-                                <Card className="border-l-4 border-l-green-500">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                            <IndianRupee className="w-4 h-4" />
-                                            Monthly Recurring Revenue
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.mrr || 0)}</div>
-                                        <p className="text-xs text-gray-500 mt-1">Per month</p>
-                                    </CardContent>
-                                </Card>
+                            <Card className="border-l-4 border-l-green-500">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                        <IndianRupee className="w-4 h-4" /> Monthly Recurring Revenue
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.mrr || 0)}</div>
+                                    <p className="text-xs text-gray-500 mt-1">Per month</p>
+                                </CardContent>
+                            </Card>
 
-                                <Card className="border-l-4 border-l-purple-500">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                            <IndianRupee className="w-4 h-4" />
-                                            Annual Recurring Revenue
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.arr || 0)}</div>
-                                        <p className="text-xs text-gray-500 mt-1">Per year</p>
-                                    </CardContent>
-                                </Card>
+                            <Card className="border-l-4 border-l-purple-500">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                        <IndianRupee className="w-4 h-4" /> Annual Recurring Revenue
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold text-gray-900">{formatCurrency(metrics.arr || 0)}</div>
+                                    <p className="text-xs text-gray-500 mt-1">Per year</p>
+                                </CardContent>
+                            </Card>
 
-                                <Card className="border-l-4 border-l-orange-500">
-                                    <CardHeader className="pb-3">
-                                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                                            <CreditCard className="w-4 h-4" />
-                                            Cancelled
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-3xl font-bold text-gray-900">{metrics.cancelled || 0}</div>
-                                        <p className="text-xs text-gray-500 mt-1">Churn rate: {metrics.total > 0 ? ((metrics.cancelled / metrics.total) * 100).toFixed(1) : 0}%</p>
-                                    </CardContent>
-                                </Card>
-                            </>
-                        )}
+                            <Card className="border-l-4 border-l-orange-500">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                        <CreditCard className="w-4 h-4" /> Cancelled
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold text-gray-900">{metrics.cancelled || 0}</div>
+                                    <p className="text-xs text-gray-500 mt-1">Churn: {metrics.total > 0 ? ((metrics.cancelled / metrics.total) * 100).toFixed(1) : 0}%</p>
+                                </CardContent>
+                            </Card>
+                        </>)}
                     </div>
 
-                    {/* Filters and Table */}
+                    {/* Metrics Row 2 — Health */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {loading ? [1, 2].map(i => (
+                            <Card key={i} className="border-l-4 border-l-slate-200">
+                                <CardHeader className="pb-3"><Skeleton className="h-4 w-32" /></CardHeader>
+                                <CardContent><Skeleton className="h-8 w-16" /></CardContent>
+                            </Card>
+                        )) : (<>
+                            <Card className="border-l-4 border-l-red-500">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-red-500" /> Orgs Over Limit
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold text-red-600">{metrics.orgs_over_limit || 0}</div>
+                                    <p className="text-xs text-gray-500 mt-1">Organizations exceeding resource limits</p>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-l-4 border-l-amber-500">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                                        <Zap className="w-4 h-4 text-amber-500" /> Low AI Credits
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-3xl font-bold text-amber-600">{metrics.low_credits || 0}</div>
+                                    <p className="text-xs text-gray-500 mt-1">Organizations with low credit balance</p>
+                                </CardContent>
+                            </Card>
+                        </>)}
+                    </div>
+
+                    {/* Subscriptions Table */}
                     <Card>
                         <CardHeader>
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <CardTitle>All Subscriptions</CardTitle>
-                                    <CardDescription>View and manage organization subscriptions</CardDescription>
+                                    <CardDescription>Click a row to view full details</CardDescription>
                                 </div>
                                 <div className="flex gap-2">
                                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                        <SelectTrigger className="w-full sm:w-[150px]">
-                                            <SelectValue placeholder="Filter by status" />
+                                        <SelectTrigger className="w-[150px]">
+                                            <SelectValue placeholder="Filter status" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Status</SelectItem>
@@ -410,18 +798,18 @@ export default function PlatformSubscriptionsPage() {
                                             <SelectItem value="trialing">Trialing</SelectItem>
                                             <SelectItem value="cancelled">Cancelled</SelectItem>
                                             <SelectItem value="past_due">Past Due</SelectItem>
+                                            <SelectItem value="suspended">Suspended</SelectItem>
                                         </SelectContent>
                                     </Select>
-
                                     <Select value={planFilter} onValueChange={setPlanFilter}>
-                                        <SelectTrigger className="w-full sm:w-[150px]">
-                                            <SelectValue placeholder="Filter by plan" />
+                                        <SelectTrigger className="w-[150px]">
+                                            <SelectValue placeholder="Filter plan" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="all">All Plans</SelectItem>
-                                            <SelectItem value="free">Free</SelectItem>
-                                            <SelectItem value="pro">Pro</SelectItem>
-                                            <SelectItem value="enterprise">Enterprise</SelectItem>
+                                            {plans.map(p => (
+                                                <SelectItem key={p.id} value={p.slug}>{p.name}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -441,75 +829,68 @@ export default function PlatformSubscriptionsPage() {
                                                 <TableHead>Organization</TableHead>
                                                 <TableHead>Plan</TableHead>
                                                 <TableHead>Status</TableHead>
-                                                <TableHead>Billing Cycle</TableHead>
+                                                <TableHead>Billing</TableHead>
                                                 <TableHead>Period End</TableHead>
-                                                <TableHead>Actions</TableHead>
+                                                <TableHead>AI Credits</TableHead>
+                                                <TableHead>Usage</TableHead>
+                                                <TableHead>Over Limit</TableHead>
+                                                <TableHead></TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {loading ? (
                                                 [1, 2, 3, 4, 5].map(i => (
                                                     <TableRow key={i}>
-                                                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                                                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                                                        <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                                                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                                                        <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                                                        <TableCell><Skeleton className="h-8 w-8 rounded-md" /></TableCell>
+                                                        {[...Array(9)].map((_, j) => (
+                                                            <TableCell key={j}><Skeleton className="h-5 w-20" /></TableCell>
+                                                        ))}
                                                     </TableRow>
                                                 ))
                                             ) : (
-                                                subscriptions.map((sub) => (
-                                                    <TableRow key={sub.id}>
-                                                        <TableCell className="font-medium">
-                                                            {sub.organization?.company_name || sub.organization?.name || 'Unknown'}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Badge variant="outline">{sub.plan?.name}</Badge>
-                                                        </TableCell>
-                                                        <TableCell>{getStatusBadge(sub.status)}</TableCell>
-                                                        <TableCell className="capitalize">{sub.billing_cycle}</TableCell>
-                                                        <TableCell className="text-sm text-gray-500">
-                                                            {formatDate(sub.current_period_end)}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon">
-                                                                        <MoreHorizontal className="w-4 h-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                                    <DropdownMenuSeparator />
-                                                                    {sub.status === 'trialing' && (
-                                                                        <DropdownMenuItem onClick={() => handleAction(sub.id, 'extend_trial')}>
-                                                                            <Clock className="w-4 h-4 mr-2" />
-                                                                            Extend Trial (7 days)
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                    {sub.status === 'active' && (
-                                                                        <DropdownMenuItem onClick={() => handleAction(sub.id, 'cancel')}>
-                                                                            <XCircle className="w-4 h-4 mr-2" />
-                                                                            Cancel Subscription
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                    {sub.status === 'cancelled' && (
-                                                                        <DropdownMenuItem onClick={() => handleAction(sub.id, 'activate')}>
-                                                                            <CheckCircle className="w-4 h-4 mr-2" />
-                                                                            Reactivate
-                                                                        </DropdownMenuItem>
-                                                                    )}
-                                                                    <DropdownMenuSeparator />
-                                                                    <DropdownMenuItem onClick={() => openChangePlan(sub)}>
-                                                                        <CreditCard className="w-4 h-4 mr-2" />
-                                                                        Assign Plan
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))
+                                                subscriptions.map((sub) => {
+                                                    const credits = sub.credits || {}
+                                                    const totalCredits = (credits.monthly_balance || 0) + (credits.purchased_balance || 0)
+                                                    return (
+                                                        <TableRow
+                                                            key={sub.id}
+                                                            className="cursor-pointer hover:bg-gray-50 transition-colors"
+                                                            onClick={() => openDrawer(sub)}
+                                                        >
+                                                            <TableCell className="font-medium">
+                                                                <div>{sub.organization?.company_name || sub.organization?.name || 'Unknown'}</div>
+                                                                <div className="text-xs text-gray-400">{sub.organization?.id?.slice(0, 8)}…</div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="outline">{sub.plan?.name || '—'}</Badge>
+                                                            </TableCell>
+                                                            <TableCell><StatusBadge status={sub.status} /></TableCell>
+                                                            <TableCell className="capitalize text-sm">{sub.billing_cycle || '—'}</TableCell>
+                                                            <TableCell className="text-sm text-gray-500">{formatDate(sub.current_period_end)}</TableCell>
+                                                            <TableCell>
+                                                                <div className="text-sm">
+                                                                    <span className="font-medium">{totalCredits}</span>
+                                                                    <span className="text-gray-400 text-xs"> min</span>
+                                                                </div>
+                                                                {credits.low_balance && (
+                                                                    <div className="text-xs text-amber-600">Low</div>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <UtilizationBadge pct={sub.highest_utilization} />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {sub.any_over_limit ? (
+                                                                    <Badge className="bg-red-100 text-red-800">Over Limit</Badge>
+                                                                ) : (
+                                                                    <span className="text-gray-300 text-xs">—</span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <ChevronRight className="w-4 h-4 text-gray-400" />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )
+                                                })
                                             )}
                                         </TableBody>
                                     </Table>
@@ -519,6 +900,7 @@ export default function PlatformSubscriptionsPage() {
                     </Card>
                 </TabsContent>
 
+                {/* ── Plans Tab ── */}
                 <TabsContent value="plans" className="space-y-6">
                     <Card>
                         <CardHeader>
@@ -529,15 +911,9 @@ export default function PlatformSubscriptionsPage() {
                             {plansLoading ? (
                                 <div className="space-y-4">
                                     {[1, 2, 3].map(i => (
-                                        <div key={i} className="flex justify-between items-center py-4 border-b border-gray-100 last:border-0">
-                                            <div className="space-y-2">
-                                                <Skeleton className="h-5 w-32" />
-                                                <Skeleton className="h-3 w-20" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Skeleton className="h-4 w-24" />
-                                                <Skeleton className="h-3 w-16" />
-                                            </div>
+                                        <div key={i} className="flex justify-between items-center py-4 border-b last:border-0">
+                                            <Skeleton className="h-5 w-32" />
+                                            <Skeleton className="h-4 w-24" />
                                             <Skeleton className="h-6 w-16 rounded-full" />
                                             <Skeleton className="h-8 w-8 rounded-md" />
                                         </div>
@@ -547,9 +923,7 @@ export default function PlatformSubscriptionsPage() {
                                 <div className="text-center py-12 text-gray-500">
                                     <Archive className="w-16 h-16 mx-auto mb-4 opacity-50" />
                                     <p className="text-lg font-medium">No plans found</p>
-                                    <Button variant="outline" className="mt-4" onClick={() => setIsPlanDialogOpen(true)}>
-                                        Create your first plan
-                                    </Button>
+                                    <Button variant="outline" className="mt-4" onClick={() => setIsPlanDialogOpen(true)}>Create your first plan</Button>
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
@@ -559,6 +933,7 @@ export default function PlatformSubscriptionsPage() {
                                                 <TableHead>Name</TableHead>
                                                 <TableHead>Pricing</TableHead>
                                                 <TableHead>Limits</TableHead>
+                                                <TableHead>AI Minutes</TableHead>
                                                 <TableHead>Status</TableHead>
                                                 <TableHead>Actions</TableHead>
                                             </TableRow>
@@ -571,34 +946,28 @@ export default function PlatformSubscriptionsPage() {
                                                         <div className="text-xs text-gray-500">{plan.slug}</div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="text-sm">
-                                                            {formatCurrency(plan.price_monthly)}/mo
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {formatCurrency(plan.price_yearly)}/yr
-                                                        </div>
+                                                        <div className="text-sm">{formatCurrency(plan.price_monthly)}/mo</div>
+                                                        <div className="text-xs text-gray-500">{formatCurrency(plan.price_yearly)}/yr</div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="text-sm">
-                                                            {plan.features?.max_users} Users
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {plan.features?.max_storage_gb}GB Storage
-                                                        </div>
+                                                        <div className="text-sm">{plan.features?.max_users ?? '—'} Users</div>
+                                                        <div className="text-xs text-gray-500">{plan.features?.max_leads ?? '—'} Leads</div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {plan.is_active ? (
-                                                            <Badge className="bg-green-100 text-green-800">Active</Badge>
-                                                        ) : (
-                                                            <Badge className="bg-gray-100 text-gray-800">Archived</Badge>
+                                                        <div className="text-sm">{plan.features?.monthly_minutes_included ?? '—'} min/mo</div>
+                                                        {plan.features?.topup_allowed && (
+                                                            <div className="text-xs text-gray-500">Top-up ₹{plan.features?.topup_rate_per_minute}/min</div>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="flex gap-2">
-                                                            <Button variant="ghost" size="icon" onClick={() => openEditPlan(plan)}>
-                                                                <Edit className="w-4 h-4" />
-                                                            </Button>
-                                                        </div>
+                                                        {plan.is_active
+                                                            ? <Badge className="bg-green-100 text-green-800">Active</Badge>
+                                                            : <Badge className="bg-gray-100 text-gray-800">Archived</Badge>}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button variant="ghost" size="icon" onClick={() => openEditPlan(plan)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -611,409 +980,149 @@ export default function PlatformSubscriptionsPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Plan Dialog */}
+            {/* ── Org Detail Drawer ── */}
+            <OrgDetailDrawer
+                sub={drawerSub}
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                plans={plans}
+                onRefresh={() => { fetchSubscriptions(); setDrawerOpen(false) }}
+            />
+
+            {/* ── Plan Create/Edit Dialog ── */}
             <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editingPlan ? 'Edit Plan' : 'Create New Plan'}</DialogTitle>
-                        <DialogDescription>
-                            Configure subscription plan details, pricing, usage limits, and features.
-                        </DialogDescription>
+                        <DialogDescription>Configure subscription plan details, pricing, limits, and features.</DialogDescription>
                     </DialogHeader>
 
                     <Tabs defaultValue="basic" className="w-full">
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                            <TabsTrigger value="limits">Usage Limits</TabsTrigger>
+                            <TabsTrigger value="limits">Limits & AI</TabsTrigger>
                             <TabsTrigger value="features">Features</TabsTrigger>
-                            <TabsTrigger value="support">Support & Status</TabsTrigger>
                         </TabsList>
 
-                        {/* Basic Info Tab */}
+                        {/* Basic Info */}
                         <TabsContent value="basic" className="space-y-4 pt-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Plan Name *</Label>
-                                    <Input
-                                        id="name"
-                                        value={planFormData.name}
-                                        onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
-                                        placeholder="e.g. Pro Plan"
-                                    />
+                                    <Label>Plan Name *</Label>
+                                    <Input value={planFormData.name} onChange={e => setPlanFormData(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Pro Plan" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="slug">Slug (Unique ID) *</Label>
-                                    <Input
-                                        id="slug"
-                                        value={planFormData.slug}
-                                        onChange={(e) => setPlanFormData({ ...planFormData, slug: e.target.value })}
-                                        placeholder="e.g. pro-plan"
-                                        disabled={!!editingPlan}
-                                    />
-                                    {editingPlan && <p className="text-xs text-gray-500">Slug cannot be changed after creation</p>}
+                                    <Label>Slug *</Label>
+                                    <Input value={planFormData.slug} onChange={e => setPlanFormData(p => ({ ...p, slug: e.target.value }))} placeholder="e.g. pro" disabled={!!editingPlan} />
+                                    {editingPlan && <p className="text-xs text-gray-400">Cannot change after creation</p>}
                                 </div>
                             </div>
-
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Textarea
-                                    id="description"
-                                    value={planFormData.description}
-                                    onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
-                                    placeholder="Brief description of the plan"
-                                    rows={3}
-                                />
+                                <Label>Description</Label>
+                                <Textarea value={planFormData.description} onChange={e => setPlanFormData(p => ({ ...p, description: e.target.value }))} rows={3} />
                             </div>
-
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="price_monthly" className="flex items-center gap-1">
-                                        <IndianRupee className="w-3 h-3" />
-                                        Monthly Price (INR)
-                                    </Label>
-                                    <Input
-                                        id="price_monthly"
-                                        type="number"
-                                        value={planFormData.price_monthly}
-                                        onChange={(e) => setPlanFormData({ ...planFormData, price_monthly: Number(e.target.value) })}
-                                    />
+                                    <Label className="flex items-center gap-1"><IndianRupee className="w-3 h-3" /> Monthly Price (INR)</Label>
+                                    <Input type="number" value={planFormData.price_monthly} onChange={e => setPlanFormData(p => ({ ...p, price_monthly: Number(e.target.value) }))} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="price_yearly" className="flex items-center gap-1">
-                                        <IndianRupee className="w-3 h-3" />
-                                        Yearly Price (INR)
-                                    </Label>
-                                    <Input
-                                        id="price_yearly"
-                                        type="number"
-                                        value={planFormData.price_yearly}
-                                        onChange={(e) => setPlanFormData({ ...planFormData, price_yearly: Number(e.target.value) })}
-                                    />
+                                    <Label className="flex items-center gap-1"><IndianRupee className="w-3 h-3" /> Yearly Price (INR)</Label>
+                                    <Input type="number" value={planFormData.price_yearly} onChange={e => setPlanFormData(p => ({ ...p, price_yearly: Number(e.target.value) }))} />
                                 </div>
                             </div>
-
                             <div className="space-y-2">
-                                <Label htmlFor="sort_order">Sort Order</Label>
-                                <Input
-                                    id="sort_order"
-                                    type="number"
-                                    value={planFormData.sort_order}
-                                    onChange={(e) => setPlanFormData({ ...planFormData, sort_order: Number(e.target.value) })}
-                                    placeholder="0"
-                                />
-                                <p className="text-xs text-gray-500">Lower numbers appear first</p>
+                                <Label>Sort Order</Label>
+                                <Input type="number" value={planFormData.sort_order} onChange={e => setPlanFormData(p => ({ ...p, sort_order: Number(e.target.value) }))} />
+                                <p className="text-xs text-gray-400">Lower numbers appear first</p>
                             </div>
                         </TabsContent>
 
-                        {/* Usage Limits Tab */}
-                        <TabsContent value="limits" className="space-y-4 pt-4">
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                                <p className="text-sm text-blue-800">
-                                    💡 <strong>Tip:</strong> Use <code className="bg-blue-100 px-1 rounded">-1</code> for unlimited access (Enterprise plans)
-                                </p>
+                        {/* Limits & AI */}
+                        <TabsContent value="limits" className="space-y-6 pt-4">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p className="text-sm text-blue-800">Use <code className="bg-blue-100 px-1 rounded">-1</code> for unlimited. Use <code className="bg-blue-100 px-1 rounded">0</code> for none.</p>
                             </div>
 
-                            <div className="space-y-4">
-                                <div>
-                                    <h4 className="font-medium mb-3">User & Team Limits</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="max_users">Max Users</Label>
-                                            <Input
-                                                id="max_users"
-                                                type="number"
-                                                value={planFormData.features.max_users}
-                                                onChange={(e) => setPlanFormData({
-                                                    ...planFormData,
-                                                    features: { ...planFormData.features, max_users: Number(e.target.value) }
-                                                })}
-                                            />
+                            <div>
+                                <h4 className="font-medium mb-3 text-sm">CRM Limits</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {[
+                                        { key: 'max_users', label: 'Max Users' },
+                                        { key: 'max_projects', label: 'Max Projects' },
+                                        { key: 'max_campaigns', label: 'Max Campaigns' },
+                                        { key: 'max_leads', label: 'Max Leads' },
+                                    ].map(({ key, label }) => (
+                                        <div key={key} className="space-y-2">
+                                            <Label>{label}</Label>
+                                            <Input type="number" value={featF(key)} onChange={e => setFeat(key, Number(e.target.value))} />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="max_storage_gb">Storage (GB)</Label>
-                                            <Input
-                                                id="max_storage_gb"
-                                                type="number"
-                                                value={planFormData.features.max_storage_gb}
-                                                onChange={(e) => setPlanFormData({
-                                                    ...planFormData,
-                                                    features: { ...planFormData.features, max_storage_gb: Number(e.target.value) }
-                                                })}
-                                            />
-                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="border-t pt-4">
+                                <h4 className="font-medium mb-3 text-sm">AI Credits</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>AI Minutes/Month</Label>
+                                        <Input type="number" value={featF('monthly_minutes_included')} onChange={e => setFeat('monthly_minutes_included', Number(e.target.value))} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Top-up Rate (₹/min)</Label>
+                                        <Input type="number" value={featF('topup_rate_per_minute')} onChange={e => setFeat('topup_rate_per_minute', Number(e.target.value))} />
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="border-t pt-4">
-                                    <h4 className="font-medium mb-3">CRM Limits</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="max_projects">Max Projects</Label>
-                                            <Input
-                                                id="max_projects"
-                                                type="number"
-                                                value={planFormData.features.max_projects}
-                                                onChange={(e) => setPlanFormData({
-                                                    ...planFormData,
-                                                    features: { ...planFormData.features, max_projects: Number(e.target.value) }
-                                                })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="max_campaigns">Max Campaigns</Label>
-                                            <Input
-                                                id="max_campaigns"
-                                                type="number"
-                                                value={planFormData.features.max_campaigns}
-                                                onChange={(e) => setPlanFormData({
-                                                    ...planFormData,
-                                                    features: { ...planFormData.features, max_campaigns: Number(e.target.value) }
-                                                })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="max_leads">Max Leads</Label>
-                                            <Input
-                                                id="max_leads"
-                                                type="number"
-                                                value={planFormData.features.max_leads}
-                                                onChange={(e) => setPlanFormData({
-                                                    ...planFormData,
-                                                    features: { ...planFormData.features, max_leads: Number(e.target.value) }
-                                                })}
-                                            />
-                                        </div>
+                            <div className="border-t pt-4">
+                                <h4 className="font-medium mb-3 text-sm">Access Controls</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Lead Source Integrations (-1 = all)</Label>
+                                        <Input type="number" value={featF('lead_source_integrations')} onChange={e => setFeat('lead_source_integrations', Number(e.target.value))} />
                                     </div>
-                                </div>
-
-                                <div className="border-t pt-4">
-                                    <h4 className="font-medium mb-3">AI Calling Limits</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="ai_calls_per_month">AI Calls per Month</Label>
-                                            <Input
-                                                id="ai_calls_per_month"
-                                                type="number"
-                                                value={planFormData.features.ai_calls_per_month}
-                                                onChange={(e) => setPlanFormData({
-                                                    ...planFormData,
-                                                    features: { ...planFormData.features, ai_calls_per_month: Number(e.target.value) }
-                                                })}
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <Label>Audit Log Days (-1 = full)</Label>
+                                        <Input type="number" value={featF('audit_log_days')} onChange={e => setFeat('audit_log_days', Number(e.target.value))} />
                                     </div>
                                 </div>
                             </div>
                         </TabsContent>
 
-                        {/* Features Tab */}
-                        <TabsContent value="features" className="space-y-4 pt-4">
-                            <div className="space-y-3">
+                        {/* Features */}
+                        <TabsContent value="features" className="space-y-3 pt-4">
+                            {[
+                                { key: 'topup_allowed', label: 'Allow Credit Top-up', desc: 'Allow organizations to purchase extra AI minutes' },
+                                { key: 'csv_export', label: 'CSV Export', desc: 'Allow exporting leads and data as CSV' },
+                                { key: 'custom_domain', label: 'Custom Domain', desc: 'Allow using a custom domain' },
+                                { key: 'advanced_analytics', label: 'Advanced Analytics', desc: 'Access to detailed reports and insights' },
+                            ].map(({ key, label, desc }) => (
+                                <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <Label className="font-medium">{label}</Label>
+                                        <p className="text-xs text-gray-500">{desc}</p>
+                                    </div>
+                                    <Switch checked={featF(key)} onCheckedChange={v => setFeat(key, v)} />
+                                </div>
+                            ))}
+
+                            <div className="border-t pt-4">
                                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                     <div>
-                                        <Label htmlFor="custom_branding" className="font-medium">Custom Branding</Label>
-                                        <p className="text-xs text-gray-500">Allow custom logo and colors</p>
+                                        <Label className="font-medium">Plan Active</Label>
+                                        <p className="text-xs text-gray-500">{planFormData.is_active ? 'Visible and available' : 'Archived and hidden'}</p>
                                     </div>
-                                    <Switch
-                                        id="custom_branding"
-                                        checked={planFormData.features.custom_branding}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, custom_branding: checked }
-                                        })}
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <Label htmlFor="advanced_analytics" className="font-medium">Advanced Analytics</Label>
-                                        <p className="text-xs text-gray-500">Access to detailed reports and insights</p>
-                                    </div>
-                                    <Switch
-                                        id="advanced_analytics"
-                                        checked={planFormData.features.advanced_analytics}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, advanced_analytics: checked }
-                                        })}
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <Label htmlFor="dedicated_account_manager" className="font-medium">Dedicated Account Manager</Label>
-                                        <p className="text-xs text-gray-500">Personal account manager support</p>
-                                    </div>
-                                    <Switch
-                                        id="dedicated_account_manager"
-                                        checked={planFormData.features.dedicated_account_manager}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, dedicated_account_manager: checked }
-                                        })}
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <Label htmlFor="sla" className="font-medium">SLA (Service Level Agreement)</Label>
-                                        <p className="text-xs text-gray-500">Guaranteed uptime and response times</p>
-                                    </div>
-                                    <Switch
-                                        id="sla"
-                                        checked={planFormData.features.sla}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, sla: checked }
-                                        })}
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <Label htmlFor="custom_integrations" className="font-medium">Custom Integrations</Label>
-                                        <p className="text-xs text-gray-500">Build custom API integrations</p>
-                                    </div>
-                                    <Switch
-                                        id="custom_integrations"
-                                        checked={planFormData.features.custom_integrations}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, custom_integrations: checked }
-                                        })}
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <Label htmlFor="custom_pricing" className="font-medium">Custom Pricing</Label>
-                                        <p className="text-xs text-gray-500">Negotiated pricing for enterprise</p>
-                                    </div>
-                                    <Switch
-                                        id="custom_pricing"
-                                        checked={planFormData.features.custom_pricing}
-                                        onCheckedChange={(checked) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, custom_pricing: checked }
-                                        })}
-                                    />
-                                </div>
-                            </div>
-                        </TabsContent>
-
-                        {/* Support & Status Tab */}
-                        <TabsContent value="support" className="space-y-4 pt-4">
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="support">Support Tier</Label>
-                                    <Select
-                                        value={planFormData.features.support}
-                                        onValueChange={(value) => setPlanFormData({
-                                            ...planFormData,
-                                            features: { ...planFormData.features, support: value }
-                                        })}
-                                    >
-                                        <SelectTrigger id="support">
-                                            <SelectValue placeholder="Select support tier" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="community">Community Support</SelectItem>
-                                            <SelectItem value="email">Email Support</SelectItem>
-                                            <SelectItem value="priority">Priority Support (24/7)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <p className="text-xs text-gray-500">
-                                        {planFormData.features.support === 'community' && 'Community forums and documentation'}
-                                        {planFormData.features.support === 'email' && 'Email support with 24-48 hour response time'}
-                                        {planFormData.features.support === 'priority' && '24/7 priority support with dedicated channels'}
-                                    </p>
-                                </div>
-
-                                <div className="border-t pt-4">
-                                    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                        <div>
-                                            <Label htmlFor="is_active" className="font-medium">Plan Active</Label>
-                                            <p className="text-xs text-gray-500">
-                                                {planFormData.is_active ? 'Plan is visible and available for subscription' : 'Plan is archived and hidden from users'}
-                                            </p>
-                                        </div>
-                                        <Switch
-                                            id="is_active"
-                                            checked={planFormData.is_active}
-                                            onCheckedChange={(checked) => setPlanFormData({ ...planFormData, is_active: checked })}
-                                        />
-                                    </div>
+                                    <Switch checked={planFormData.is_active} onCheckedChange={v => setPlanFormData(p => ({ ...p, is_active: v }))} />
                                 </div>
                             </div>
                         </TabsContent>
                     </Tabs>
 
                     <DialogFooter className="mt-6">
-                        <Button variant="outline" onClick={() => {
-                            setIsPlanDialogOpen(false)
-                            setEditingPlan(null)
-                            resetPlanForm()
-                        }}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSavePlan}>
-                            {editingPlan ? 'Update Plan' : 'Create Plan'}
-                        </Button>
+                        <Button variant="outline" onClick={() => { setIsPlanDialogOpen(false); setEditingPlan(null); resetPlanForm() }}>Cancel</Button>
+                        <Button onClick={handleSavePlan}>{editingPlan ? 'Update Plan' : 'Create Plan'}</Button>
                     </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Change Plan Dialog */}
-            <Dialog open={isChangePlanDialogOpen} onOpenChange={setIsChangePlanDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Assign Plan & Package</DialogTitle>
-                        <DialogDescription>
-                            Manually assign a subscription plan to this organization.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>Select Plan</Label>
-                            <Select
-                                value={changePlanData.planId}
-                                onValueChange={(val) => setChangePlanData(prev => ({ ...prev, planId: val }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a plan" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {plans.map(p => (
-                                        <SelectItem key={p.id} value={p.id}>
-                                            {p.name} ({formatCurrency(p.price_monthly)}/mo)
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Billing Cycle</Label>
-                            <Select
-                                value={changePlanData.billingCycle}
-                                onValueChange={(val) => setChangePlanData(prev => ({ ...prev, billingCycle: val }))}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select billing cycle" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="monthly">Monthly</SelectItem>
-                                    <SelectItem value="yearly">Yearly</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-6 sm:flex sm:justify-end">
-                        <Button variant="outline" onClick={() => setIsChangePlanDialogOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-                        <Button onClick={handleConfirmChangePlan} disabled={!changePlanData.planId} className="w-full sm:w-auto">Assign Plan</Button>
-                    </div>
                 </DialogContent>
             </Dialog>
         </div>

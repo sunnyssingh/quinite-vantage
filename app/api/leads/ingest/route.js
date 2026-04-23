@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { normalizeLead } from '@/lib/lead-normalization'
+import { checkLeadLimit } from '@/lib/middleware/feature-limits'
 
 /**
  * Lead Ingestion API
@@ -195,6 +196,12 @@ export async function POST(req) {
                     }
                     orgId = project.organization_id
                     projectOrgMap.set(standardized.project_id, orgId)
+                }
+
+                // Check lead limit for this org
+                const limitCheck = await checkLeadLimit(orgId)
+                if (!limitCheck.allowed) {
+                    return NextResponse.json({ error: 'lead_limit_reached' }, { status: 429 })
                 }
 
                 // Fetch Default Stage (Org -> Pipeline -> Stage)

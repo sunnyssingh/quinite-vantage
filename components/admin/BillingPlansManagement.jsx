@@ -25,7 +25,7 @@ export default function BillingPlansManagement() {
     const fetchPlans = async () => {
         try {
             setLoading(true)
-            const res = await fetch('/api/billing/plans?all=true')
+            const res = await fetch('/api/platform/plans?all=true')
             const data = await res.json()
             setPlans(data.plans || [])
         } catch (error) {
@@ -39,8 +39,8 @@ export default function BillingPlansManagement() {
     const handleSavePlan = async (planData) => {
         try {
             const url = editingPlan
-                ? `/api/billing/plans/${editingPlan.id}`
-                : '/api/billing/plans'
+                ? `/api/platform/plans/${editingPlan.id}`
+                : '/api/platform/plans'
 
             const method = editingPlan ? 'PUT' : 'POST'
 
@@ -69,7 +69,7 @@ export default function BillingPlansManagement() {
         if (!confirm('Are you sure you want to deactivate this plan?')) return
 
         try {
-            const res = await fetch(`/api/billing/plans/${planId}`, {
+            const res = await fetch(`/api/platform/plans/${planId}`, {
                 method: 'DELETE'
             })
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { checkCSVExportAccess } from '@/lib/middleware/feature-limits'
 
 export async function GET(request) {
     try {
@@ -27,6 +28,14 @@ export async function GET(request) {
         const canView = await hasDashboardPermission(user.id, 'view_settings')
         if (!canView) {
             return NextResponse.json({ error: 'Forbidden - Missing \"view_settings\" permission' }, { status: 403 })
+        }
+
+        // Check CSV export access for org users (platform admins bypass)
+        if (!isPlatformAdmin && profile?.organization_id) {
+            const exportAccess = await checkCSVExportAccess(profile.organization_id)
+            if (!exportAccess.allowed) {
+                return NextResponse.json({ error: 'forbidden', message: exportAccess.message || 'CSV export is not available on your plan.' }, { status: 403 })
+            }
         }
 
         console.log(`📥 [Audit Export] User: ${user.email} | Role: ${profile?.role} | IsPlatformAdmin: ${isPlatformAdmin} | Org: ${profile?.organization_id}`);

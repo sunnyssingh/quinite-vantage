@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import { usePermission } from '@/contexts/PermissionContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
+import { useSubscription } from '@/contexts/SubscriptionContext'
 
 // Hooks
 import { 
@@ -68,6 +69,7 @@ export default function LeadsPage() {
   // Permissions & Auth
   const { profile } = useAuth()
   const canCreate = usePermission('create_leads')
+  const { isExpired: subExpired } = useSubscription()
   const canEditAll = usePermission('edit_all_leads')
   const canEditTeam = usePermission('edit_team_leads')
   const canEditOwn = usePermission('edit_own_leads')
@@ -332,7 +334,11 @@ export default function LeadsPage() {
         <h2 className="text-3xl font-bold tracking-tight">Leads</h2>
         <div className="flex items-center gap-2">
           {/* View toggle removed */}
-          <Button onClick={() => setIsSourceDialogOpen(true)} disabled={!canCreate}>
+          <Button
+            onClick={() => setIsSourceDialogOpen(true)}
+            disabled={!canCreate || subExpired}
+            title={subExpired ? 'Subscription expired — renew to add leads' : undefined}
+          >
             <Plus className="mr-2 h-4 w-4" /> Add Lead
           </Button>
         </div>
