@@ -61,7 +61,7 @@ export async function PUT(request, { params }) {
         // Verify user belongs to same organization
         const { data: targetUser } = await admin
             .from('profiles')
-            .select('organization_id')
+            .select('organization_id, role')
             .eq('id', userId)
             .single()
 
@@ -85,6 +85,21 @@ export async function PUT(request, { params }) {
 
         if (error) {
             throw new Error('Failed to update user')
+        }
+
+        // If role changed: clear stale user-specific permission overrides and bump
+        // permission_version so active sessions re-fetch updated permissions within ~60s
+        if (body.role && body.role !== targetUser.role) {
+            await admin.from('user_permissions').delete().eq('user_id', userId)
+            const { data: org } = await admin
+                .from('organizations')
+                .select('permission_version')
+                .eq('id', profile.organization_id)
+                .single()
+            await admin
+                .from('organizations')
+                .update({ permission_version: (org?.permission_version || 1) + 1 })
+                .eq('id', profile.organization_id)
         }
 
         // Create audit log

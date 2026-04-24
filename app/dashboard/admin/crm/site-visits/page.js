@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { usePermissions } from '@/contexts/PermissionContext'
 import { startOfWeek, endOfWeek } from 'date-fns'
 import { MapPin, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +12,15 @@ import { useUsers } from '@/hooks/usePipelines'
 import SiteVisitCalendar from '@/components/crm/site-visits/SiteVisitCalendar'
 
 export default function SiteVisitsPage() {
+    const router = useRouter()
+    const { hasPermission, loading: permLoading } = usePermissions()
+
+    useEffect(() => {
+        if (!permLoading && !hasPermission('view_site_visits')) {
+            router.replace('/dashboard/admin/crm/dashboard')
+        }
+    }, [permLoading, hasPermission])
+
     const [dateRange, setDateRange] = useState({
         from: startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
         to:   endOfWeek(new Date(),   { weekStartsOn: 1 }).toISOString(),

@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 // POST /api/admin/users/[userId]/permissions/reset
@@ -41,9 +42,11 @@ export async function POST(request, { params }) {
             return NextResponse.json({ error: 'Forbidden - Different organization' }, { status: 403 })
         }
 
+        const admin = createAdminClient()
+
         // Delete all user-specific permissions
-        const { error: deleteError } = await supabase
-            .from('dashboard_user_permissions')
+        const { error: deleteError } = await admin
+            .from('user_permissions')
             .delete()
             .eq('user_id', userId)
 
@@ -51,6 +54,17 @@ export async function POST(request, { params }) {
             console.error('Error resetting user permissions:', deleteError)
             return NextResponse.json({ error: 'Failed to reset permissions' }, { status: 500 })
         }
+
+        // Bump permission_version so the affected user re-fetches within ~60s
+        const { data: org } = await admin
+            .from('organizations')
+            .select('permission_version')
+            .eq('id', requesterProfile.organization_id)
+            .single()
+        await admin
+            .from('organizations')
+            .update({ permission_version: (org?.permission_version || 1) + 1 })
+            .eq('id', requesterProfile.organization_id)
 
         return NextResponse.json({
             success: true,

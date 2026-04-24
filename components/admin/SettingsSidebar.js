@@ -6,8 +6,6 @@ import { usePathname } from 'next/navigation'
 import {
     Building2,
     Users,
-    Shield,
-    KanbanSquare,
     CreditCard,
     Plug2,
     Layout,
@@ -44,13 +42,6 @@ export default function SettingsSidebar() {
             title: 'Team',
             items: [
                 { label: 'Members', href: '/dashboard/admin/settings/members', icon: Users, permission: 'view_users' },
-                { label: 'Roles & Permissions', href: '/dashboard/admin/settings/roles', icon: Shield, permission: 'manage_permissions' },
-            ]
-        },
-        {
-            title: 'CRM',
-            items: [
-                { label: 'Pipeline Stages', href: '/dashboard/admin/crm/settings', icon: KanbanSquare, permission: 'manage_crm_settings' },
             ]
         },
         {

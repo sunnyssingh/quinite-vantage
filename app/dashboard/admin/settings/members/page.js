@@ -2,9 +2,9 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { toast } from 'react-hot-toast'
+import { toast } from 'sonner'
 import CredentialsModal from '@/components/dashboard/CredentialsModal'
-import { Pencil, Trash2, Plus, Shield } from 'lucide-react'
+import { Pencil, Trash2, Plus, Shield, Loader2, ChevronDown } from 'lucide-react'
 import PermissionManager from '@/components/admin/PermissionManager'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { usePermission } from '@/contexts/PermissionContext'
@@ -178,9 +178,17 @@ export default function MembersPage() {
                                             <div className="text-sm text-muted-foreground">{user.phone || 'N/A'}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
-                                                {user.role?.replace('_', ' ')}
-                                            </span>
+                                            {canManageUsers ? (
+                                                <RoleSelect
+                                                    userId={user.id}
+                                                    currentRole={user.role}
+                                                    onSuccess={fetchUsers}
+                                                />
+                                            ) : (
+                                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
+                                                    {user.role?.replace('_', ' ')}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                                             {new Date(user.created_at).toLocaleDateString()}
@@ -265,16 +273,75 @@ export default function MembersPage() {
             />
 
             {managingPermissions && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg w-full max-w-4xl h-[80vh] flex flex-col">
+                <div className="fixed inset-0 z-50 flex">
+                    <div
+                        className="absolute inset-0 bg-black/50"
+                        onClick={() => setManagingPermissions(null)}
+                    />
+                    <div className="relative ml-auto w-full max-w-2xl bg-white h-full flex flex-col shadow-xl animate-in slide-in-from-right duration-300">
                         <PermissionManager
                             userId={managingPermissions.id}
                             userRole={managingPermissions.role}
+                            user={managingPermissions}
                             onClose={() => setManagingPermissions(null)}
                         />
                     </div>
                 </div>
             )}
+        </div>
+    )
+}
+
+const ROLES = [
+    { value: 'employee',    label: 'Employee',  color: 'bg-gray-100 text-gray-700' },
+    { value: 'manager',     label: 'Manager',   color: 'bg-blue-100 text-blue-700' },
+    { value: 'super_admin', label: 'Super Admin', color: 'bg-purple-100 text-purple-700' },
+]
+
+function RoleSelect({ userId, currentRole, onSuccess }) {
+    const [saving, setSaving] = useState(false)
+    const current = ROLES.find(r => r.value === currentRole) || ROLES[0]
+
+    async function handleChange(e) {
+        const newRole = e.target.value
+        if (newRole === currentRole) return
+        setSaving(true)
+        try {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: newRole }),
+            })
+            if (!res.ok) throw new Error()
+            toast.success('Role updated')
+            onSuccess()
+        } catch {
+            toast.error('Failed to update role')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <div className="relative inline-flex items-center gap-1">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${current.color}`}>
+                {current.label}
+            </span>
+            <select
+                value={currentRole}
+                onChange={handleChange}
+                disabled={saving}
+                className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed w-full"
+                title="Change role"
+            >
+                {ROLES.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+            </select>
+            {saving
+                ? <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
+                : <ChevronDown className="w-3 h-3 text-gray-400 pointer-events-none" />
+            }
         </div>
     )
 }
@@ -304,7 +371,7 @@ function UserModal({ user, onClose, onSuccess }) {
 
             if (!response.ok) throw new Error(data.error || 'Operation failed')
 
-            toast.success(user ? 'User updated successfully!' : 'User added successfully!')
+            toast.success(user ? 'User updated' : 'User added successfully')
             onSuccess(data.user)
         } catch (error) {
             toast.error(error.message)
@@ -359,9 +426,9 @@ function UserModal({ user, onClose, onSuccess }) {
                             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
-                            <option value="employee">Employee</option>
-                            <option value="manager">Manager</option>
-                            <option value="super_admin">Super Admin</option>
+                            {ROLES.map(r => (
+                                <option key={r.value} value={r.value}>{r.label}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="flex justify-end space-x-3 mt-6">

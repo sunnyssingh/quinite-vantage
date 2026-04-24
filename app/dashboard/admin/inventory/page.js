@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import { usePermissions } from '@/contexts/PermissionContext'
 import { useInventoryProjects, useInventoryUnits } from '@/hooks/useInventory'
 import { formatINR } from '@/lib/inventory'
 import { cn } from '@/lib/utils'
@@ -35,6 +37,13 @@ const pctStr = (n, total) => `${pct(n, total)}%`
 
 export default function InventoryOverviewPage() {
     const router = useRouter()
+    const { hasPermission, loading: permLoading } = usePermissions()
+
+    useEffect(() => {
+        if (!permLoading && !hasPermission('view_inventory')) {
+            router.replace('/dashboard/admin')
+        }
+    }, [permLoading, hasPermission])
 
     const { data: projects = [], isLoading: projectsLoading } = useInventoryProjects()
     const { data: units    = [], isLoading: unitsLoading    } = useInventoryUnits()

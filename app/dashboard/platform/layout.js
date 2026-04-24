@@ -94,6 +94,7 @@ export default function PlatformLayout({ children }) {
   const navItems = [
     { icon: Shield, label: 'Dashboard', href: '/dashboard/platform/dashboard' },
     { icon: Building2, label: 'Organizations', href: '/dashboard/platform/organizations' },
+    { icon: Shield, label: 'Permissions', href: '/dashboard/platform/permissions' },
     { icon: CreditCard, label: 'Subscriptions', href: '/dashboard/platform/subscriptions' },
     { icon: FileText, label: 'Audit Logs', href: '/dashboard/platform/audit' },
     { icon: Users2, label: 'Profile', href: '/dashboard/platform/profile' },

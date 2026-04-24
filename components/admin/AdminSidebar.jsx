@@ -10,11 +10,7 @@ import {
     FileText,
     Users,
     Settings,
-    LogOut,
-    Megaphone,
-    Lock
 } from 'lucide-react'
-import { toast } from 'react-hot-toast'
 import { usePermissions } from '@/contexts/PermissionContext'
 
 export default function AdminSidebar() {
@@ -68,20 +64,13 @@ export default function AdminSidebar() {
     return (
         <aside className="w-64 bg-white border-r border-slate-200 min-h-[calc(100vh-4rem)] hidden md:block flex-shrink-0">
             <div className="py-6 px-4 space-y-8">
-                {sections.map((section, idx) => (
+                {filteredSections.map((section, idx) => (
                     <div key={idx}>
                         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 px-3">
                             {section.title}
                         </h2>
                         <nav className="space-y-1">
                             {section.items.map((item) => {
-                                const itemHasPermission = item.permission
-                                    ? Array.isArray(item.permission)
-                                        ? hasAnyPermission(item.permission)
-                                        : hasPermission(item.permission)
-                                    : true
-
-                                // Active logic: Exact match for Dashboard, prefix match for others
                                 const isActive = item.exact
                                     ? pathname === item.href
                                     : pathname.startsWith(item.href)
@@ -91,26 +80,16 @@ export default function AdminSidebar() {
                                 return (
                                     <Link
                                         key={item.href}
-                                        href={itemHasPermission ? item.href : '#'}
-                                        onClick={(e) => {
-                                            if (!itemHasPermission) {
-                                                e.preventDefault()
-                                                // You might want to add a toast notification here
-                                                // e.g., toast.error(`You don't have permission to access ${item.label}`)
-                                            }
-                                        }}
+                                        href={item.href}
                                         className={`
                                             flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200
-                                            ${isActive && itemHasPermission
+                                            ${isActive
                                                 ? 'bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 shadow-sm border border-purple-100'
-                                                : itemHasPermission
-                                                    ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                                                    : 'text-slate-400 cursor-not-allowed opacity-60'}
+                                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}
                                         `}
                                     >
                                         <Icon className={`w-4 h-4 ${isActive ? 'text-purple-600' : 'text-slate-400'}`} />
                                         <span className="flex-1">{item.label}</span>
-                                        {!itemHasPermission && <Lock className="w-3.5 h-3.5 text-slate-400" />}
                                     </Link>
                                 )
                             })}

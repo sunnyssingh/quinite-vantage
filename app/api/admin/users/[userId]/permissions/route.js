@@ -51,14 +51,14 @@ export async function GET(request, { params }) {
 
         // Get all dashboard features
         const { data: allFeatures } = await admin
-            .from('dashboard_features')
+            .from('features')
             .select('*')
             .eq('is_active', true)
             .order('category, feature_name')
 
         // Get role-based permissions
         const { data: rolePermissions } = await admin
-            .from('dashboard_role_permissions')
+            .from('role_permissions')
             .select('feature_key')
             .eq('organization_id', targetProfile.organization_id)
             .eq('role', targetProfile.role)
@@ -68,7 +68,7 @@ export async function GET(request, { params }) {
 
         // Get user-specific permissions
         const { data: userPermissions } = await admin
-            .from('dashboard_user_permissions')
+            .from('user_permissions')
             .select('feature_key, is_enabled, granted_by, created_at')
             .eq('user_id', userId)
 
@@ -163,7 +163,7 @@ export async function PUT(request, { params }) {
 
         // Get role-based permissions for comparison
         const { data: rolePermissions } = await admin
-            .from('dashboard_role_permissions')
+            .from('role_permissions')
             .select('feature_key')
             .eq('organization_id', targetProfile.organization_id)
             .eq('role', targetProfile.role)
@@ -173,7 +173,7 @@ export async function PUT(request, { params }) {
 
         // Delete all existing user permissions
         await admin
-            .from('dashboard_user_permissions')
+            .from('user_permissions')
             .delete()
             .eq('user_id', userId)
 
@@ -190,7 +190,7 @@ export async function PUT(request, { params }) {
 
         if (permissionsToInsert.length > 0) {
             const { error: insertError } = await admin
-                .from('dashboard_user_permissions')
+                .from('user_permissions')
                 .insert(permissionsToInsert)
 
             if (insertError) {
@@ -198,6 +198,17 @@ export async function PUT(request, { params }) {
                 return NextResponse.json({ error: 'Failed to update permissions' }, { status: 500 })
             }
         }
+
+        // Bump permission_version so the affected user re-fetches within ~60s
+        const { data: org } = await admin
+            .from('organizations')
+            .select('permission_version')
+            .eq('id', targetProfile.organization_id)
+            .single()
+        await admin
+            .from('organizations')
+            .update({ permission_version: (org?.permission_version || 1) + 1 })
+            .eq('id', targetProfile.organization_id)
 
         return NextResponse.json({
             success: true,

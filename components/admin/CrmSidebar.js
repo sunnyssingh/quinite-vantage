@@ -56,17 +56,17 @@ export default function CrmSidebar() {
             title: 'My Work',
             items: [
                 { label: 'Dashboard', href: '/dashboard/admin/crm/dashboard', icon: LayoutDashboard, permission: null },
-                { label: 'Tasks', href: '/dashboard/admin/crm/tasks', icon: CheckSquare, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
+                { label: 'Tasks', href: '/dashboard/admin/crm/tasks', icon: CheckSquare, permission: 'view_tasks' },
             ]
         },
         {
             title: 'Sales',
             items: [
                 { label: 'Leads', href: '/dashboard/admin/crm/leads', icon: Users, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
-                { label: 'Pipeline', href: '/dashboard/admin/crm?tab=pipeline', icon: KanbanSquare, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
+                { label: 'Pipeline', href: '/dashboard/admin/crm?tab=pipeline', icon: KanbanSquare, permission: 'view_pipeline' },
                 { label: 'Projects', href: '/dashboard/admin/crm/projects', icon: FolderKanban, permission: 'view_projects' },
                 { label: 'Campaigns', href: '/dashboard/admin/crm/campaigns', icon: Megaphone, permission: 'view_campaigns' },
-                { label: 'Site Visits', href: '/dashboard/admin/crm/site-visits', icon: MapPin, permission: ['view_own_leads', 'view_team_leads', 'view_all_leads'] },
+                { label: 'Site Visits', href: '/dashboard/admin/crm/site-visits', icon: MapPin, permission: 'view_site_visits' },
             ]
         },
         {

@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { corsJSON } from '@/lib/cors'
 import { getUsageStats } from '@/lib/middleware/feature-limits'
-import { getCreditBalance, checkSubscriptionStatus } from '@/lib/middleware/subscription'
+import { getCreditBalance } from '@/lib/middleware/subscription'
 
 export async function GET(request) {
     try {
@@ -47,11 +47,12 @@ export async function GET(request) {
             throw subError
         }
 
-        // Check subscription status (handles lazy period-end expiry in DB)
-        const subscriptionStatus = await checkSubscriptionStatus(orgId)
-
-        // If period ended and status was still active in DB, reflect that in the returned object
-        if (subscription && !subscriptionStatus.isActive && subscription.status === 'active') {
+        // Only downgrade status if the period has genuinely ended
+        if (
+            subscription?.status === 'active' &&
+            subscription.current_period_end &&
+            new Date(subscription.current_period_end) < new Date()
+        ) {
             subscription.status = 'past_due'
         }
 

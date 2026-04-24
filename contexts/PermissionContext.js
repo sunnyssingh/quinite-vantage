@@ -1,6 +1,8 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
+
+const POLL_INTERVAL_MS = 60_000
 
 const PermissionContext = createContext({
     permissions: [],
@@ -14,40 +16,61 @@ const PermissionContext = createContext({
 export function PermissionProvider({ children }) {
     const [permissions, setPermissions] = useState([])
     const [loading, setLoading] = useState(true)
+    const permissionVersionRef = useRef(null)
 
-    const fetchPermissions = async () => {
+    const fetchPermissions = async ({ silent = false } = {}) => {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 5000)
 
         try {
-            setLoading(true)
+            if (!silent) setLoading(true)
             const response = await fetch('/api/permissions/my-permissions', {
                 signal: controller.signal
             })
 
             if (response.ok) {
                 const data = await response.json()
+                permissionVersionRef.current = data.permissionVersion ?? null
                 setPermissions(data.permissions || [])
             } else {
-                console.error('Failed to fetch permissions (Status:', response.status, ')')
-                setPermissions([])
+                if (!silent) {
+                    console.error('Failed to fetch permissions (Status:', response.status, ')')
+                    setPermissions([])
+                }
             }
         } catch (error) {
             if (error.name === 'AbortError') {
                 console.warn('[PermissionContext] Fetch timed out')
-            } else {
+            } else if (!silent) {
                 console.error('Error fetching permissions:', error)
+                setPermissions([])
             }
-            setPermissions([])
         } finally {
             clearTimeout(timeoutId)
-            setLoading(false)
+            if (!silent) setLoading(false)
         }
     }
 
+    // Poll every 60s: if permission_version changed, re-fetch with loading UI
+    const checkForUpdates = async () => {
+        try {
+            const response = await fetch('/api/permissions/my-permissions', { signal: AbortSignal.timeout(5000) })
+            if (!response.ok) return
+            const data = await response.json()
+            const newVersion = data.permissionVersion ?? null
+            if (newVersion !== null && permissionVersionRef.current !== null && newVersion !== permissionVersionRef.current) {
+                permissionVersionRef.current = newVersion
+                setPermissions(data.permissions || [])
+            }
+        } catch {
+            // Silent — don't disturb UX on poll failure
+        }
+    }
 
     useEffect(() => {
         fetchPermissions()
+        const interval = setInterval(checkForUpdates, POLL_INTERVAL_MS)
+        return () => clearInterval(interval)
     }, [])
 
     const hasPermission = (featureKey) => {
@@ -63,7 +86,7 @@ export function PermissionProvider({ children }) {
     }
 
     const refreshPermissions = () => {
-        fetchPermissions()
+        fetchPermissions({ silent: false })
     }
 
     return (

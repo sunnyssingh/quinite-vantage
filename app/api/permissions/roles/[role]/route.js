@@ -72,6 +72,17 @@ export async function PUT(request, { params }) {
             )
         }
 
+        // Bump permission_version so active clients know to re-fetch their permissions
+        const { data: org } = await admin
+            .from('organizations')
+            .select('permission_version')
+            .eq('id', profile.organization_id)
+            .single()
+        await admin
+            .from('organizations')
+            .update({ permission_version: (org?.permission_version || 1) + 1 })
+            .eq('id', profile.organization_id)
+
         return NextResponse.json({
             success: true,
             message: `Permission ${feature_key} ${is_enabled ? 'enabled' : 'disabled'} for ${role}`

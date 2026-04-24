@@ -25,12 +25,20 @@ export const GET = withAuth(async (request, context) => {
             return corsJSON({ error: 'Organization not found' }, { status: 400 })
         }
 
-        // Check permission level in parallel
-        const [canViewAll, canViewTeam, canViewOwn] = await Promise.all([
+        // Check task permission and lead-scope permissions in parallel
+        const [canViewTasks, canViewAll, canViewTeam, canViewOwn] = await Promise.all([
+            hasDashboardPermission(user.id, 'view_tasks'),
             hasDashboardPermission(user.id, 'view_all_leads'),
             hasDashboardPermission(user.id, 'view_team_leads'),
             hasDashboardPermission(user.id, 'view_own_leads'),
         ])
+
+        if (!canViewTasks) {
+            return corsJSON(
+                { success: false, message: "You don't have permission to view tasks" },
+                { status: 403 }
+            )
+        }
 
         if (!canViewAll && !canViewTeam && !canViewOwn) {
             return corsJSON(
