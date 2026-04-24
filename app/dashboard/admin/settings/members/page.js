@@ -4,11 +4,41 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import CredentialsModal from '@/components/dashboard/CredentialsModal'
-import { Pencil, Trash2, Plus, Shield, Loader2, ChevronDown } from 'lucide-react'
+import { Pencil, Trash2, Plus, Shield, Loader2, ChevronDown, Search, ArrowUpDown, AlertCircle, Building2, User2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import PermissionManager from '@/components/admin/PermissionManager'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { usePermission } from '@/contexts/PermissionContext'
 import PermissionTooltip from '@/components/permissions/PermissionTooltip'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function MembersPage() {
     const [users, setUsers] = useState([])
@@ -18,6 +48,13 @@ export default function MembersPage() {
     const [newCredentials, setNewCredentials] = useState(null)
     const [editingUser, setEditingUser] = useState(null)
     const [managingPermissions, setManagingPermissions] = useState(null)
+    const [searchTerm, setSearchTerm] = useState('')
+    const [sortConfig, setSortConfig] = useState({ key: 'full_name', direction: 'asc' })
+    
+    // Deletion states
+    const [userToDelete, setUserToDelete] = useState(null)
+    const [associations, setAssociations] = useState(null)
+    const [checkingAssociations, setCheckingAssociations] = useState(false)
 
     const canInvite = usePermission('create_users')
     const canManageUsers = usePermission('manage_users')
@@ -51,9 +88,36 @@ export default function MembersPage() {
         }
     }
 
-    async function handleDeleteUser(userId) {
-        if (!confirm('Are you sure you want to delete this user?')) return
+    async function checkAssociations(userId) {
+        setCheckingAssociations(true)
+        setAssociations(null)
+        try {
+            const supabase = createClient()
+            
+            const [
+                { count: leadCount },
+                { count: taskCount },
+                { count: projectCount }
+            ] = await Promise.all([
+                supabase.from('leads').select('*', { count: 'exact', head: true }).or(`assigned_to.eq.${userId},created_by.eq.${userId}`),
+                supabase.from('lead_tasks').select('*', { count: 'exact', head: true }).eq('assigned_to', userId),
+                supabase.from('projects').select('*', { count: 'exact', head: true }).eq('created_by', userId)
+            ])
 
+            setAssociations({
+                leads: leadCount || 0,
+                tasks: taskCount || 0,
+                projects: projectCount || 0,
+                total: (leadCount || 0) + (taskCount || 0) + (projectCount || 0)
+            })
+        } catch (error) {
+            console.error('Failed to check associations:', error)
+        } finally {
+            setCheckingAssociations(false)
+        }
+    }
+
+    async function handleDeleteUser(userId) {
         try {
             const response = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' })
 
@@ -72,6 +136,8 @@ export default function MembersPage() {
             }
 
             toast.success('User deleted successfully')
+            setUserToDelete(null)
+            setAssociations(null)
             fetchUsers()
         } catch (error) {
             toast.error(error.message)
@@ -86,6 +152,33 @@ export default function MembersPage() {
             platform_admin: 'bg-red-100 text-red-800',
         }
         return colors[role] || 'bg-gray-100 text-gray-800'
+    }
+
+    const filteredUsers = users.filter(user => {
+        const searchStr = searchTerm.toLowerCase()
+        return (
+            user.full_name?.toLowerCase().includes(searchStr) ||
+            user.email?.toLowerCase().includes(searchStr) ||
+            user.phone?.toLowerCase().includes(searchStr) ||
+            user.role?.toLowerCase().includes(searchStr)
+        )
+    })
+
+    const sortedUsers = [...filteredUsers].sort((a, b) => {
+        if (!sortConfig.key) return 0
+        const aVal = a[sortConfig.key] || ''
+        const bVal = b[sortConfig.key] || ''
+        
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
+        return 0
+    })
+
+    const handleSort = (key) => {
+        setSortConfig(prev => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+        }))
     }
 
     if (loading) {
@@ -151,22 +244,67 @@ export default function MembersPage() {
                     </PermissionTooltip>
                 </div>
 
+                {/* Controls */}
+                <div className="flex items-center justify-between gap-4">
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                            placeholder="Search members..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-9 bg-white border-slate-200"
+                        />
+                    </div>
+                </div>
+
                 {/* Users Table */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-slate-200">
                             <thead className="bg-slate-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                                    <th 
+                                        className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-blue-600 transition-colors"
+                                        onClick={() => handleSort('full_name')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Name
+                                            <ArrowUpDown className="w-3 h-3" />
+                                        </div>
+                                    </th>
+                                    <th 
+                                        className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-blue-600 transition-colors"
+                                        onClick={() => handleSort('email')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Email
+                                            <ArrowUpDown className="w-3 h-3" />
+                                        </div>
+                                    </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Phone</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Joined</th>
+                                    <th 
+                                        className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-blue-600 transition-colors"
+                                        onClick={() => handleSort('role')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Role
+                                            <ArrowUpDown className="w-3 h-3" />
+                                        </div>
+                                    </th>
+                                    <th 
+                                        className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-blue-600 transition-colors"
+                                        onClick={() => handleSort('created_at')}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            Joined
+                                            <ArrowUpDown className="w-3 h-3" />
+                                        </div>
+                                    </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-card divide-y divide-border">
-                                {users.map((user) => (
+                                {sortedUsers.map((user) => (
                                     <tr key={user.id} className="hover:bg-muted/30 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-foreground">{user.full_name || 'N/A'}</div>
@@ -191,7 +329,20 @@ export default function MembersPage() {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                                            {new Date(user.created_at).toLocaleDateString()}
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className="cursor-help hover:text-slate-900 transition-colors">
+                                                            {new Date(user.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                        </span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="text-xs font-medium">
+                                                            {new Date(user.created_at).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} at {new Date(user.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                        </p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end gap-3">
@@ -226,7 +377,11 @@ export default function MembersPage() {
                                                     message="You need 'Manage Users' permission to delete users."
                                                 >
                                                     <button
-                                                        onClick={() => { if (!canManageUsers) return; handleDeleteUser(user.id) }}
+                                                        onClick={() => { 
+                                                            if (!canManageUsers) return; 
+                                                            setUserToDelete(user);
+                                                            checkAssociations(user.id);
+                                                        }}
                                                         disabled={!canManageUsers}
                                                         className="relative p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                         title={canManageUsers ? 'Delete User' : 'Permission Required'}
@@ -242,9 +397,11 @@ export default function MembersPage() {
                         </table>
                     </div>
 
-                    {users.length === 0 && (
+                    {sortedUsers.length === 0 && (
                         <div className="text-center py-12">
-                            <p className="text-muted-foreground">No users found</p>
+                            <p className="text-muted-foreground">
+                                {searchTerm ? `No users matching "${searchTerm}"` : 'No users found'}
+                            </p>
                         </div>
                     )}
                 </div>
@@ -288,6 +445,61 @@ export default function MembersPage() {
                     </div>
                 </div>
             )}
+
+            {/* Deletion Dialog */}
+            <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                            <AlertCircle className="w-5 h-5" />
+                            Confirm Deletion
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-4 pt-2">
+                            {checkingAssociations ? (
+                                <div className="space-y-3 py-2">
+                                    <Skeleton className="h-4 w-full" />
+                                    <Skeleton className="h-20 w-full rounded-xl" />
+                                    <div className="flex gap-2">
+                                        <Skeleton className="h-8 w-20" />
+                                        <Skeleton className="h-8 w-20 ml-auto" />
+                                    </div>
+                                </div>
+                            ) : associations?.total > 0 ? (
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-sm">
+                                        <p className="font-bold mb-2">Cannot delete member yet</p>
+                                        <p>This user is currently associated with:</p>
+                                        <ul className="list-disc list-inside mt-2 space-y-1 font-medium">
+                                            {associations.leads > 0 && <li>{associations.leads} Leads</li>}
+                                            {associations.tasks > 0 && <li>{associations.tasks} Tasks</li>}
+                                            {associations.projects > 0 && <li>{associations.projects} Projects</li>}
+                                        </ul>
+                                        <p className="mt-3 text-amber-800 italic">
+                                            Please reassign or delete these records before removing this member.
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <p>Are you sure you want to delete <span className="font-bold text-slate-900">{userToDelete?.full_name}</span>?</p>
+                                    <p className="text-xs text-slate-500">This action cannot be undone. All access for this user will be revoked immediately.</p>
+                                </div>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+                        {(!checkingAssociations && associations?.total === 0) && (
+                            <AlertDialogAction
+                                onClick={() => handleDeleteUser(userToDelete.id)}
+                                className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                            >
+                                {loading ? 'Deleting...' : 'Delete Member'}
+                            </AlertDialogAction>
+                        )}
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
@@ -302,8 +514,7 @@ function RoleSelect({ userId, currentRole, onSuccess }) {
     const [saving, setSaving] = useState(false)
     const current = ROLES.find(r => r.value === currentRole) || ROLES[0]
 
-    async function handleChange(e) {
-        const newRole = e.target.value
+    async function handleRoleChange(newRole) {
         if (newRole === currentRole) return
         setSaving(true)
         try {
@@ -323,25 +534,26 @@ function RoleSelect({ userId, currentRole, onSuccess }) {
     }
 
     return (
-        <div className="relative inline-flex items-center gap-1">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${current.color}`}>
-                {current.label}
-            </span>
-            <select
+        <div className="flex items-center gap-2">
+            <Select
                 value={currentRole}
-                onChange={handleChange}
+                onValueChange={handleRoleChange}
                 disabled={saving}
-                className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed w-full"
-                title="Change role"
             >
-                {ROLES.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-            </select>
-            {saving
-                ? <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
-                : <ChevronDown className="w-3 h-3 text-gray-400 pointer-events-none" />
-            }
+                <SelectTrigger className={`h-8 w-[140px] border-none shadow-none focus:ring-0 ${current.color} hover:opacity-80 transition-opacity`}>
+                    <SelectValue>
+                        {current.label}
+                    </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                    {ROLES.map(r => (
+                        <SelectItem key={r.value} value={r.value}>
+                            {r.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            {saving && <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />}
         </div>
     )
 }
@@ -354,6 +566,7 @@ function UserModal({ user, onClose, onSuccess }) {
         fullName: user?.full_name || '',
         role:     user?.role      || 'employee',
     })
+    const [error, setError] = useState(null)
 
     async function handleSubmit(e) {
         e.preventDefault()
@@ -374,6 +587,7 @@ function UserModal({ user, onClose, onSuccess }) {
             toast.success(user ? 'User updated' : 'User added successfully')
             onSuccess(data.user)
         } catch (error) {
+            setError(error.message)
             toast.error(error.message)
         } finally {
             setLoading(false)
@@ -381,23 +595,33 @@ function UserModal({ user, onClose, onSuccess }) {
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">{user ? 'Edit User' : 'Add New User'}</h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
-                </div>
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
+                </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                         <input
                             type="email" required
                             value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            onChange={(e) => {
+                                setFormData({ ...formData, email: e.target.value })
+                                if (error) setError(null)
+                            }}
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
+                                error?.toLowerCase().includes('email') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                            }`}
                             placeholder="user@example.com"
                         />
+                        {error?.toLowerCase().includes('email') && (
+                            <p className="text-xs text-red-600 mt-1.5 font-medium flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                {error}
+                            </p>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
@@ -405,7 +629,7 @@ function UserModal({ user, onClose, onSuccess }) {
                             required
                             value={formData.phone}
                             onChange={(value) => setFormData({ ...formData, phone: value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="+91 98765 43210"
                         />
                     </div>
@@ -415,21 +639,27 @@ function UserModal({ user, onClose, onSuccess }) {
                             type="text" required
                             value={formData.fullName}
                             onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-gray-300 outline-none rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="John Doe"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
-                        <select
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Role *</label>
+                        <Select
                             value={formData.role}
-                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            onValueChange={(value) => setFormData({ ...formData, role: value })}
                         >
-                            {ROLES.map(r => (
-                                <option key={r.value} value={r.value}>{r.label}</option>
-                            ))}
-                        </select>
+                            <SelectTrigger className="w-full bg-white border-gray-300 rounded-lg">
+                                <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {ROLES.map(r => (
+                                    <SelectItem key={r.value} value={r.value}>
+                                        {r.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="flex justify-end space-x-3 mt-6">
                         <button type="button" onClick={onClose} className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
@@ -440,7 +670,7 @@ function UserModal({ user, onClose, onSuccess }) {
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     )
 }

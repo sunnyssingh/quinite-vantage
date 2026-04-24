@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Clock, Wallet, Zap, AlertTriangle, RefreshCw, Mail, MessageCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -41,11 +42,11 @@ function SkeletonCard() {
     return (
         <Card>
             <CardHeader className="pb-2">
-                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                <Skeleton className="h-4 w-32" />
             </CardHeader>
             <CardContent>
-                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse mb-2" />
-                <div className="h-3 w-28 bg-gray-100 rounded animate-pulse" />
+                <Skeleton className="h-8 w-20 mb-2" />
+                <Skeleton className="h-3 w-28" />
             </CardContent>
         </Card>
     )
@@ -85,16 +86,34 @@ export default function CreditBalance() {
     if (loading) {
         return (
             <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-64" />
+                    </div>
+                    <Skeleton className="h-9 w-24" />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <SkeletonCard />
                     <SkeletonCard />
                     <SkeletonCard />
                 </div>
                 <Card>
-                    <CardContent className="py-8">
-                        <div className="space-y-3">
-                            {[...Array(4)].map((_, i) => (
-                                <div key={i} className="h-4 bg-gray-100 rounded animate-pulse" />
+                    <CardHeader className="pb-3 border-b">
+                        <Skeleton className="h-5 w-40" />
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        <div className="divide-y divide-gray-100">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <div key={i} className="p-4 flex justify-between items-center">
+                                    <div className="flex gap-3 items-center">
+                                        <Skeleton className="h-5 w-5 rounded-full" />
+                                        <Skeleton className="h-4 w-32" />
+                                    </div>
+                                    <Skeleton className="h-4 w-16" />
+                                    <Skeleton className="h-4 w-24" />
+                                    <Skeleton className="h-4 w-32" />
+                                </div>
                             ))}
                         </div>
                     </CardContent>

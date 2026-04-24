@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { createAdminClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Building2, BedDouble, Bath, Ruler, CheckCircle2 } from 'lucide-react'
@@ -10,23 +10,45 @@ import { DynamicIcon } from '@/components/amenities/DynamicIcon'
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }) {
-    const { projectId } = await params
-    const supabase = createClient()
-    const { data: project } = await supabase.from('projects').select('name, images').eq('id', projectId).single()
+    const { slug, projectId } = await params
+    const supabase = createAdminClient()
+    
+    const { data: project } = await supabase
+        .from('projects')
+        .select(`
+            name, 
+            image_url,
+            description,
+            organizations!inner (
+                name,
+                website_config
+            )
+        `)
+        .eq('id', projectId)
+        .eq('organizations.slug', slug)
+        .single()
 
     if (!project) return { title: 'Project Not Found' }
 
+    const org = project.organizations
+    const siteName = org.website_config?.settings?.siteName || org.name
+    const title = `${project.name} | ${siteName}`
+    const description = project.description?.substring(0, 160) || `View details for ${project.name} at ${siteName}`
+
     return {
-        title: project.name,
+        title: title,
+        description: description,
         openGraph: {
-            images: project.images?.[0] ? [project.images[0]] : []
+            title: title,
+            description: description,
+            images: project.image_url ? [project.image_url] : []
         }
     }
 }
 
 export default async function PublicProjectPage({ params }) {
     const { slug, projectId } = await params
-    const supabase = createClient()
+    const supabase = createAdminClient()
 
     // Fetch Project and verify Org via Slug
     const { data: project, error } = await supabase
@@ -87,8 +109,8 @@ export default async function PublicProjectPage({ params }) {
             <main className="pb-20">
                 {/* Hero / Gallery */}
                 <div className="h-[50vh] md:h-[60vh] bg-slate-100 relative overflow-hidden group">
-                    {project.images?.[0] ? (
-                        <img src={project.images[0]} alt={project.name} className="w-full h-full object-cover" />
+                    {project.image_url ? (
+                        <img src={project.image_url} alt={project.name} className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-300">
                             <Building2 className="w-20 h-20" />

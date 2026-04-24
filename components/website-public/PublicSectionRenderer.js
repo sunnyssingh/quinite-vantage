@@ -1,8 +1,8 @@
-// PublicSectionRenderer re-uses the same section components as the builder
-// so that the live site and preview always look identical.
-import HeroSection from '@/components/website-builder/sections/HeroSection'
-import AboutSection from '@/components/website-builder/sections/AboutSection'
-import ProjectsSection from '@/components/website-builder/sections/ProjectsSection'
+// PublicSectionRenderer uses dedicated public components
+// to ensure the live site is optimized and bypasses builder-only logic.
+import HeroSection from '@/components/website-public/sections/HeroSection'
+import AboutSection from '@/components/website-public/sections/AboutSection'
+import ProjectsSection from '@/components/website-public/sections/ProjectsSection'
 import ContactSection from '@/components/website-builder/sections/ContactSection'
 
 export default function PublicSectionRenderer({ type, content, organizationId, slug }) {

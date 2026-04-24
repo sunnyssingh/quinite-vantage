@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import { X, RotateCcw, Loader2 } from 'lucide-react'
+import { X, RotateCcw, Loader2, Shield, User2, Building2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { usePermissions } from '@/contexts/PermissionContext'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function PermissionManager({ userId, userRole, user, onClose }) {
     const [loading, setLoading] = useState(true)
@@ -99,8 +100,44 @@ export default function PermissionManager({ userId, userRole, user, onClose }) {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center p-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <div className="flex flex-col h-full overflow-hidden">
+                <div className="border-b bg-gray-50 p-4 space-y-4 shrink-0">
+                    <div className="flex justify-between">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-6 w-6 rounded-full" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Skeleton className="w-11 h-11 rounded-full" />
+                        <div className="space-y-2 flex-1">
+                            <Skeleton className="h-5 w-40" />
+                            <Skeleton className="h-4 w-60" />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex-1 p-4 space-y-6 overflow-hidden">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="rounded-lg border overflow-hidden">
+                            <div className="px-4 py-2.5 bg-gray-50 border-b">
+                                <Skeleton className="h-4 w-32" />
+                            </div>
+                            <div className="divide-y">
+                                {[1, 2, 3].map(j => (
+                                    <div key={j} className="flex items-center justify-between px-4 py-4">
+                                        <div className="space-y-2 flex-1">
+                                            <Skeleton className="h-4 w-48" />
+                                            <Skeleton className="h-3 w-72" />
+                                        </div>
+                                        <Skeleton className="h-6 w-10 rounded-full" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="p-4 border-t bg-gray-50 flex justify-between">
+                    <Skeleton className="h-10 w-44" />
+                    <Skeleton className="h-10 w-20" />
+                </div>
             </div>
         )
     }
@@ -108,55 +145,81 @@ export default function PermissionManager({ userId, userRole, user, onClose }) {
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="border-b bg-gray-50 shrink-0">
-                <div className="flex items-start justify-between p-4 pb-3">
-                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Manage Permissions</h3>
+            <div className="shrink-0 bg-white border-b border-slate-100">
+                <div className="flex items-center justify-between p-5">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Access Permissions</h2>
+                        <p className="text-sm text-slate-500 mt-0">Configure feature access and overrides for this team member.</p>
+                    </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
+                        className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-all"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* User card */}
-                <div className="px-4 pb-4 flex items-center gap-3">
-                    {/* Avatar */}
-                    <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-700 font-semibold text-base">
-                        {user?.full_name
-                            ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                            : user?.email?.[0]?.toUpperCase() ?? '?'}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-gray-900 truncate">
-                                {user?.full_name || 'Unknown User'}
-                            </span>
-                            <Badge className={`text-xs shrink-0 ${
-                                userRole === 'manager' ? 'bg-purple-100 text-purple-800' :
-                                userRole === 'super_admin' ? 'bg-green-100 text-green-800' :
-                                'bg-blue-100 text-blue-800'
-                            }`}>
-                                {userRole?.replace('_', ' ')}
-                            </Badge>
+                {/* User Profile Card */}
+                <div className="px-5 pb-4">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3 transition-all hover:bg-white hover:shadow-md hover:border-slate-200">
+                        {/* Compact Avatar */}
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shrink-0 shadow-md shadow-blue-100 text-white font-bold text-base">
+                            {user?.full_name
+                                ? user.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                                : user?.email?.[0]?.toUpperCase() ?? '?'}
                         </div>
-                        <p className="text-sm text-gray-500 truncate mt-0.5">{user?.email}</p>
-                        <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
-                            {user?.phone && <span>{user.phone}</span>}
-                            {user?.created_at && (
-                                <span>Joined {new Date(user.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                            )}
-                            {!loading && (
-                                <span className="text-blue-600 font-medium">
-                                    {userPermissions.length} custom override{userPermissions.length !== 1 ? 's' : ''}
-                                </span>
-                            )}
+
+                        {/* User Details */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-bold text-slate-900 text-base truncate leading-none">
+                                    {user?.full_name || 'Team Member'}
+                                </h3>
+                                <Badge className={`text-[9px] uppercase tracking-wider font-bold py-0 px-1.5 rounded-full ${
+                                    userRole === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                    userRole === 'manager' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                    'bg-slate-100 text-slate-700 border-slate-200'
+                                } shadow-sm border`}>
+                                    {userRole?.replace('_', ' ')}
+                                </Badge>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                                <User2 className="w-3 h-3" />
+                                <span className="truncate">{user?.email}</span>
+                            </div>
+
+                            <div className="flex items-center gap-4 mt-2 pt-2 border-t border-slate-200/60">
+                                {user?.phone && (
+                                    <div className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                                        <Building2 className="w-3 h-3" />
+                                        {user.phone}
+                                    </div>
+                                )}
+                                {!loading && (
+                                    <div className="flex items-center gap-1 text-[11px] font-bold text-blue-600">
+                                        <Shield className="w-3 h-3" />
+                                        {userPermissions.length} Active Overrides
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Super Admin Notice */}
+            {userRole === 'super_admin' && (
+                <div className="mx-4 mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+                    <Shield className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                        <p className="text-sm font-bold text-blue-900">Full Access Enabled</p>
+                        <p className="text-xs text-blue-700 leading-relaxed">
+                            Super Admins have unrestricted access to all features. Individual permissions cannot be restricted for this role.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Permissions List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-5">
@@ -169,9 +232,10 @@ export default function PermissionManager({ userId, userRole, user, onClose }) {
                         </div>
                         <div className="divide-y">
                             {features.map(feature => {
-                                const isEnabled = selectedPermissions.includes(feature.feature_key)
-                                const isOverride = userPermissions.includes(feature.feature_key)
-                                const isRoleDefault = rolePermissions.includes(feature.feature_key)
+                                const isSuperAdmin = userRole === 'super_admin'
+                                const isEnabled = isSuperAdmin || selectedPermissions.includes(feature.feature_key)
+                                const isOverride = !isSuperAdmin && userPermissions.includes(feature.feature_key)
+                                const isRoleDefault = !isSuperAdmin && rolePermissions.includes(feature.feature_key)
                                 const isSaving = savingKey === feature.feature_key
 
                                 return (
@@ -182,7 +246,11 @@ export default function PermissionManager({ userId, userRole, user, onClose }) {
                                         <div className="flex-1 min-w-0 mr-4">
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="font-medium text-sm text-gray-900">{feature.feature_name}</span>
-                                                {isOverride ? (
+                                                {isSuperAdmin ? (
+                                                     <Badge className="text-xs bg-green-100 text-green-800 border-green-200 font-normal">
+                                                        Always enabled
+                                                    </Badge>
+                                                ) : isOverride ? (
                                                     <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-200 font-normal">
                                                         Custom override
                                                     </Badge>
@@ -198,7 +266,7 @@ export default function PermissionManager({ userId, userRole, user, onClose }) {
                                             {isSaving && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
                                             <Switch
                                                 checked={isEnabled}
-                                                disabled={isSaving || resetting}
+                                                disabled={isSaving || resetting || isSuperAdmin}
                                                 onCheckedChange={() => handleToggle(feature.feature_key)}
                                             />
                                         </div>
@@ -214,7 +282,7 @@ export default function PermissionManager({ userId, userRole, user, onClose }) {
             <div className="flex items-center justify-between p-4 border-t bg-gray-50">
                 <button
                     onClick={handleReset}
-                    disabled={resetting || userPermissions.length === 0}
+                    disabled={resetting || userPermissions.length === 0 || userRole === 'super_admin'}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 bg-white border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}

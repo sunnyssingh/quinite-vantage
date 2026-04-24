@@ -10,7 +10,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from '@/components/ui/button'
-import { HelpCircle, ExternalLink, LifeBuoy, Keyboard, Info } from 'lucide-react'
+import { HelpCircle, ExternalLink, LifeBuoy, Keyboard, Info, MessageCircle, Mail } from 'lucide-react'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 
 export function HelpMenu() {
@@ -41,18 +41,18 @@ export function HelpMenu() {
                     <DropdownMenuLabel>Help & Support</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                        <a href="https://docs.quinite.com" target="_blank" rel="noopener noreferrer" className="cursor-pointer">
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            <span>Documentation</span>
+                        <a href="mailto:support@quinite.com" className="cursor-pointer">
+                            <Mail className="mr-2 h-4 w-4" />
+                            <span>Email Support</span>
                         </a>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                        <a href="mailto:support@quinite.com" className="cursor-pointer">
-                            <LifeBuoy className="mr-2 h-4 w-4" />
-                            <span>Contact Support</span>
+                        <a href="https://wa.me/917043024484" target="_blank" rel="noopener noreferrer" className="cursor-pointer text-green-600 focus:text-green-600 focus:bg-green-50">
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            <span>WhatsApp Support</span>
                         </a>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={(e) => {
+                    <DropdownMenuItem className='cursor-pointer' onSelect={(e) => {
                         e.preventDefault()
                         setShowShortcuts(true)
                     }}>
@@ -60,9 +60,8 @@ export function HelpMenu() {
                         <span>Keyboard Shortcuts</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <div className="p-2 text-xs text-muted-foreground flex items-center justify-between">
-                        <span>Version 2.0.1</span>
-                        <Info className="h-3 w-3" />
+                    <div className="px-2 py-1.5 text-[10px] text-muted-foreground/60 font-medium tracking-tight">
+                        v1.0.0
                     </div>
                 </DropdownMenuContent>
             </DropdownMenu>

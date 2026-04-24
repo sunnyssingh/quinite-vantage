@@ -14,21 +14,15 @@ export default function PublicProjectsSection({ content, organizationId, slug })
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        if (!organizationId) return
+        if (!slug) return
 
         const fetchProjects = async () => {
-            const supabase = createClient()
             try {
-                const { data, error } = await supabase
-                    .from('projects')
-                    .select('*, unit_configs(config_name, carpet_area, base_price)')
-                    .eq('organization_id', organizationId)
-                    .eq('public_visibility', true)
-                    .order('created_at', { ascending: false })
-                    .limit(6)
-
-                if (!error && data) {
-                    setProjects(data)
+                const res = await fetch(`/api/projects/public?slug=${slug}&limit=6`)
+                const data = await res.json()
+                
+                if (data.projects) {
+                    setProjects(data.projects)
                 }
             } catch (err) {
                 console.error('Failed to fetch public projects', err)
@@ -37,7 +31,7 @@ export default function PublicProjectsSection({ content, organizationId, slug })
             }
         }
         fetchProjects()
-    }, [organizationId])
+    }, [slug])
 
     const getProjectDetails = (project) => {
         const unitConfigs = project.unit_configs || []

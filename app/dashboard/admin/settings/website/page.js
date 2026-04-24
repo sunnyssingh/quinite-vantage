@@ -198,18 +198,21 @@ export default function WebsiteSettingsPage() {
                                 </p>
                             </div>
 
-                            <div className="grid gap-3">
-                                <Label>Custom Domain (Optional)</Label>
+                            <div className="grid gap-3 opacity-60">
+                                <Label className="flex items-center gap-2">
+                                    Custom Domain (Optional)
+                                    <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Coming Soon</span>
+                                </Label>
                                 <div className="flex gap-2">
                                     <Input
                                         value={formData.custom_domain}
                                         onChange={(e) => handleChange('custom_domain', e.target.value)}
                                         placeholder="properties.youragency.com"
-                                        disabled={!canManage}
+                                        disabled={true}
                                     />
                                 </div>
                                 <p className="text-xs text-slate-500">
-                                    You will need to configure CNAME records to point to our servers.
+                                    Custom domain mapping is currently being finalized.
                                 </p>
                             </div>
                         </CardContent>

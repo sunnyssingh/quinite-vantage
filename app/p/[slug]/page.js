@@ -18,12 +18,23 @@ export async function generateMetadata({ params }) {
 
     if (!org) return { title: 'Not Found' }
 
-    const siteName = org.website_config?.settings?.siteName || org.company_name
+    const config = org.website_config || {}
+    const seo = config.seo || {}
+    const settings = config.settings || {}
+    
+    const siteName = seo.title || settings.siteName || org.company_name
+    const description = seo.description || `Welcome to ${siteName}`
+
     return {
         title: siteName,
-        description: `Welcome to ${siteName}`,
+        description: description,
         icons: {
-            icon: org.website_config?.settings?.logoUrl || '/favicon.ico'
+            icon: settings.logoUrl || '/favicon.ico'
+        },
+        openGraph: {
+            title: siteName,
+            description: description,
+            images: settings.logoUrl ? [settings.logoUrl] : []
         }
     }
 }

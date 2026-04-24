@@ -208,6 +208,8 @@ function PlanCTA({ plan, isCurrentPlan }) {
 
 // ─── main component ──────────────────────────────────────────────────────────
 
+import { Skeleton } from '@/components/ui/skeleton';
+
 export default function PricingTiers({ currentPlanSlug }) {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -237,9 +239,28 @@ export default function PricingTiers({ currentPlanSlug }) {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                <span className="ml-3 text-gray-500 text-sm">Loading plans…</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                {[1, 2, 3, 4].map(i => (
+                    <Card key={i} className="p-6 space-y-6">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <Skeleton className="h-10 w-10 rounded-xl" />
+                                <Skeleton className="h-6 w-32" />
+                            </div>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-8 w-24" />
+                        </div>
+                        <div className="space-y-3 pt-4 border-t">
+                            {[1, 2, 3, 4, 5].map(j => (
+                                <div key={j} className="flex items-center gap-2">
+                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                    <Skeleton className="h-4 w-full" />
+                                </div>
+                            ))}
+                        </div>
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                    </Card>
+                ))}
             </div>
         );
     }
