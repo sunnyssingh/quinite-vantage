@@ -190,6 +190,7 @@ export default function LeadProfileOverview({
                 <div className="col-span-12 md:col-span-6">
                     <ComingUpNextCard 
                         leadId={leadId} 
+                        leadName={lead?.name}
                         onShowAll={onViewAllTasks}
                     />
                 </div>

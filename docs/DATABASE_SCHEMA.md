@@ -499,33 +499,39 @@ create table public.lead_tags (
 ) TABLESPACE pg_default;
 ```
 
-## 18. lead_tasks
+## 18. tasks
 
 ```sql
-create table public.lead_tasks (
+create table public.tasks (
   id uuid not null default extensions.uuid_generate_v4 (),
-  lead_id uuid not null,
+  lead_id uuid null,
+  project_id uuid null,
   organization_id uuid not null,
   title text not null,
   description text null,
   due_date timestamp with time zone null,
+  due_time text null,
   priority text null default 'medium'::text,
   status text null default 'pending'::text,
   assigned_to uuid null,
   created_by uuid null,
+  updated_by uuid null,
   created_at timestamp with time zone null default now(),
+  updated_at timestamp with time zone null default now(),
   completed_at timestamp with time zone null,
-  constraint lead_tasks_pkey primary key (id),
-  constraint lead_tasks_created_by_fkey foreign KEY (created_by) references auth.users (id),
-  constraint lead_tasks_lead_id_fkey foreign KEY (lead_id) references leads (id) on delete CASCADE,
-  constraint lead_tasks_assigned_to_fkey foreign KEY (assigned_to) references auth.users (id),
-  constraint lead_tasks_organization_id_fkey foreign KEY (organization_id) references organizations (id) on delete CASCADE,
-  constraint lead_tasks_priority_check check (
+  constraint tasks_pkey primary key (id),
+  constraint tasks_created_by_fkey foreign KEY (created_by) references auth.users (id),
+  constraint tasks_updated_by_fkey foreign KEY (updated_by) references auth.users (id),
+  constraint tasks_lead_id_fkey foreign KEY (lead_id) references leads (id) on delete CASCADE,
+  constraint tasks_project_id_fkey foreign KEY (project_id) references projects (id) on delete SET NULL,
+  constraint tasks_assigned_to_fkey foreign KEY (assigned_to) references auth.users (id),
+  constraint tasks_organization_id_fkey foreign KEY (organization_id) references organizations (id) on delete CASCADE,
+  constraint tasks_priority_check check (
     (
       priority = any (array['low'::text, 'medium'::text, 'high'::text])
     )
   ),
-  constraint lead_tasks_status_check check (
+  constraint tasks_status_check check (
     (
       status = any (
         array[

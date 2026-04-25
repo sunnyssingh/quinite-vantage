@@ -3,22 +3,184 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import {
     Dialog,
     DialogContent,
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from '@/components/ui/dialog'
-import { Calendar, Plus, Flag, CheckCircle2, Trash2 } from 'lucide-react'
-import { format } from 'date-fns'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
+    Calendar,
+    Plus,
+    CheckCircle2,
+    Trash2,
+    AlertTriangle,
+    Clock,
+    CalendarClock,
+    Loader2,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
+import { isPast, isToday, parseISO, differenceInDays } from 'date-fns'
+import { formatIndianDateTime, formatIndianDate } from '@/lib/formatDate'
 import TaskFormFields, { formDataToPayload, EMPTY_FORM } from '@/components/crm/TaskFormFields'
 
-export default function ComingUpNextCard({ leadId, onShowAll }) {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const PRIORITY_CONFIG = {
+    high:   { label: 'High',   dot: 'bg-red-500',   text: 'text-red-600',   badge: 'bg-red-50 text-red-700 border-red-200 ring-red-100' },
+    medium: { label: 'Medium', dot: 'bg-amber-400', text: 'text-amber-600', badge: 'bg-amber-50 text-amber-700 border-amber-200 ring-amber-100' },
+    low:    { label: 'Low',    dot: 'bg-blue-400',  text: 'text-blue-600',  badge: 'bg-blue-50 text-blue-700 border-blue-200 ring-blue-100' },
+}
+
+function getIsOverdue(task) {
+    return (
+        task.status === 'pending' &&
+        task.due_date &&
+        isPast(parseISO(task.due_date)) &&
+        !isToday(parseISO(task.due_date))
+    )
+}
+
+function DueDateBadge({ task }) {
+    if (!task.due_date) return null
+    const d = parseISO(task.due_date)
+    const overdue = getIsOverdue(task)
+    const today = isToday(d)
+    const hasTime = d.getHours() !== 0 || d.getMinutes() !== 0
+
+    if (overdue) {
+        const daysAgo = Math.abs(differenceInDays(d, new Date()))
+        return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-1.5 py-px">
+                <AlertTriangle className="w-2.5 h-2.5 shrink-0" />
+                {daysAgo === 0 ? 'Today' : `${daysAgo}d overdue`}
+            </span>
+        )
+    }
+    if (today) {
+        return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-1.5 py-px">
+                <Clock className="w-2.5 h-2.5 shrink-0" />
+                {hasTime ? formatIndianDateTime(task.due_date).split(', ')[1] : 'Today'}
+            </span>
+        )
+    }
+    if (differenceInDays(d, new Date()) === 1) {
+        return (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-px">
+                <CalendarClock className="w-2.5 h-2.5 shrink-0" />
+                Tomorrow
+            </span>
+        )
+    }
+    return (
+        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/60 border border-border rounded-full px-1.5 py-px">
+            <Calendar className="w-2.5 h-2.5 shrink-0" />
+            {hasTime ? formatIndianDateTime(task.due_date) : formatIndianDate(task.due_date)}
+        </span>
+    )
+}
+
+// ─── Task Row ────────────────────────────────────────────────────────────────
+
+function OverviewTaskRow({ task, onToggle, onDelete }) {
+    const isCompleted = task.status === 'completed'
+    const isOverdue = getIsOverdue(task)
+    const pCfg = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium
+
+    return (
+        <div className={cn(
+            'group relative flex items-center gap-3 p-2.5 rounded-xl bg-white transition-all duration-200',
+            isOverdue && !isCompleted
+                ? 'shadow-[0_0_0_1px_rgba(239,68,68,0.1)]'
+                : 'shadow-sm hover:shadow-md',
+            isCompleted && 'opacity-60'
+        )}>
+            {/* Priority accent bar */}
+            {!isCompleted && (
+                <div className={cn('absolute left-0 top-0 bottom-0 w-1 rounded-l-xl', pCfg.dot)} />
+            )}
+
+            {/* Checkbox */}
+            <button
+                onClick={() => onToggle(task.id, task.status)}
+                className={cn(
+                    "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 focus:outline-none",
+                    isCompleted
+                        ? "bg-indigo-600 border-indigo-600"
+                        : "border-slate-300 hover:border-indigo-500"
+                )}
+            >
+                <CheckCircle2 className={cn("w-3 h-3", isCompleted ? "text-white" : "text-transparent")} />
+            </button>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                    <p className={cn(
+                        "text-sm font-semibold leading-tight truncate",
+                        isCompleted ? "line-through text-slate-400" : "text-slate-900"
+                    )}>
+                        {task.title}
+                    </p>
+                    <div className="flex items-center gap-1 shrink-0">
+                        {!isCompleted && (
+                            <Badge variant="outline" className={cn(
+                                "text-[8px] font-bold uppercase tracking-tight px-1.5 py-px border shadow-sm ring-1 ring-inset h-auto",
+                                pCfg.badge
+                            )}>
+                                {pCfg.label}
+                            </Badge>
+                        )}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(task.id) }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 p-0.5 rounded"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </div>
+
+                {task.description && !isCompleted && (
+                    <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{task.description}</p>
+                )}
+
+                {/* Footer: due date + assignee */}
+                <div className="flex items-center gap-3 mt-1.5">
+                    {!isCompleted && <DueDateBadge task={task} />}
+                    {isCompleted && task.completed_at && (
+                        <span className="text-[10px] font-medium text-slate-400 bg-slate-100/50 px-1.5 py-px rounded-full border border-slate-100">
+                            {formatIndianDate(task.completed_at)}
+                        </span>
+                    )}
+                    {task.assignee && (
+                        <div className="flex items-center gap-1.5 ml-auto">
+                            <div className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center shrink-0 overflow-hidden text-[7px]">
+                                {(task.assignee.full_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <span className={cn("text-[10px] font-medium truncate max-w-[80px]", isCompleted ? "text-slate-400" : "text-slate-600")}>
+                                {task.assignee.full_name}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
+export default function ComingUpNextCard({ leadId, leadName, onShowAll }) {
     const [tasks, setTasks] = useState([])
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -27,9 +189,7 @@ export default function ComingUpNextCard({ leadId, onShowAll }) {
     const [formData, setFormData] = useState(EMPTY_FORM)
 
     useEffect(() => {
-        if (leadId) {
-            fetchTasks()
-        }
+        if (leadId) fetchTasks()
     }, [leadId])
 
     useEffect(() => {
@@ -125,15 +285,6 @@ export default function ComingUpNextCard({ leadId, onShowAll }) {
         }
     }
 
-    const getPriorityColor = (priority) => {
-        switch (priority) {
-            case 'high': return 'text-red-500 fill-red-500/10'
-            case 'medium': return 'text-orange-500 fill-orange-500/10'
-            case 'low': return 'text-blue-500 fill-blue-500/10'
-            default: return 'text-gray-400'
-        }
-    }
-
     if (loading) {
         return (
             <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200">
@@ -150,13 +301,26 @@ export default function ComingUpNextCard({ leadId, onShowAll }) {
                 <CardContent>
                     <div className="space-y-3">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="h-20 bg-gray-50 rounded-xl animate-pulse" />
+                            <div key={i} className="h-16 bg-gray-50 rounded-xl animate-pulse" />
                         ))}
                     </div>
                 </CardContent>
             </Card>
         )
     }
+
+    // Sort: pending first, overdue on top, then by due date
+    const sortedTasks = [...tasks].sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'completed' ? 1 : -1
+        const aOver = getIsOverdue(a)
+        const bOver = getIsOverdue(b)
+        if (aOver !== bOver) return aOver ? -1 : 1
+        if (a.due_date && b.due_date) return parseISO(a.due_date).getTime() - parseISO(b.due_date).getTime()
+        if (a.due_date || b.due_date) return a.due_date ? -1 : 1
+        return 0
+    })
+
+    const pendingCount = tasks.filter(t => t.status !== 'completed').length
 
     return (
         <Card className="h-full border-0 shadow-sm ring-1 ring-gray-200 flex flex-col">
@@ -169,18 +333,23 @@ export default function ComingUpNextCard({ leadId, onShowAll }) {
                         <div>
                             <CardTitle className="text-sm font-bold text-gray-900">Tasks</CardTitle>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                {tasks.filter(t => t.status !== 'completed').length} pending
+                                {pendingCount} pending
                             </p>
                         </div>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full"
-                        onClick={() => setIsDialogOpen(true)}
-                    >
-                        <Plus className="h-4 w-4" />
-                    </Button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full"
+                                onClick={() => setIsDialogOpen(true)}
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="text-xs">Add Task</TooltipContent>
+                    </Tooltip>
                 </div>
             </CardHeader>
 
@@ -203,100 +372,14 @@ export default function ComingUpNextCard({ leadId, onShowAll }) {
                         </Button>
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {tasks.slice(0, 3).map((task) => (
-                            <div
+                    <div className="space-y-2">
+                        {sortedTasks.slice(0, 4).map((task) => (
+                            <OverviewTaskRow
                                 key={task.id}
-                                className={cn(
-                                    "group relative flex items-start gap-3 p-4 rounded-xl border transition-all",
-                                    task.status === 'completed'
-                                        ? "bg-gray-50/80 border-gray-100"
-                                        : "bg-white border-gray-100 shadow-sm hover:border-indigo-200 hover:shadow-md"
-                                )}
-                            >
-                                <button
-                                    onClick={() => toggleTaskStatus(task.id, task.status)}
-                                    className={cn(
-                                        "mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-indigo-500/20",
-                                        task.status === 'completed'
-                                            ? "bg-indigo-600 border-indigo-600"
-                                            : "border-gray-200 hover:border-indigo-500 text-transparent hover:text-indigo-500"
-                                    )}
-                                >
-                                    <CheckCircle2 className={cn("w-3.5 h-3.5", task.status === 'completed' ? "text-white" : "opacity-0 hover:opacity-100")} />
-                                </button>
-
-                                <div className="flex-1 min-w-0 flex flex-col gap-2">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <p className={cn(
-                                            "text-sm font-semibold leading-tight",
-                                            task.status === 'completed'
-                                                ? "line-through text-gray-400"
-                                                : "text-gray-900"
-                                        )}>
-                                            {task.title}
-                                        </p>
-
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            {task.status !== 'completed' && (
-                                                <Flag className={cn("w-4 h-4", getPriorityColor(task.priority))} />
-                                            )}
-
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleDeleteTask(task.id)
-                                                }}
-                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-0.5"
-                                                title="Delete task"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {task.description && (
-                                        <p className={cn("text-xs line-clamp-2", task.status === 'completed' ? "text-gray-300" : "text-gray-500")}>
-                                            {task.description}
-                                        </p>
-                                    )}
-
-                                    <div className="flex items-center justify-between mt-1 pt-2 border-t border-dashed border-gray-100">
-                                        <div className="flex items-center gap-4">
-                                            {task.due_date && (
-                                                <div className={cn(
-                                                    "flex items-center gap-1.5 text-xs font-medium",
-                                                    task.status === 'completed'
-                                                        ? "text-gray-400"
-                                                        : new Date(task.due_date) < new Date()
-                                                            ? "text-red-600"
-                                                            : "text-gray-600"
-                                                )}>
-                                                    <Calendar className="w-3.5 h-3.5" />
-                                                    <span>{format(new Date(task.due_date), 'MMM d')}</span>
-                                                    {task.due_time && <span className="opacity-70 font-normal">at {task.due_time}</span>}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {task.assigned_to && task.assignee && (
-                                            <div className="flex items-center gap-1.5">
-                                                <Avatar className="h-6 w-6 border border-white ring-1 ring-gray-100">
-                                                    <AvatarFallback className={cn(
-                                                        "text-[10px] font-bold",
-                                                        task.status === 'completed' ? "bg-gray-100 text-gray-400" : "bg-indigo-50 text-indigo-600"
-                                                    )}>
-                                                        {(task.assignee.full_name || '').substring(0, 2).toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <span className={cn("text-xs font-medium", task.status === 'completed' ? "text-gray-300" : "text-gray-600")}>
-                                                    {(task.assignee.full_name || '').split(' ')[0]}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                                task={task}
+                                onToggle={toggleTaskStatus}
+                                onDelete={handleDeleteTask}
+                            />
                         ))}
 
                         {tasks.length > 0 && (
@@ -306,34 +389,39 @@ export default function ComingUpNextCard({ leadId, onShowAll }) {
                                 onClick={onShowAll}
                                 className="w-full mt-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 text-xs font-semibold py-2 h-auto"
                             >
-                                {tasks.length > 3 ? `Show all ${tasks.length} tasks` : "View all tasks"}
+                                {tasks.length > 4 ? `Show all ${tasks.length} tasks` : "View all tasks"}
                             </Button>
                         )}
                     </div>
                 )}
             </CardContent>
 
-            {/* Create Task Dialog */}
+            {/* Create Task Dialog — Matches Tasks Tab Style */}
             <Dialog open={isDialogOpen} onOpenChange={open => { setIsDialogOpen(open); if (!open) setFormData(EMPTY_FORM) }}>
-                <DialogContent className="sm:max-w-[460px]">
+                <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Add Task</DialogTitle>
-                        <DialogDescription>Create a new task for this lead</DialogDescription>
+                        <DialogTitle>New Task</DialogTitle>
+                        <DialogDescription>Create a follow-up task for this lead.</DialogDescription>
                     </DialogHeader>
-                    <div className="py-2">
+                    <form onSubmit={(e) => { e.preventDefault(); handleAddTask() }} className="space-y-4">
                         <TaskFormFields
                             formData={formData}
                             onChange={(field, value) => setFormData(f => ({ ...f, [field]: value }))}
                             teamMembers={teamMembers}
                             canAssignOthers={teamMembers.length > 0}
+                            fixedLeadId={leadId}
+                            fixedLeadLabel={leadName}
+                            showLeadProject={false}
                         />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleAddTask} disabled={saving}>
-                            {saving ? 'Creating...' : 'Create Task'}
-                        </Button>
-                    </DialogFooter>
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                            <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="text-slate-500">
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={saving || !formData.title?.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 font-semibold">
+                                {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating…</> : 'Create Task'}
+                            </Button>
+                        </div>
+                    </form>
                 </DialogContent>
             </Dialog>
         </Card>

@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { logAudit } from '@/lib/permissions'
 import { NextResponse } from 'next/server'
 
 export async function GET(request, { params }) {
@@ -8,37 +10,20 @@ export async function GET(request, { params }) {
         const { id } = await params
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Cleanup completed tasks older than 24 hours
-        try {
-            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-            await supabase
-                .from('lead_tasks')
-                .delete()
-                .eq('lead_id', id)
-                .eq('status', 'completed')
-                .lt('completed_at', yesterday)
-        } catch (cleanupError) {
-            console.error('Error cleaning up old tasks:', cleanupError)
-        }
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
         const { data: tasks, error } = await supabase
-            .from('lead_tasks')
+            .from('tasks')
             .select('*')
             .eq('lead_id', id)
             .order('due_date', { ascending: true, nullsFirst: false })
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
-        }
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-        // Enrich with assignee + creator profiles
         const userIds = [...new Set([
             ...(tasks || []).map(t => t.assigned_to).filter(Boolean),
             ...(tasks || []).map(t => t.created_by).filter(Boolean),
+            ...(tasks || []).map(t => t.updated_by).filter(Boolean),
         ])]
 
         let profileMap = {}
@@ -48,15 +33,14 @@ export async function GET(request, { params }) {
                 .from('profiles')
                 .select('id, full_name, avatar_url')
                 .in('id', userIds)
-            if (profiles) {
-                profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
-            }
+            if (profiles) profileMap = Object.fromEntries(profiles.map(p => [p.id, p]))
         }
 
         const enriched = (tasks || []).map(t => ({
             ...t,
             assignee: t.assigned_to ? (profileMap[t.assigned_to] ?? null) : null,
             creator:  t.created_by  ? (profileMap[t.created_by]  ?? null) : null,
+            updater:  t.updated_by  ? (profileMap[t.updated_by]  ?? null) : null,
         }))
 
         return NextResponse.json({ tasks: enriched })
@@ -73,13 +57,16 @@ export async function POST(request, { params }) {
         const body = await request.json()
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+        const canCreate = await hasDashboardPermission(user.id, 'create_tasks')
+        if (!canCreate) {
+            return NextResponse.json({ error: "You don't have permission to create tasks" }, { status: 403 })
         }
 
         const { data: profile } = await supabase
             .from('profiles')
-            .select('organization_id')
+            .select('organization_id, full_name')
             .eq('id', user.id)
             .single()
 
@@ -87,10 +74,9 @@ export async function POST(request, { params }) {
             return NextResponse.json({ error: 'No organization found' }, { status: 403 })
         }
 
-        // due_date can be a full datetime-local string (YYYY-MM-DDTHH:mm)
-        // or a date string — store as-is, Postgres handles both
-        const { data, error } = await supabase
-            .from('lead_tasks')
+        const admin = createAdminClient()
+        const { data, error } = await admin
+            .from('tasks')
             .insert({
                 lead_id:         id,
                 organization_id: profile.organization_id,
@@ -110,6 +96,12 @@ export async function POST(request, { params }) {
             console.error('Supabase error creating task:', error)
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
+
+        await logAudit(null, user.id, profile.full_name || user.email, 'task_created', 'task', data.id, {
+            title:    data.title,
+            lead_id:  id,
+            priority: data.priority,
+        })
 
         return NextResponse.json({ task: data })
     } catch (error) {

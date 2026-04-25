@@ -31,12 +31,12 @@ export async function POST(request, { params }) {
         return Response.json({ error: error.message }, { status: 500 });
     }
 
-    // Auto-create follow-up task in lead_tasks if outcome warrants it
+    // Auto-create follow-up task if outcome warrants it
     if (outcome === 'interested' || outcome === 'callback') {
         const dueDate = new Date();
         dueDate.setHours(dueDate.getHours() + (interest_level === 'high' ? 2 : 24));
 
-        await supabase.from('lead_tasks').insert({
+        await supabase.from('tasks').insert({
             organization_id: data.organization_id,
             lead_id: data.lead_id,
             assigned_to: user.id,

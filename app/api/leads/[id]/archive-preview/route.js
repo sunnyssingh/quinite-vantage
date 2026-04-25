@@ -34,7 +34,7 @@ export const GET = withAuth(async (request, { params, profile }) => {
 
         // 2. Pending Lead Tasks
         const { count: tasksCount } = await supabase
-            .from('lead_tasks')
+            .from('tasks')
             .select('*', { count: 'exact', head: true })
             .eq('lead_id', id)
             .eq('status', 'pending')

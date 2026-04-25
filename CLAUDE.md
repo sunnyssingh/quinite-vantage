@@ -166,7 +166,7 @@ supabase/                      # Migrations + RLS policies
 | `leads` | Lead records (name, phone, stage, assigned_to) |
 | `call_logs` | Full call records (transcript, sentiment, AI metadata) |
 | `lead_interactions` | Interaction history (calls, notes) |
-| `lead_tasks` | Follow-up tasks |
+| `tasks` | Tasks (standalone, lead-linked, or project-linked) |
 | `pipelines` / `pipeline_stages` | Kanban configuration |
 | `units` / `unit_configs` | Property inventory |
 | `subscriptions` / `invoices` / `payments` | Billing |

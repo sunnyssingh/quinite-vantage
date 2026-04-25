@@ -103,7 +103,7 @@ FOR ALL TO service_role USING (true);
 | `pipeline_stages` | view_org_stages, manage_org_stages | Nested org check |
 | `lead_profiles` | view/insert/update in org | Organization-based |
 | `lead_interactions` | view/insert in org | Organization-based |
-| `lead_tasks` | view/insert/update in org | Organization-based |
+| `tasks` | view/insert/update in org | Organization-based + RBAC scope (view_all/team/own_tasks) |
 | `lead_documents` | view/insert/delete in org | Organization-based |
 | `lead_tags` | view/insert/delete in org | Organization-based |
 | `deals` | view_org_deals, manage_org_deals | Organization-based |

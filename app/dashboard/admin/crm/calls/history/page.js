@@ -111,7 +111,7 @@ export default function CallHistory() {
 
     const createWhatsAppTask = async (call) => {
         const { data: profile } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single()
-        const { error } = await supabase.from('lead_tasks').insert({
+        const { error } = await supabase.from('tasks').insert({
             lead_id: call.lead?.id,
             organization_id: profile?.organization_id,
             title: 'Send project brochure via WhatsApp',

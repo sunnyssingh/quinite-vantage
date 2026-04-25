@@ -22,7 +22,7 @@
 | All RLS policies | Policies | Row-level security (policies for dropped tables are auto-removed) |
 
 ### Dropped Tables (and their RLS policies auto-dropped)
-- `follow_up_tasks` — use `lead_tasks` instead
+- `follow_up_tasks` — use `tasks` instead (renamed from `lead_tasks`)
 - `lead_activities` — use `lead_interactions` instead  
 - `lead_tags` — unused
 - `conversation_insights` — unused in production

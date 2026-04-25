@@ -1,16 +1,24 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { hasDashboardPermission } from '@/lib/dashboardPermissions'
+import { logAudit } from '@/lib/permissions'
 import { NextResponse } from 'next/server'
 
 export async function PUT(request, { params }) {
     try {
         const supabase = await createServerSupabaseClient()
-        const { id, taskId } = await params
+        const { taskId } = await params
         const body = await request.json()
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+        const canEdit = await hasDashboardPermission(user.id, 'edit_tasks')
+        if (!canEdit) return NextResponse.json({ error: "You don't have permission to edit tasks" }, { status: 403 })
+
+        const admin = createAdminClient()
+        const { data: existing } = await admin.from('tasks').select('*').eq('id', taskId).single()
+        if (!existing) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
 
         const updateData = {
             title:       body.title,
@@ -20,6 +28,7 @@ export async function PUT(request, { params }) {
             priority:    body.priority,
             status:      body.status,
             assigned_to: body.assigned_to ?? null,
+            updated_by:  user.id,
         }
 
         if (body.status === 'completed') {
@@ -28,16 +37,32 @@ export async function PUT(request, { params }) {
             updateData.completed_at = null
         }
 
-        const { data, error } = await supabase
-            .from('lead_tasks')
+        const { data, error } = await admin
+            .from('tasks')
             .update(updateData)
             .eq('id', taskId)
-            .eq('lead_id', id)
-            .select('*')
+            .select(`
+                *,
+                lead:leads!tasks_lead_id_fkey(
+                    id, name, email, phone, mobile, score, interest_level, assigned_to,
+                    stage:pipeline_stages!leads_stage_id_fkey(id, name, color)
+                ),
+                project:projects!tasks_project_id_fkey(id, name, city, address)
+            `)
             .single()
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+        const { data: profile } = await admin.from('profiles').select('full_name').eq('id', user.id).single()
+
+        if (existing.status !== body.status) {
+            await logAudit(null, user.id, profile?.full_name || user.email, 'task_status_changed', 'task', taskId, {
+                from: existing.status, to: body.status, title: existing.title,
+            })
+        } else {
+            await logAudit(null, user.id, profile?.full_name || user.email, 'task_updated', 'task', taskId, {
+                title: data.title,
+            })
         }
 
         return NextResponse.json({ task: data })
@@ -50,15 +75,20 @@ export async function PUT(request, { params }) {
 export async function PATCH(request, { params }) {
     try {
         const supabase = await createServerSupabaseClient()
-        const { id, taskId } = await params
+        const { taskId } = await params
         const body = await request.json()
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        const updateData = {}
+        const canEdit = await hasDashboardPermission(user.id, 'edit_tasks')
+        if (!canEdit) return NextResponse.json({ error: "You don't have permission to edit tasks" }, { status: 403 })
+
+        const admin = createAdminClient()
+        const { data: existing } = await admin.from('tasks').select('*').eq('id', taskId).single()
+        if (!existing) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+
+        const updateData = { updated_by: user.id }
         if (body.status      !== undefined) updateData.status      = body.status
         if (body.title       !== undefined) updateData.title       = body.title
         if (body.description !== undefined) updateData.description = body.description
@@ -73,16 +103,32 @@ export async function PATCH(request, { params }) {
             updateData.completed_at = null
         }
 
-        const { data, error } = await supabase
-            .from('lead_tasks')
+        const { data, error } = await admin
+            .from('tasks')
             .update(updateData)
             .eq('id', taskId)
-            .eq('lead_id', id)
-            .select('*')
+            .select(`
+                *,
+                lead:leads!tasks_lead_id_fkey(
+                    id, name, email, phone, mobile, score, interest_level, assigned_to,
+                    stage:pipeline_stages!leads_stage_id_fkey(id, name, color)
+                ),
+                project:projects!tasks_project_id_fkey(id, name, city, address)
+            `)
             .single()
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+        const { data: profile } = await admin.from('profiles').select('full_name').eq('id', user.id).single()
+
+        if (body.status !== undefined && existing.status !== body.status) {
+            await logAudit(null, user.id, profile?.full_name || user.email, 'task_status_changed', 'task', taskId, {
+                from: existing.status, to: body.status, title: existing.title,
+            })
+        } else {
+            await logAudit(null, user.id, profile?.full_name || user.email, 'task_updated', 'task', taskId, {
+                title: existing.title,
+            })
         }
 
         return NextResponse.json({ task: data })
@@ -95,22 +141,25 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
     try {
         const supabase = await createServerSupabaseClient()
-        const { id, taskId } = await params
+        const { taskId } = await params
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-        const { error } = await supabase
-            .from('lead_tasks')
-            .delete()
-            .eq('id', taskId)
-            .eq('lead_id', id)
+        const canDelete = await hasDashboardPermission(user.id, 'delete_tasks')
+        if (!canDelete) return NextResponse.json({ error: "You don't have permission to delete tasks" }, { status: 403 })
 
-        if (error) {
-            return NextResponse.json({ error: error.message }, { status: 500 })
-        }
+        const admin = createAdminClient()
+        const { data: existing } = await admin.from('tasks').select('title, lead_id, project_id').eq('id', taskId).single()
+        if (!existing) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
+
+        const { error } = await admin.from('tasks').delete().eq('id', taskId)
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+        const { data: profile } = await admin.from('profiles').select('full_name').eq('id', user.id).single()
+        await logAudit(null, user.id, profile?.full_name || user.email, 'task_deleted', 'task', taskId, {
+            title: existing.title, lead_id: existing.lead_id, project_id: existing.project_id,
+        })
 
         return NextResponse.json({ success: true })
     } catch (error) {

@@ -62,7 +62,7 @@ export const POST = withAuth(async (request, { user }) => {
 
         // B. Mark pending tasks as cancelled
         await adminClient
-            .from('lead_tasks')
+            .from('tasks')
             .update({ status: 'cancelled' })
             .in('lead_id', authorizedLeadIds)
             .eq('status', 'pending')

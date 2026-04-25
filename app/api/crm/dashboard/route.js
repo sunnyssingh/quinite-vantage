@@ -130,21 +130,21 @@ export async function GET(request) {
 
             // 6. Tasks Completed (Optimized Count)
             adminClient
-                .from('lead_tasks')
+                .from('tasks')
                 .select('*', { count: 'exact', head: true })
                 .eq('organization_id', organizationId)
                 .eq('status', 'completed'),
 
             // 7. Tasks Pending (Optimized Count)
             adminClient
-                .from('lead_tasks')
+                .from('tasks')
                 .select('*', { count: 'exact', head: true })
                 .eq('organization_id', organizationId)
                 .eq('status', 'pending'),
 
             // 8. Tasks Overdue (Optimized Count)
             adminClient
-                .from('lead_tasks')
+                .from('tasks')
                 .select('*', { count: 'exact', head: true })
                 .eq('organization_id', organizationId)
                 .neq('status', 'completed')

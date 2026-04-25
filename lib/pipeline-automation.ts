@@ -189,7 +189,7 @@ async function executeAction(
         case 'create_task': {
             const dueHours = typeof cfg.due_in_hours === 'number' ? cfg.due_in_hours : 48
             const dueDate = new Date(Date.now() + dueHours * 60 * 60 * 1000).toISOString()
-            await supabase.from('lead_tasks').insert({
+            await supabase.from('tasks').insert({
                 lead_id: lead.id,
                 organization_id: organizationId,
                 title: cfg.title ?? `Follow up (auto)`,

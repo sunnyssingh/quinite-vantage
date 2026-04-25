@@ -185,7 +185,7 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                     <LeadCallsTab callLogs={lead?.call_logs || []} />
                 )}
                 {activeTab === 'tasks' && (
-                    <LeadTasksManager leadId={leadId} />
+                    <LeadTasksManager leadId={leadId} leadName={lead?.name} />
                 )}
                 {activeTab === 'notes' && (
                     <LeadProfileNotes

@@ -100,7 +100,7 @@ export default function MembersPage() {
                 { count: projectCount }
             ] = await Promise.all([
                 supabase.from('leads').select('*', { count: 'exact', head: true }).or(`assigned_to.eq.${userId},created_by.eq.${userId}`),
-                supabase.from('lead_tasks').select('*', { count: 'exact', head: true }).eq('assigned_to', userId),
+                supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('assigned_to', userId),
                 supabase.from('projects').select('*', { count: 'exact', head: true }).eq('created_by', userId)
             ])
 

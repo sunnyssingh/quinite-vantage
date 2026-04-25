@@ -406,9 +406,10 @@ CREATE TABLE public.lead_interactions (
   CONSTRAINT lead_interactions_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
   CONSTRAINT lead_interactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
 );
-CREATE TABLE public.lead_tasks (
+CREATE TABLE public.tasks (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  lead_id uuid NOT NULL,
+  lead_id uuid,
+  project_id uuid,
   organization_id uuid NOT NULL,
   title text NOT NULL,
   description text,
@@ -417,14 +418,18 @@ CREATE TABLE public.lead_tasks (
   status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'completed'::text, 'overdue'::text])),
   assigned_to uuid,
   created_by uuid,
+  updated_by uuid,
   created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
   completed_at timestamp with time zone,
   due_time text,
-  CONSTRAINT lead_tasks_pkey PRIMARY KEY (id),
-  CONSTRAINT lead_tasks_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id),
-  CONSTRAINT lead_tasks_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
-  CONSTRAINT lead_tasks_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES auth.users(id),
-  CONSTRAINT lead_tasks_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
+  CONSTRAINT tasks_pkey PRIMARY KEY (id),
+  CONSTRAINT tasks_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id),
+  CONSTRAINT tasks_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE SET NULL,
+  CONSTRAINT tasks_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
+  CONSTRAINT tasks_assigned_to_fkey FOREIGN KEY (assigned_to) REFERENCES auth.users(id),
+  CONSTRAINT tasks_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  CONSTRAINT tasks_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id)
 );
 CREATE TABLE public.leads (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
