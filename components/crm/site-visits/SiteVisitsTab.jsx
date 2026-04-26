@@ -11,6 +11,10 @@ import BookSiteVisitDialog from './BookSiteVisitDialog'
 import SiteVisitOutcomeDialog from './SiteVisitOutcomeDialog'
 import { toast } from 'react-hot-toast'
 
+import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import { Calendar, CheckCircle2, XCircle } from 'lucide-react'
+
 export default function SiteVisitsTab({ leadId, lead }) {
     const { data: visits = [], isLoading } = useSiteVisits(leadId)
     const { data: users = [] } = useUsers()
@@ -68,15 +72,51 @@ export default function SiteVisitsTab({ leadId, lead }) {
         .filter(v => v.status !== 'scheduled')
         .sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))
 
+    const statsData = {
+        total: visits.length,
+        upcoming: upcoming.length,
+        completed: visits.filter(v => v.status === 'completed').length,
+        noShow: visits.filter(v => v.status === 'no_show').length,
+    }
+
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-sm font-semibold text-foreground">Site Visits</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{visits.length} total</p>
+        <div className="space-y-6 w-full">
+            {/* Header Analytics */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                {[
+                    { label: 'Total Visits', value: statsData.total, icon: MapPin, color: 'blue' },
+                    { label: 'Upcoming', value: statsData.upcoming, icon: Calendar, color: 'emerald' },
+                    { label: 'Completed', value: statsData.completed, icon: CheckCircle2, color: 'indigo' },
+                    { label: 'No Show', value: statsData.noShow, icon: XCircle, color: 'red' },
+                ].map(({ label, value, icon: Icon, color }) => (
+                    <Card key={label} className="border-0 shadow-sm ring-1 ring-gray-100 bg-white">
+                        <CardContent className="p-4 flex items-center gap-4">
+                            <div className={cn("p-2.5 rounded-xl", 
+                                color === 'blue' ? 'bg-blue-50 text-blue-600' : 
+                                color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
+                                color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
+                                'bg-red-50 text-red-600'
+                            )}>
+                                <Icon className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{label}</p>
+                                <p className={cn(
+                                    "text-base font-black mt-0.5",
+                                    label === 'No Show' && value > 0 ? 'text-red-600' : 'text-gray-900'
+                                )}>{value}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            {/* Header Actions */}
+            <div className="flex items-center justify-between bg-white p-2 rounded-xl shadow-sm ring-1 ring-slate-100">
+                <div className="px-2">
+                    <h3 className="text-sm font-semibold text-slate-900">Site Visits</h3>
                 </div>
-                <Button size="sm" onClick={() => { setEditingVisit(null); setBookOpen(true) }} className="gap-1.5 h-8 text-xs">
+                <Button size="sm" onClick={() => { setEditingVisit(null); setBookOpen(true) }} className="h-9 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg px-4 font-bold shadow-md active:scale-95 transition-all text-xs shrink-0">
                     <Plus className="w-3.5 h-3.5" />
                     Book Visit
                 </Button>
@@ -136,6 +176,7 @@ export default function SiteVisitsTab({ leadId, lead }) {
                 open={bookOpen}
                 onOpenChange={setBookOpen}
                 leadId={leadId}
+                lead={lead}
                 visit={editingVisit}
                 agents={users}
                 defaultAgentId={lead?.assigned_to}

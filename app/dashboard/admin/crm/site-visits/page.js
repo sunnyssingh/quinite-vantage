@@ -1,15 +1,18 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePermissions } from '@/contexts/PermissionContext'
 import { startOfWeek, endOfWeek } from 'date-fns'
-import { MapPin, Filter } from 'lucide-react'
+import { MapPin, Filter, List, CalendarDays, Search, ArrowUpDown } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAllSiteVisits } from '@/hooks/useSiteVisits'
 import { useUsers } from '@/hooks/usePipelines'
+import { useProjects } from '@/hooks/useProjects'
 import SiteVisitCalendar from '@/components/crm/site-visits/SiteVisitCalendar'
+import SiteVisitsTable from '@/components/crm/site-visits/SiteVisitsTable'
 
 export default function SiteVisitsPage() {
     const router = useRouter()
@@ -25,17 +28,50 @@ export default function SiteVisitsPage() {
         from: startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString(),
         to:   endOfWeek(new Date(),   { weekStartsOn: 1 }).toISOString(),
     })
+    const [viewMode, setViewMode] = useState('calendar')
     const [filterAgent,   setFilterAgent]   = useState('__all__')
     const [filterProject, setFilterProject] = useState('__all__')
+    const [filterStatus,  setFilterStatus]  = useState('__all__')
+    const [search,        setSearch]        = useState('')
+    const [sortBy,        setSortBy]        = useState('date_asc')
 
     const { data: visits = [], isLoading } = useAllSiteVisits({
-        from:      dateRange.from,
-        to:        dateRange.to,
+        from:      viewMode === 'calendar' ? dateRange.from : undefined,
+        to:        viewMode === 'calendar' ? dateRange.to   : undefined,
         agentId:   filterAgent   !== '__all__' ? filterAgent   : undefined,
         projectId: filterProject !== '__all__' ? filterProject : undefined,
     })
 
     const { data: users = [] } = useUsers()
+    const { data: projects = [] } = useProjects()
+
+    const processedVisits = useMemo(() => {
+        let result = [...visits]
+        
+        if (search) {
+            const s = search.toLowerCase()
+            result = result.filter(v => 
+                v.leads?.name?.toLowerCase().includes(s) || 
+                v.leads?.phone?.includes(s) ||
+                v.visit_notes?.toLowerCase().includes(s)
+            )
+        }
+        
+        if (filterStatus !== '__all__') {
+            result = result.filter(v => v.status === filterStatus)
+        }
+        
+        result.sort((a, b) => {
+            if (sortBy === 'date_asc') return new Date(a.scheduled_at) - new Date(b.scheduled_at)
+            if (sortBy === 'date_desc') return new Date(b.scheduled_at) - new Date(a.scheduled_at)
+            if (sortBy === 'status') return a.status.localeCompare(b.status)
+            if (sortBy === 'name_asc') return (a.leads?.name || '').localeCompare(b.leads?.name || '')
+            if (sortBy === 'name_desc') return (b.leads?.name || '').localeCompare(a.leads?.name || '')
+            return 0
+        })
+        
+        return result
+    }, [visits, search, filterStatus, sortBy])
 
     const handleDateRangeChange = useCallback(({ from, to }) => {
         setDateRange({ from, to })
@@ -59,9 +95,24 @@ export default function SiteVisitsPage() {
                 </div>
 
                 {/* Filters */}
-                {users.length > 0 && (
+                {(users.length > 0 || projects.length > 0) && (
                     <div className="flex items-center gap-2 flex-wrap">
                         <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+                        
+                        {/* Project Filter */}
+                        <Select value={filterProject} onValueChange={setFilterProject}>
+                            <SelectTrigger className="h-8 w-36 text-xs">
+                                <SelectValue placeholder="All projects" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__all__">All projects</SelectItem>
+                                {projects.map(p => (
+                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Agent Filter */}
                         <Select value={filterAgent} onValueChange={setFilterAgent}>
                             <SelectTrigger className="h-8 w-36 text-xs">
                                 <SelectValue placeholder="All agents" />
@@ -73,9 +124,33 @@ export default function SiteVisitsPage() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        {filterAgent !== '__all__' && (
-                            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground"
-                                onClick={() => setFilterAgent('__all__')}>
+
+                        {/* Status Filter */}
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <SelectTrigger className="h-8 w-32 text-xs">
+                                <SelectValue placeholder="All status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__all__">All status</SelectItem>
+                                <SelectItem value="scheduled">Scheduled</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="no_show">No Show</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {(filterAgent !== '__all__' || filterProject !== '__all__' || filterStatus !== '__all__' || search) && (
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => { 
+                                    setFilterAgent('__all__'); 
+                                    setFilterProject('__all__'); 
+                                    setFilterStatus('__all__');
+                                    setSearch('');
+                                }}
+                            >
                                 Clear
                             </Button>
                         )}
@@ -83,27 +158,93 @@ export default function SiteVisitsPage() {
                 )}
             </div>
 
-            {/* Status legend */}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                {[
-                    { color: 'bg-blue-400',    label: 'Scheduled' },
-                    { color: 'bg-emerald-400', label: 'Completed' },
-                    { color: 'bg-red-400',     label: 'No Show' },
-                    { color: 'bg-zinc-400',    label: 'Cancelled' },
-                ].map(({ color, label }) => (
-                    <span key={label} className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${color}`} />
-                        {label}
-                    </span>
-                ))}
+            {/* Controls Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30 p-3 rounded-xl border border-border/50">
+                <div className="flex items-center gap-4 flex-1">
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                            placeholder="Search leads or notes..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="h-8 pl-8 text-xs bg-background"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                            <SelectTrigger className="h-8 w-44 text-xs bg-background border-none shadow-none focus:ring-0">
+                                <SelectValue placeholder="Sort by" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="date_asc">Date (Oldest First)</SelectItem>
+                                <SelectItem value="date_desc">Date (Newest First)</SelectItem>
+                                <SelectItem value="name_asc">Lead Name (A-Z)</SelectItem>
+                                <SelectItem value="name_desc">Lead Name (Z-A)</SelectItem>
+                                <SelectItem value="status">Status</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    {/* Status legend */}
+                    <div className="hidden md:flex items-center gap-4 text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
+                        {[
+                            { color: 'bg-blue-400',    label: 'Scheduled' },
+                            { color: 'bg-emerald-400', label: 'Completed' },
+                            { color: 'bg-red-400',     label: 'No Show' },
+                            { color: 'bg-zinc-400',    label: 'Cancelled' },
+                        ].map(({ color, label }) => (
+                            <span key={label} className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${color}`} />
+                                {label}
+                            </span>
+                        ))}
+                    </div>
+
+                    {/* View Toggle */}
+                    <div className="flex items-center bg-background p-1 rounded-lg border shadow-sm">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setViewMode('calendar')}
+                            className={`h-7 px-3 text-xs gap-1.5 rounded-md transition-all ${viewMode === 'calendar' ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            <CalendarDays className="w-3.5 h-3.5" />
+                            Calendar
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setViewMode('table')}
+                            className={`h-7 px-3 text-xs gap-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            <List className="w-3.5 h-3.5" />
+                            List
+                        </Button>
+                    </div>
+                </div>
             </div>
 
-            {/* Calendar */}
-            <div className="flex-1 min-h-0 bg-card rounded-xl border border-border/60 p-4" style={{ minHeight: '500px' }}>
-                <SiteVisitCalendar
-                    visits={visits}
-                    onDateRangeChange={handleDateRangeChange}
-                />
+            {/* Main Content */}
+            <div className="flex-1 min-h-0">
+                {viewMode === 'calendar' ? (
+                    <div className="h-full bg-card rounded-xl border border-border/60 p-4" style={{ minHeight: '500px' }}>
+                        <SiteVisitCalendar
+                            visits={processedVisits}
+                            onDateRangeChange={handleDateRangeChange}
+                        />
+                    </div>
+                ) : (
+                    <div className="h-full bg-card rounded-xl border border-border/60 overflow-y-auto">
+                        <SiteVisitsTable 
+                            visits={processedVisits} 
+                            sortBy={sortBy}
+                            onSortChange={setSortBy}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     )

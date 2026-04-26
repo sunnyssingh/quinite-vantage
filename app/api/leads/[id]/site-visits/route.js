@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { DealService } from '@/services/deal.service'
 
 export async function GET(request, { params }) {
     try {
@@ -12,7 +13,7 @@ export async function GET(request, { params }) {
 
         const { data: visits, error } = await supabase
             .from('site_visits')
-            .select('*')
+            .select('*, project:projects(id, name), unit:units(id, unit_number, tower:towers(name))')
             .eq('lead_id', id)
             .order('scheduled_at', { ascending: false })
 
@@ -81,7 +82,24 @@ export async function POST(request, { params }) {
 
         if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-        return NextResponse.json({ visit: data }, { status: 201 })
+        // Auto-create a deal (interested) when a site visit is booked for a specific unit
+        let dealCreated = false
+        if (data.unit_id) {
+            try {
+                const result = await DealService.autoCreateFromSiteVisit(
+                    id,
+                    data.unit_id,
+                    data.id,
+                    profile.organization_id,
+                    user.id
+                )
+                dealCreated = result !== null
+            } catch {
+                // Non-blocking — site visit is saved regardless
+            }
+        }
+
+        return NextResponse.json({ visit: data, dealCreated }, { status: 201 })
     } catch (error) {
         console.error('Error creating site visit:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

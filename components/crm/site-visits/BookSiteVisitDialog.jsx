@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { CalendarIcon, User, MapPin, FileText } from 'lucide-react'
+import { CalendarIcon, User, MapPin, FileText, Building, Home } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
 import { useCreateSiteVisit, useUpdateSiteVisit } from '@/hooks/useSiteVisits'
+import { useProjects } from '@/hooks/useProjects'
+import { useUnits } from '@/hooks/useUnits'
+import { formatCurrency } from '@/lib/utils/currency'
 import { toast } from 'react-hot-toast'
 
 const EMPTY = {
@@ -21,6 +24,7 @@ const EMPTY = {
     assigned_agent_id: '',
     visit_notes:       '',
     project_id:        '',
+    unit_id:           '',
 }
 
 function toFormData(visit) {
@@ -32,10 +36,11 @@ function toFormData(visit) {
         assigned_agent_id: visit.assigned_agent_id ?? '',
         visit_notes:       visit.visit_notes ?? '',
         project_id:        visit.project_id ?? '',
+        unit_id:           visit.unit_id ?? '',
     }
 }
 
-export default function BookSiteVisitDialog({ open, onOpenChange, leadId, visit = null, agents = [], projects = [], onSuccess, defaultAgentId }) {
+export default function BookSiteVisitDialog({ open, onOpenChange, leadId, lead, visit = null, agents = [], onSuccess, defaultAgentId }) {
     const isEdit = !!visit
     const [form, setForm] = useState(EMPTY)
     const [calOpen, setCalOpen] = useState(false)
@@ -43,13 +48,24 @@ export default function BookSiteVisitDialog({ open, onOpenChange, leadId, visit 
     const updateMutation = useUpdateSiteVisit(leadId)
     const loading = createMutation.isPending || updateMutation.isPending
 
+    // Fetch projects
+    const { data: projects = [] } = useProjects()
+    
+    // Fetch units if project selected
+    const { data: rawUnits = [] } = useUnits(form.project_id && form.project_id !== '__none__' ? { projectId: form.project_id } : {})
+    const units = rawUnits?.filter(u => u.status !== 'sold') || []
+
     useEffect(() => {
         if (open) {
             const base = toFormData(visit)
-            if (!visit && defaultAgentId) base.assigned_agent_id = defaultAgentId
+            if (!visit) {
+                if (defaultAgentId) base.assigned_agent_id = defaultAgentId
+                if (lead?.project_id) base.project_id = lead.project_id
+                else if (lead?.project?.id) base.project_id = lead.project.id
+            }
             setForm(base)
         }
-    }, [open, visit, defaultAgentId])
+    }, [open, visit, defaultAgentId, lead])
 
     const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }))
 
@@ -65,6 +81,7 @@ export default function BookSiteVisitDialog({ open, onOpenChange, leadId, visit 
             assigned_agent_id: (form.assigned_agent_id && form.assigned_agent_id !== '__none__') ? form.assigned_agent_id : null,
             visit_notes:       form.visit_notes        || null,
             project_id:        (form.project_id && form.project_id !== '__none__') ? form.project_id : null,
+            unit_id:           (form.unit_id && form.unit_id !== '__none__') ? form.unit_id : null,
         }
         try {
             if (isEdit) {
@@ -94,71 +111,64 @@ export default function BookSiteVisitDialog({ open, onOpenChange, leadId, visit 
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4 py-1">
-                    {/* Date */}
-                    <div className="space-y-1.5">
-                        <Label>Visit Date <span className="text-red-500">*</span></Label>
-                        <Popover open={calOpen} onOpenChange={setCalOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className={cn('w-full justify-start text-left font-normal', !form.date && 'text-muted-foreground')}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {form.date ? format(new Date(form.date), 'PPP') : 'Pick a date'}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={selectedDate}
-                                    onSelect={(d) => {
-                                        if (d) { set('date', format(d, 'yyyy-MM-dd')); setCalOpen(false) }
-                                    }}
-                                    initialFocus
-                                    disabled={(d) => d < new Date(new Date().setHours(0,0,0,0))}
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-                    {/* Time */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="sv-time">Visit Time <span className="text-red-500">*</span></Label>
-                        <Input
-                            id="sv-time"
-                            type="time"
-                            value={form.time}
-                            onChange={e => set('time', e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    {/* Agent */}
-                    {agents.length > 0 && (
+                    {/* Date and Time Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Date */}
                         <div className="space-y-1.5">
-                            <Label>Assigned Agent</Label>
-                            <Select value={form.assigned_agent_id} onValueChange={v => set('assigned_agent_id', v)}>
-                                <SelectTrigger>
-                                    <User className="w-4 h-4 mr-2 text-muted-foreground" />
-                                    <SelectValue placeholder="Select agent (optional)" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="__none__">Unassigned</SelectItem>
-                                    {agents.map(a => (
-                                        <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Label>Visit Date <span className="text-red-500">*</span></Label>
+                            <Popover open={calOpen} onOpenChange={setCalOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className={cn('w-full justify-start text-left font-normal bg-white', !form.date && 'text-muted-foreground')}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                                        <span className="truncate">{form.date ? format(new Date(form.date), 'PPP') : 'Pick date'}</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={selectedDate}
+                                        onSelect={(d) => {
+                                            if (d) { set('date', format(d, 'yyyy-MM-dd')); setCalOpen(false) }
+                                        }}
+                                        initialFocus
+                                        disabled={(d) => d < new Date(new Date().setHours(0,0,0,0))}
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </div>
-                    )}
 
-                    {/* Project */}
-                    {projects.length > 0 && (
+                        {/* Time */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="sv-time">Visit Time <span className="text-red-500">*</span></Label>
+                            <Input
+                                id="sv-time"
+                                type="time"
+                                value={form.time}
+                                onChange={e => set('time', e.target.value)}
+                                className="bg-white"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {/* Project & Unit Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Project */}
                         <div className="space-y-1.5">
                             <Label>Project</Label>
-                            <Select value={form.project_id} onValueChange={v => set('project_id', v)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select project (optional)" />
+                            <Select 
+                                value={form.project_id} 
+                                onValueChange={v => {
+                                    set('project_id', v)
+                                    set('unit_id', '') // reset unit when project changes
+                                }}
+                            >
+                                <SelectTrigger className="bg-white">
+                                    <Building className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+                                    <SelectValue placeholder="Select project" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="__none__">None</SelectItem>
@@ -168,7 +178,66 @@ export default function BookSiteVisitDialog({ open, onOpenChange, leadId, visit 
                                 </SelectContent>
                             </Select>
                         </div>
-                    )}
+
+                        {/* Unit (Conditionally Shown) */}
+                        <div className="space-y-1.5">
+                            <Label>Unit of Interest</Label>
+                            <Select 
+                                value={form.unit_id} 
+                                onValueChange={v => set('unit_id', v)} 
+                                disabled={!form.project_id || form.project_id === '__none__' || units.length === 0}
+                            >
+                                <SelectTrigger className="bg-white">
+                                    <Home className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+                                    <SelectValue placeholder={
+                                        (!form.project_id || form.project_id === '__none__') ? "Select project first" 
+                                        : units.length > 0 ? "Select unit" : "No units available"
+                                    } />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">None</SelectItem>
+                                    {units.map(u => {
+                                        const details = [
+                                            u.bedrooms ? `${u.bedrooms}BHK` : null,
+                                            u.carpet_area ? `${u.carpet_area} sqft` : null,
+                                            u.base_price ? formatCurrency(u.base_price) : null,
+                                        ].filter(Boolean).join(' • ')
+                                        
+                                        return (
+                                            <SelectItem key={u.id} value={u.id}>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">Unit {u.unit_number} {u.tower?.name ? `(${u.tower.name})` : ''}</span>
+                                                    {details && <span className="text-[10px] text-muted-foreground">{details}</span>}
+                                                </div>
+                                            </SelectItem>
+                                        )
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Agent Field (Half Width) */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {agents.length > 0 && (
+                            <div className="space-y-1.5">
+                                <Label>Assigned Agent</Label>
+                                <Select value={form.assigned_agent_id} onValueChange={v => set('assigned_agent_id', v)}>
+                                    <SelectTrigger className="bg-white">
+                                        <User className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+                                        <SelectValue placeholder="Select agent" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__none__">Unassigned</SelectItem>
+                                        {agents.map(a => (
+                                            <SelectItem key={a.id} value={a.id}>{a.full_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                        <div></div> {/* Empty div to occupy the right half */}
+                    </div>
 
                     {/* Notes */}
                     <div className="space-y-1.5">
@@ -180,7 +249,7 @@ export default function BookSiteVisitDialog({ open, onOpenChange, leadId, visit 
                                 value={form.visit_notes}
                                 onChange={e => set('visit_notes', e.target.value)}
                                 placeholder="Any prep notes or directions..."
-                                className="pl-9 resize-none"
+                                className="pl-9 resize-none bg-white"
                                 rows={3}
                             />
                         </div>
@@ -190,7 +259,7 @@ export default function BookSiteVisitDialog({ open, onOpenChange, leadId, visit 
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={loading}>
+                        <Button type="submit" disabled={loading || !form.date || !form.time}>
                             {loading ? (isEdit ? 'Saving...' : 'Booking...') : (isEdit ? 'Save Changes' : 'Book Visit')}
                         </Button>
                     </DialogFooter>

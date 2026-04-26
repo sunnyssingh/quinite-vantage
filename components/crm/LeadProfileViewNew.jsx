@@ -4,33 +4,32 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'react-hot-toast'
-import { LayoutDashboard, Phone, ClipboardList, FileText, Activity, MapPin } from 'lucide-react'
+import { LayoutDashboard, Phone, ClipboardList, FileText, Activity, MapPin, Handshake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import LeadActivityTimeline from '@/components/crm/LeadActivityTimeline'
 import EditLeadProfileDialog from '@/components/crm/EditLeadProfileDialog'
-import LinkUnitDialog from '@/components/crm/LinkUnitDialog'
 import AvatarPickerDialog from '@/components/crm/AvatarPickerDialog'
 
-// New sub-components
 import LeadProfileSidebar from '@/components/crm/LeadProfileSidebar'
 import LeadProfileOverview from '@/components/crm/LeadProfileOverview'
 import LeadProfileNotes from '@/components/crm/LeadProfileNotes'
 import LeadTasksManager from '@/components/crm/LeadTasksManager'
 import LeadCallsTab from '@/components/crm/LeadCallsTab'
 import SiteVisitsTab from '@/components/crm/site-visits/SiteVisitsTab'
+import LeadDealsTab from '@/components/crm/leads/tabs/LeadDealsTab'
 
-// Parallel Hooks
 import { useLead, useLeadTasks, useLeadInteractions } from '@/hooks/useLeads'
 import { useOrgSettings } from '@/hooks/usePipelines'
 import { useSiteVisits } from '@/hooks/useSiteVisits'
+import { usePermission } from '@/contexts/PermissionContext'
+import { useQuery } from '@tanstack/react-query'
 
 export default function LeadProfileView({ leadId, onClose, isModal = false }) {
-    // 1. Data Fetching (Hydrates instantly if hovered earlier)
     const { data: lead, isLoading: leadLoading, refetch: refetchLead } = useLead(leadId)
     const { data: organization } = useOrgSettings()
-    
-    // Background pre-fetching for other tabs to ensure instant switching
+    const canViewDeals = usePermission('view_deals')
+
     useLeadTasks(leadId)
     useLeadInteractions(leadId)
 
@@ -38,34 +37,31 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
     const upcomingSiteVisitsCount = siteVisits.filter(v => v.status === 'scheduled').length
     const nextUpcomingVisit = siteVisits.find(v => v.status === 'scheduled' && new Date(v.scheduled_at) >= new Date()) ?? null
 
+    // Pre-fetch deals count for badge
+    const { data: dealsData } = useQuery({
+        queryKey: ['lead-deals', leadId],
+        queryFn: async () => {
+            const res = await fetch(`/api/leads/${leadId}/deals`)
+            if (!res.ok) return { deals: [] }
+            return res.json()
+        },
+        enabled: !!leadId && canViewDeals,
+        staleTime: 30_000,
+    })
+    const activeDealsCount = (dealsData?.deals || []).filter(d => !['lost'].includes(d.status)).length
+
     const loading = leadLoading
     const [activeTab, setActiveTab] = useState('overview')
     const [notes, setNotes] = useState('')
     const [savingNotes, setSavingNotes] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
-    const [linkDialogOpen, setLinkDialogOpen] = useState(false)
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false)
 
-    // Sync notes when data arrives
     useEffect(() => {
         if (lead?.notes) setNotes(lead.notes)
     }, [lead?.notes])
 
-    const refreshAll = () => {
-        refetchLead()
-    }
-
-    const handleUnlink = async () => {
-        if (!confirm('Are you sure you want to unlink this unit?')) return
-        try {
-            const res = await fetch(`/api/leads/${leadId}/unlink-unit`, { method: 'POST' })
-            if (!res.ok) throw new Error('Failed to unlink unit')
-            toast.success('Unit unlinked')
-            refreshAll()
-        } catch (error) {
-            toast.error('Failed to unlink unit')
-        }
-    }
+    const refreshAll = () => refetchLead()
 
     const handleSaveNotes = async () => {
         if (!leadId) return
@@ -79,14 +75,13 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
             if (!res.ok) throw new Error('Failed')
             toast.success('Notes updated')
             refetchLead()
-        } catch (error) {
+        } catch {
             toast.error('Failed to save notes')
         } finally {
             setSavingNotes(false)
         }
     }
 
-    // 2. Loading State (Show skeleton if either is loading and we don't have data yet)
     if (loading && !lead) {
         return (
             <div className="space-y-6 p-6">
@@ -106,7 +101,6 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
         )
     }
 
-    // 3. Not Found State (Only if NOT loading and lead is missing)
     if (!loading && !lead) {
         return (
             <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -117,6 +111,16 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
             </div>
         )
     }
+
+    const tabs = [
+        { id: 'overview',     label: 'Overview',    Icon: LayoutDashboard },
+        { id: 'calls',        label: 'Calls',        Icon: Phone,        count: lead?.call_logs?.length },
+        { id: 'tasks',        label: 'Tasks',        Icon: ClipboardList },
+        { id: 'notes',        label: 'Notes',        Icon: FileText,     dot: !!lead?.notes },
+        { id: 'timeline',     label: 'Timeline',     Icon: Activity },
+        { id: 'site-visits',  label: 'Site Visits',  Icon: MapPin,       count: upcomingSiteVisitsCount || undefined },
+        ...(canViewDeals ? [{ id: 'deals', label: 'Deals', Icon: Handshake, count: activeDealsCount || undefined }] : []),
+    ]
 
     return (
         <div className={`flex flex-col md:flex-row gap-6 ${isModal ? 'h-[80vh]' : ''}`}>
@@ -131,15 +135,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
 
             <div className={`flex-1 min-w-0 ${isModal ? 'overflow-y-auto' : ''}`}>
                 {/* Tab Bar */}
-                <div className="flex items-center gap-1 bg-gray-100/80 rounded-xl p-1 mb-6 w-fit">
-                    {[
-                        { id: 'overview',  label: 'Overview',  Icon: LayoutDashboard },
-                        { id: 'calls',     label: 'Calls',     Icon: Phone,          count: lead?.call_logs?.length },
-                        { id: 'tasks',     label: 'Tasks',     Icon: ClipboardList   },
-                        { id: 'notes',     label: 'Notes',     Icon: FileText,       dot: !!lead?.notes },
-                        { id: 'timeline',  label: 'Timeline',  Icon: Activity        },
-                        { id: 'site-visits', label: 'Site Visits', Icon: MapPin, count: upcomingSiteVisitsCount || undefined },
-                    ].map(({ id, label, Icon, count, dot }) => {
+                <div className="flex items-center gap-1 bg-gray-100/80 rounded-xl p-1 mb-6 w-fit flex-wrap">
+                    {tabs.map(({ id, label, Icon, count, dot }) => {
                         const active = activeTab === id
                         return (
                             <button
@@ -176,9 +173,8 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                         lead={lead}
                         organization={organization}
                         onUpdate={refreshAll}
-                        onLinkUnit={() => setLinkDialogOpen(true)}
-                        onUnlinkUnit={handleUnlink}
                         onViewAllTasks={() => setActiveTab('tasks')}
+                        onViewAllDeals={() => setActiveTab('deals')}
                     />
                 )}
                 {activeTab === 'calls' && (
@@ -201,6 +197,9 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 {activeTab === 'site-visits' && (
                     <SiteVisitsTab leadId={leadId} lead={lead} />
                 )}
+                {activeTab === 'deals' && canViewDeals && (
+                    <LeadDealsTab leadId={leadId} lead={lead} initialDeals={dealsData?.deals} />
+                )}
             </div>
 
             <EditLeadProfileDialog
@@ -209,22 +208,11 @@ export default function LeadProfileView({ leadId, onClose, isModal = false }) {
                 lead={lead}
                 onSave={refreshAll}
             />
-
             <AvatarPickerDialog
                 open={avatarPickerOpen}
                 onOpenChange={setAvatarPickerOpen}
                 lead={lead}
                 onSave={refreshAll}
-            />
-
-            <LinkUnitDialog
-                lead={lead}
-                isOpen={linkDialogOpen}
-                onClose={() => setLinkDialogOpen(false)}
-                onLinkSuccess={() => {
-                    refreshAll()
-                    toast.success('Unit linked successfully')
-                }}
             />
         </div>
     )

@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Camera, Mail, Phone, Smartphone, Building, MapPin, Edit2, AlertTriangle, Clock, UserCheck, PhoneCall, User } from 'lucide-react'
+import { Camera, Mail, Phone, Smartphone, Building, MapPin, Edit2, AlertTriangle, Clock, UserCheck, PhoneCall, User, Home } from 'lucide-react'
 import { format } from 'date-fns'
 
 const getInitials = (name) => {
@@ -85,14 +85,28 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar, 
 
     return (
         <div className="bg-card border rounded-xl overflow-hidden shadow-sm h-full flex flex-col">
-            {/* Banner */}
-            <div
-                className="relative h-28 w-full"
-                style={{ background: 'linear-gradient(to right, #ffffff, #e1f5fe, #b3e5fc)' }}
-            >
+            {/* Premium Banner */}
+            <div className="relative h-32 w-full bg-indigo-600 overflow-hidden shrink-0">
+                {/* Base Mesh Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-700 via-violet-600 to-indigo-800" />
+                
+                {/* Glowing Orbs */}
+                <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+                <div className="absolute -bottom-16 -left-8 w-40 h-40 bg-indigo-400/30 rounded-full blur-2xl" />
+                
+                {/* Subtle Dot Pattern */}
+                <div 
+                    className="absolute inset-0"
+                    style={{ 
+                        backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)', 
+                        backgroundSize: '16px 16px' 
+                    }}
+                />
+                
+                {/* Glassmorphic Edit Button */}
                 <button
                     onClick={onEditProfile}
-                    className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-white/70 hover:bg-white text-gray-500 hover:text-primary shadow-sm transition-all"
+                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-black/20 hover:bg-black/40 text-white/90 hover:text-white backdrop-blur-md transition-all shadow-sm border border-white/10"
                     aria-label="Edit profile"
                 >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -101,7 +115,7 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar, 
 
             {/* Avatar + Name */}
             <div className="flex flex-col items-center text-center px-6 -mt-12 mb-4">
-                <div className="relative mb-3 group">
+                <div className="relative mb-1 group">
                     <Avatar key={lead.avatar_url || 'no-avatar'} className="h-24 w-24 border-4 border-background shadow-md">
                         {lead.avatar_url ? (
                             <img
@@ -124,7 +138,6 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar, 
                     </button>
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">{lead.name}</h2>
-                <p className="text-sm text-gray-500">{lead.company || 'No Company'}</p>
                 {lead.project && (
                     <Badge variant="outline" className="mt-2 text-xs font-medium text-primary border-primary/30 bg-primary/5">
                         {lead.project.name}
@@ -133,7 +146,7 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar, 
             </div>
 
             {/* ── Pipeline Context ────────────────────────────────── */}
-            <div className="mx-4 mb-3 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+            <div className="mx-4 mb-0 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
                 {/* Stage + Assigned Agent */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                     {lead.stage && (
@@ -164,7 +177,7 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar, 
             </div>
 
             {upcomingVisit && (
-                <div className="mx-4 mb-3 rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2.5 space-y-1">
+                <div className="mx-4 mt-2 rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2.5 space-y-1">
                     <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
                         <MapPin className="w-3.5 h-3.5" />
                         Upcoming Site Visit
@@ -172,9 +185,23 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar, 
                     <p className="text-xs text-blue-600 font-medium">
                         {format(new Date(upcomingVisit.scheduled_at), 'EEE, d MMM • h:mm a')}
                     </p>
+                    {upcomingVisit.project && (
+                        <div className="flex items-center gap-1 text-[11px] text-blue-500 font-medium pt-0.5">
+                            <Building className="w-3 h-3" />
+                            <span>{upcomingVisit.project.name}</span>
+                            {upcomingVisit.unit && (
+                                <>
+                                    <span className="opacity-50 mx-0.5">•</span>
+                                    <Home className="w-3 h-3" />
+                                    <span>Unit {upcomingVisit.unit.unit_number}</span>
+                                </>
+                            )}
+                        </div>
+                    )}
                     {upcomingVisit.assigned_agent && (
-                        <p className="text-[11px] text-blue-500">
-                            with {upcomingVisit.assigned_agent.full_name}
+                        <p className="text-[11px] text-blue-500 flex items-center gap-1 mt-0.5">
+                            <User className="w-3 h-3" />
+                            <span>with {upcomingVisit.assigned_agent.full_name}</span>
                         </p>
                     )}
                 </div>
@@ -328,6 +355,17 @@ export default function LeadProfileSidebar({ lead, onEditProfile, onEditAvatar, 
                                 <div className="flex-1 min-w-0">
                                     <p className="text-xs text-gray-500">Mobile</p>
                                     <p className="font-medium text-gray-900 truncate">{lead.mobile}</p>
+                                </div>
+                            </div>
+                        )}
+                        {lead.company && (
+                            <div className="flex items-center gap-3 text-sm group">
+                                <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                                    <Building className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-gray-500">Company</p>
+                                    <p className="font-medium text-gray-900 truncate">{lead.company}</p>
                                 </div>
                             </div>
                         )}

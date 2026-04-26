@@ -1,10 +1,10 @@
 'use client'
 
 import { format } from 'date-fns'
-import { Calendar, Clock, User, MoreVertical, Edit2, Trash2, CheckCircle2, XCircle } from 'lucide-react'
+import { Calendar, Clock, User, MoreVertical, Edit2, Trash2, CheckCircle2, XCircle, Building, Home, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { VISIT_STATUS_COLORS, VISIT_STATUS_LABELS, OUTCOME_LABELS } from '@/lib/site-visit-stages'
 
@@ -22,9 +22,18 @@ export default function SiteVisitCard({ visit, onEdit, onDelete, onMarkComplete,
             {/* Top row: date/time + status badge */}
             <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground flex-wrap">
                         <Calendar className="w-3.5 h-3.5 text-primary" />
                         {format(d, 'EEE, d MMM yyyy')}
+                        {visit.outcome && (
+                            <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full ml-1',
+                                visit.outcome === 'interested'       ? 'bg-emerald-100 text-emerald-700' :
+                                visit.outcome === 'not_interested'   ? 'bg-red-100 text-red-600' :
+                                'bg-amber-100 text-amber-700'
+                            )}>
+                                {OUTCOME_LABELS[visit.outcome]}
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
@@ -35,67 +44,96 @@ export default function SiteVisitCard({ visit, onEdit, onDelete, onMarkComplete,
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                    <Badge className={cn('text-[11px] font-medium border shadow-none', colors.bg, colors.text, colors.border)}>
+                <div className="flex items-center gap-2">
+                    <Badge className={cn('text-[11px] font-medium border shadow-none z-10', colors.bg, colors.text, colors.border)}>
                         {VISIT_STATUS_LABELS[visit.status]}
                     </Badge>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical className="w-3.5 h-3.5" />
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-0.5 -ml-1">
+                        {visit.status === 'scheduled' && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-700 hover:bg-slate-100" onClick={() => onEdit?.(visit)}>
+                                <Edit2 className="w-3.5 h-3.5" />
                             </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                            {visit.status === 'scheduled' && (
-                                <>
-                                    <DropdownMenuItem onClick={() => onMarkComplete?.(visit)}>
-                                        <CheckCircle2 className="w-3.5 h-3.5 mr-2 text-emerald-600" />
-                                        Mark Completed
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onMarkNoShow?.(visit)}>
-                                        <XCircle className="w-3.5 h-3.5 mr-2 text-red-500" />
-                                        Mark No Show
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => onEdit?.(visit)}>
-                                        <Edit2 className="w-3.5 h-3.5 mr-2" />
-                                        Edit
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                            <DropdownMenuItem onClick={() => onDelete?.(visit)} className="text-red-600 focus:text-red-600">
-                                <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-red-600 hover:bg-red-50" onClick={() => onDelete?.(visit)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
                 </div>
             </div>
 
-            {/* Agent */}
-            {visit.assigned_agent && (
-                <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">
-                    <User className="w-3 h-3" />
-                    <span>{visit.assigned_agent.full_name}</span>
-                </div>
-            )}
-
-            {/* Outcome */}
-            {visit.outcome && (
-                <div className="mt-2">
-                    <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full',
-                        visit.outcome === 'interested'       ? 'bg-emerald-100 text-emerald-700' :
-                        visit.outcome === 'not_interested'   ? 'bg-red-100 text-red-600' :
-                        'bg-amber-100 text-amber-700'
-                    )}>
-                        {OUTCOME_LABELS[visit.outcome]}
-                    </span>
+            {/* Project & Unit */}
+            {visit.project && (
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+                    <Building className="w-3 h-3" />
+                    <span className="font-medium text-slate-700">{visit.project.name}</span>
+                    {visit.unit && (
+                        <>
+                            <span className="text-slate-300 mx-0.5">•</span>
+                            <Home className="w-3 h-3" />
+                            <span className="font-medium text-slate-700">Unit {visit.unit.unit_number} {visit.unit.tower?.name ? `(${visit.unit.tower.name})` : ''}</span>
+                        </>
+                    )}
                 </div>
             )}
 
             {/* Notes */}
             {visit.visit_notes && (
-                <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{visit.visit_notes}</p>
+                <div className="mt-2 bg-slate-50 border border-slate-100 rounded-lg p-2.5 flex items-start gap-2">
+                    <FileText className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-slate-600 italic line-clamp-2 leading-relaxed">{visit.visit_notes}</p>
+                </div>
+            )}
+
+            {/* Bottom Row: Agent & Quick Actions */}
+            {(visit.assigned_agent || visit.status === 'scheduled') && (
+                <div className="mt-3 flex items-center justify-between gap-2 pt-2 border-t border-slate-50">
+                    <div className="flex-1 min-w-0">
+                        {visit.assigned_agent && (
+                            <Badge variant="outline" className="text-[10px] font-medium text-slate-600 bg-slate-50 border-slate-200 shadow-none px-2 py-0.5 rounded-md truncate max-w-full">
+                                <User className="w-3 h-3 mr-1.5 text-slate-400 shrink-0" />
+                                <span className="truncate">{visit.assigned_agent.full_name}</span>
+                            </Badge>
+                        )}
+                    </div>
+                    
+                    {visit.status === 'scheduled' && (
+                        <div className="flex items-center gap-2 shrink-0">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-2">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                disabled={!isPast}
+                                                onClick={() => onMarkNoShow?.(visit)}
+                                                className="h-7 text-[11px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 px-2.5 disabled:opacity-50"
+                                            >
+                                                <XCircle className="w-3.5 h-3.5 mr-1" />
+                                                No Show
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                disabled={!isPast}
+                                                onClick={() => onMarkComplete?.(visit)}
+                                                className="h-7 text-[11px] font-medium border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 px-3 shadow-sm disabled:opacity-50"
+                                            >
+                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                                Mark Complete
+                                            </Button>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {!isPast && (
+                                        <TooltipContent>
+                                            <p className="text-xs">You can log the outcome after the visit time has passed.</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    )}
+                </div>
             )}
 
         </div>

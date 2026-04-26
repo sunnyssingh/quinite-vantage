@@ -6,19 +6,31 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { LeadCard } from './LeadCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Plus, Settings2 } from 'lucide-react'
+import { Plus, Settings2, Palette } from 'lucide-react'
 
 const PRESET_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#a855f7', '#06b6d4', '#f97316', '#8b5cf6', '#ec4899', '#64748b']
 
 function ColorPicker({ color, onChange }) {
     const [open, setOpen] = useState(false)
+    const [localColor, setLocalColor] = useState(color || '#a1a1aa')
     const ref = useRef(null)
 
     useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+        setLocalColor(color || '#a1a1aa')
+    }, [color])
+
+    useEffect(() => {
+        const handler = (e) => { 
+            if (ref.current && !ref.current.contains(e.target)) {
+                if (open) {
+                    if (localColor !== color) onChange(localColor)
+                    setOpen(false)
+                }
+            } 
+        }
         document.addEventListener('mousedown', handler)
         return () => document.removeEventListener('mousedown', handler)
-    }, [])
+    }, [open, localColor, color, onChange])
 
     return (
         <div ref={ref} className="relative">
@@ -29,26 +41,42 @@ function ColorPicker({ color, onChange }) {
                 title="Change color"
             />
             {open && (
-                <div className="absolute left-0 top-5 z-50 bg-popover border border-border rounded-xl shadow-xl p-2.5 w-[136px]">
+                <div className="absolute left-0 top-5 z-50 bg-popover border border-border rounded-xl shadow-xl p-2.5 w-[140px]">
                     <div className="grid grid-cols-5 gap-1.5">
                         {PRESET_COLORS.map(c => (
                             <button
                                 key={c}
-                                onMouseDown={(e) => { e.stopPropagation(); onChange(c); setOpen(false) }}
-                                className={`w-5 h-5 rounded-full hover:scale-110 transition-transform ring-offset-1 ${color === c ? 'ring-2 ring-primary' : ''}`}
+                                onMouseDown={(e) => { e.stopPropagation(); setLocalColor(c); onChange(c); setOpen(false) }}
+                                className={`w-5 h-5 rounded-full hover:scale-110 transition-transform ring-offset-1 ${localColor === c ? 'ring-2 ring-primary' : ''}`}
                                 style={{ backgroundColor: c }}
                             />
                         ))}
                     </div>
-                    <input
-                        type="text"
-                        defaultValue={color}
-                        placeholder="#hex"
-                        maxLength={7}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { onChange(e.target.value); setOpen(false) } }}
-                        className="mt-2 w-full text-[10px] bg-muted border border-border rounded px-1.5 py-1 font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-                        onMouseDown={(e) => e.stopPropagation()}
-                    />
+                    <div className="mt-2.5 flex items-center gap-1.5">
+                        <div 
+                            className="relative w-6 h-6 rounded overflow-hidden shrink-0 ring-1 ring-border shadow-sm flex items-center justify-center transition-opacity hover:opacity-90"
+                            style={{ backgroundColor: localColor }}
+                        >
+                            <Palette className="w-3.5 h-3.5 text-white/90 drop-shadow-sm mix-blend-difference" />
+                            <input
+                                type="color"
+                                value={localColor}
+                                onChange={(e) => setLocalColor(e.target.value)}
+                                className="absolute -top-2 -left-2 w-10 h-10 opacity-0 cursor-pointer"
+                                title="Pick custom color"
+                            />
+                        </div>
+                        <input
+                            type="text"
+                            value={localColor}
+                            placeholder="#hex"
+                            maxLength={7}
+                            onChange={(e) => setLocalColor(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { onChange(localColor); setOpen(false) } }}
+                            className="w-full h-6 text-[10px] bg-muted border border-border rounded px-1.5 font-mono focus:outline-none focus:ring-1 focus:ring-primary uppercase"
+                            onMouseDown={(e) => e.stopPropagation()}
+                        />
+                    </div>
                 </div>
             )}
         </div>

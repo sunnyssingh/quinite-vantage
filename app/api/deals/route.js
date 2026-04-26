@@ -1,90 +1,94 @@
-
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { withPermission } from '@/lib/middleware/withAuth'
 import { DealService } from '@/services/deal.service'
 
-/**
- * Maps deal status → inventory unit status
- * 'won' / 'closed won' → 'sold'
- * 'active' / 'in_progress' / 'negotiation' / 'pending' → 'reserved'
- * 'lost' → 'available'
- */
-function dealStatusToUnitStatus(dealStatus) {
-    const s = (dealStatus || '').toLowerCase()
-    if (s === 'won' || s === 'closed' || s === 'closed won') return 'sold'
-    if (s === 'lost') return 'available'
-    return 'reserved' // active, pending, negotiation, in_progress
+function dealStatusToUnitStatus(status) {
+    if (status === 'won')  return 'sold'
+    if (status === 'lost') return 'available'
+    if (status === 'reserved') return 'reserved'
+    return null // interested / negotiation → don't change unit status
 }
 
 /**
  * POST /api/deals
- * Create a new deal and auto-sync inventory property status
+ * Creates a deal and syncs unit + lead state.
+ * If status is 'reserved', any existing reserved deal on that unit is demoted to 'negotiation' first.
  */
-export const POST = withPermission('create_deals', async (request, context) => {
+export const POST = withPermission('manage_deals', async (request, context) => {
     try {
         const { user, profile } = context
         const body = await request.json()
-        const { lead_id, unit_id, project_id, amount, status, close_date, title, name } = body
+        const { lead_id, unit_id, project_id, amount, status, notes, interest_source, site_visit_id, name, title } = body
 
         if (!lead_id) {
             return NextResponse.json({ error: 'Lead ID is required' }, { status: 400 })
         }
-
         if (!profile?.organization_id) {
             return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
         }
 
-        const dealData = {
-            lead_id,
-            status: status || 'active',
-            amount: amount ? parseFloat(amount) : null,
-            name: title || name
-        }
-
-        if (unit_id) dealData.unit_id = unit_id
-        if (project_id) dealData.project_id = project_id
-        if (close_date) dealData.close_date = close_date
-
-        // Create deal using service
-        const deal = await DealService.createDeal(dealData, profile.organization_id, user.id)
-
         const adminClient = createAdminClient()
-        const leadUpdate = {}
+        const orgId = profile.organization_id
+        const dealStatus = status || 'interested'
 
-        // Link unit / project to the lead
-        if (unit_id) {
-            leadUpdate.unit_id = unit_id
-            const { data: unitData } = await adminClient
-                .from('units')
-                .select('project_id')
-                .eq('id', unit_id)
-                .single()
-            if (unitData?.project_id) leadUpdate.project_id = unitData.project_id
-
-            // ✅ Auto-sync inventory: update unit status based on deal status
-            const newUnitStatus = dealStatusToUnitStatus(status || 'active')
+        // If reserving, demote any existing reserved deal for this unit first
+        if (dealStatus === 'reserved' && unit_id) {
             await adminClient
-                .from('units')
-                .update({ status: newUnitStatus, updated_at: new Date().toISOString() })
-                .eq('id', unit_id)
-
-        } else if (project_id) {
-            leadUpdate.project_id = project_id
+                .from('deals')
+                .update({ status: 'negotiation', updated_at: new Date().toISOString() })
+                .eq('unit_id', unit_id)
+                .eq('status', 'reserved')
+                .eq('organization_id', orgId)
         }
 
-        if (Object.keys(leadUpdate).length > 0) {
-            await adminClient
-                .from('leads')
-                .update(leadUpdate)
-                .eq('id', lead_id)
+        // Auto-generate name if not provided
+        let dealName = name || title
+        if (!dealName) {
+            const [leadRes, unitRes] = await Promise.all([
+                adminClient.from('leads').select('name').eq('id', lead_id).single(),
+                unit_id ? adminClient.from('units').select('unit_number').eq('id', unit_id).single() : Promise.resolve({ data: null }),
+            ])
+            dealName = unitRes.data
+                ? `${leadRes.data?.name || 'Lead'} — ${unitRes.data.unit_number || 'Unit'}`
+                : (leadRes.data?.name || 'Deal')
+        }
+
+        const deal = await DealService.createDeal(
+            { lead_id, unit_id, project_id, amount: amount ? parseFloat(amount) : null, status: dealStatus, notes, interest_source, site_visit_id, name: dealName },
+            orgId,
+            user.id
+        )
+
+        // Sync unit status and units.lead_id
+        if (unit_id) {
+            const newUnitStatus = dealStatusToUnitStatus(dealStatus)
+            if (newUnitStatus) {
+                await adminClient
+                    .from('units')
+                    .update({
+                        status: newUnitStatus,
+                        lead_id: ['reserved', 'won'].includes(dealStatus) ? lead_id : null,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('id', unit_id)
+            }
+
+            // Set project on lead if not already set
+            const { data: unitData } = await adminClient.from('units').select('project_id').eq('id', unit_id).single()
+            if (unitData?.project_id) {
+                await adminClient.from('leads').update({ project_id: unitData.project_id }).eq('id', lead_id).is('project_id', null)
+            }
+        } else if (project_id) {
+            await adminClient.from('leads').update({ project_id }).eq('id', lead_id).is('project_id', null)
         }
 
         return NextResponse.json({ deal })
-
     } catch (error) {
         console.error('Error in deals POST:', error)
+        if (error.code === '23505') {
+            return NextResponse.json({ error: 'A deal already exists for this lead and unit.' }, { status: 409 })
+        }
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 })

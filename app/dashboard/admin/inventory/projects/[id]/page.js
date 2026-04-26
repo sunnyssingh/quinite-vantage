@@ -379,18 +379,12 @@ export default function InventoryProjectDetailsPage() {
                     />
                 </TabsContent>
 
-                <TabsContent value="visual">
-                    <Card className="p-6">
-                        <div className="mb-6">
-                            <h3 className="text-lg font-semibold mb-1">Visual Inventory</h3>
-                            <p className="text-sm text-muted-foreground">Click on any unit to update its status.</p>
-                        </div>
-                        <VisualUnitGrid
-                            projectId={projectId}
-                            project={project}
-                            organizationId={organizationId}
-                        />
-                    </Card>
+                <TabsContent value="visual" className="mt-6">
+                    <VisualUnitGrid
+                        projectId={projectId}
+                        project={project}
+                        organizationId={organizationId}
+                    />
                 </TabsContent>
 
                 <TabsContent value="configs">

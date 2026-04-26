@@ -1,143 +1,146 @@
-
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { withPermission } from '@/lib/middleware/withAuth'
+import { DealService } from '@/services/deal.service'
 
-/**
- * Maps deal status → inventory unit status
- */
-function dealStatusToUnitStatus(dealStatus) {
-    const s = (dealStatus || '').toLowerCase()
-    if (s === 'won' || s === 'closed' || s === 'closed won') return 'sold'
-    if (s === 'lost') return 'available'
-    return 'reserved'
+function dealStatusToUnitStatus(status) {
+    if (status === 'won')      return 'sold'
+    if (status === 'lost')     return 'available'
+    if (status === 'reserved') return 'reserved'
+    return null // interested / negotiation → don't touch unit status
 }
 
 /**
  * PATCH /api/deals/[id]
- * Update deal status and auto-sync the linked property's inventory status
+ * Updates deal fields, handles reserved-uniqueness, syncs unit status.
  */
-export async function PATCH(request, { params }) {
+export const PATCH = withPermission('manage_deals', async (request, context) => {
     try {
-        const supabase = await createServerSupabaseClient()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        const { user, profile } = context
+        const { id } = await context.params
+        const body = await request.json()
+        const { status, amount, notes, lost_reason } = body
+
+        if (!profile?.organization_id) {
+            return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
         }
 
         const adminClient = createAdminClient()
-        const { id } = await params
-        const body = await request.json()
-        const { status, amount, close_date, name } = body
+        const orgId = profile.organization_id
 
-        // Build update payload
-        const updatePayload = { updated_at: new Date().toISOString() }
-        if (status !== undefined) updatePayload.status = status
-        if (amount !== undefined) updatePayload.amount = parseFloat(amount)
-        if (close_date !== undefined) updatePayload.close_date = close_date
-        if (name !== undefined) updatePayload.name = name
-
-        // Fetch existing deal to get unit_id and lead_id
-        const { data: existingDeal, error: fetchError } = await adminClient
+        const { data: existing, error: fetchErr } = await adminClient
             .from('deals')
             .select('id, unit_id, lead_id, status')
             .eq('id', id)
+            .eq('organization_id', orgId)
             .single()
 
-        if (fetchError || !existingDeal) {
+        if (fetchErr || !existing) {
             return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
         }
 
-        // Update the deal
-        const { data: updatedDeal, error: updateError } = await adminClient
-            .from('deals')
-            .update(updatePayload)
-            .eq('id', id)
-            .select()
-            .single()
+        const updates = {}
+        if (status    !== undefined) updates.status     = status
+        if (amount    !== undefined) updates.amount     = parseFloat(amount)
+        if (notes     !== undefined) updates.notes      = notes
+        if (lost_reason !== undefined) updates.lost_reason = lost_reason
 
-        if (updateError) throw updateError
+        // If reserving this deal, demote any other reserved deal on the same unit
+        if (status === 'reserved' && existing.unit_id) {
+            await adminClient
+                .from('deals')
+                .update({ status: 'negotiation', updated_at: new Date().toISOString() })
+                .eq('unit_id', existing.unit_id)
+                .eq('status', 'reserved')
+                .neq('id', id)
+                .eq('organization_id', orgId)
+        }
 
-        // ✅ Auto-sync inventory unit status when deal status changes
-        if (status && status !== existingDeal.status && existingDeal.unit_id) {
+        const deal = await DealService.updateDeal(id, updates, orgId, user.id)
+
+        // Sync unit status when deal status changes
+        if (status && status !== existing.status && existing.unit_id) {
             const newUnitStatus = dealStatusToUnitStatus(status)
 
-            await adminClient
-                .from('units')
-                .update({ status: newUnitStatus, updated_at: new Date().toISOString() })
-                .eq('id', existingDeal.unit_id)
+            if (newUnitStatus) {
+                const unitUpdate = { status: newUnitStatus, updated_at: new Date().toISOString() }
 
-            // If deal is lost → remove the unit link from the lead
-            if (newUnitStatus === 'available' && existingDeal.lead_id) {
-                await adminClient
-                    .from('leads')
-                    .update({ unit_id: null })
-                    .eq('id', existingDeal.lead_id)
-                    .eq('unit_id', existingDeal.unit_id)
+                if (['reserved', 'won'].includes(status)) {
+                    unitUpdate.lead_id = existing.lead_id
+                } else if (newUnitStatus === 'available') {
+                    // Only clear lead_id if this was the primary lead on the unit
+                    const { data: unit } = await adminClient.from('units').select('lead_id').eq('id', existing.unit_id).single()
+                    if (unit?.lead_id === existing.lead_id) unitUpdate.lead_id = null
+                }
+
+                await adminClient.from('units').update(unitUpdate).eq('id', existing.unit_id)
             }
         }
 
-        return NextResponse.json({ deal: updatedDeal })
-
+        return NextResponse.json({ deal })
     } catch (error) {
         console.error('Error in deals PATCH:', error)
+        if (error.code === '23505') {
+            return NextResponse.json({ error: 'Another deal is already reserved for this unit.' }, { status: 409 })
+        }
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
-}
+})
 
 /**
  * DELETE /api/deals/[id]
+ * Deletes deal and reverts unit to available if no other active deals exist.
  */
-export async function DELETE(request, { params }) {
+export const DELETE = withPermission('delete_deals', async (request, context) => {
     try {
-        const supabase = await createServerSupabaseClient()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        const { profile } = context
+        const { id } = await context.params
+
+        if (!profile?.organization_id) {
+            return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
         }
 
         const adminClient = createAdminClient()
-        const { id } = await params
+        const orgId = profile.organization_id
 
-        // Fetch the deal to get unit_id before deleting
         const { data: deal } = await adminClient
             .from('deals')
-            .select('unit_id, lead_id')
+            .select('unit_id, lead_id, status')
             .eq('id', id)
+            .eq('organization_id', orgId)
             .single()
 
-        const { error } = await adminClient
-            .from('deals')
-            .delete()
-            .eq('id', id)
+        await DealService.deleteDeal(id, orgId)
 
-        if (error) {
-            console.error('Error deleting deal:', error)
-            return NextResponse.json({ error: error.message }, { status: 500 })
-        }
-
-        // If the deleted deal had a unit, check if any other active deals exist for it
         if (deal?.unit_id) {
-            const { data: remainingDeals } = await adminClient
+            // Check remaining active deals for this unit
+            const { data: remaining } = await adminClient
                 .from('deals')
                 .select('id, status')
                 .eq('unit_id', deal.unit_id)
-                .neq('status', 'lost')
+                .eq('organization_id', orgId)
+                .not('status', 'in', '("lost")')
 
-            if (!remainingDeals || remainingDeals.length === 0) {
-                // No more active deals → mark unit as available
-                await adminClient
-                    .from('units')
-                    .update({ status: 'available', updated_at: new Date().toISOString() })
-                    .eq('id', deal.unit_id)
-
-                // Unlink from lead too
-                if (deal.lead_id) {
-                    await adminClient
-                        .from('leads')
-                        .update({ unit_id: null })
-                        .eq('id', deal.lead_id)
-                        .eq('unit_id', deal.unit_id)
+            if (!remaining || remaining.length === 0) {
+                const { data: unit } = await adminClient.from('units').select('lead_id').eq('id', deal.unit_id).single()
+                await adminClient.from('units').update({
+                    status: 'available',
+                    lead_id: null,
+                    updated_at: new Date().toISOString(),
+                }).eq('id', deal.unit_id)
+            } else {
+                // If deleted deal was the primary (reserved/won), promote highest-priority remaining deal
+                const wasPrimary = ['reserved', 'won'].includes(deal.status)
+                if (wasPrimary) {
+                    const next = remaining.find(d => d.status === 'negotiation') || remaining[0]
+                    if (next) {
+                        // Unit goes back to available since no reserved deal remains
+                        await adminClient.from('units').update({
+                            status: 'available',
+                            lead_id: null,
+                            updated_at: new Date().toISOString(),
+                        }).eq('id', deal.unit_id)
+                    }
                 }
             }
         }
@@ -147,4 +150,4 @@ export async function DELETE(request, { params }) {
         console.error('Error in deals DELETE:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
-}
+})

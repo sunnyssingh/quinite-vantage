@@ -161,13 +161,17 @@ export async function PUT(request) {
                 return null
             }
 
+            const updates = {}
+            if (stage.name !== undefined) updates.name = stage.name
+            if (stage.order_index !== undefined) updates.order_index = stage.order_index
+            if (stage.stale_days !== undefined) updates.stale_days = stage.stale_days
+            if (stage.color !== undefined) updates.color = stage.color
+
+            if (Object.keys(updates).length === 0) return null
+
             return adminClient
                 .from('pipeline_stages')
-                .update({
-                    name: stage.name,
-                    order_index: stage.order_index,
-                    stale_days: stage.stale_days === undefined ? undefined : stage.stale_days
-                })
+                .update(updates)
                 .eq('id', stage.id)
         })
 
